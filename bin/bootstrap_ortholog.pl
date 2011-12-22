@@ -11,7 +11,7 @@ use lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 use CXGN::Phylo::File;
 use CXGN::Phylo::Parser;
 
-use Devel::Cycle;
+use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
 
 # read in an alignment file. get an overlap object.
