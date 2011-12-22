@@ -3,7 +3,7 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
-use lib '/home/tomfy/MHarrisonProject/lib';
+use lib '/home/tomfy/Orthologger/lib';
 use Overlap;
 use Orthologger;
 
@@ -12,7 +12,7 @@ use CXGN::Phylo::File;
 use CXGN::Phylo::Parser;
 
 use Devel::Cycle;
-# find_cycle($test); # to find circular refs in $test
+# find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
 
 # read in an alignment file. get an overlap object.
 # repeat $n_bootstrap times:
