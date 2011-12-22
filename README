@@ -1,0 +1,19 @@
+These are scripts and modules used to analyze a set of clusters (families)
+coming out of ORTHOMCL for orthologs in a different way from what
+ORTHOMCL itself does. In particular the families get aligned (no script for
+that here), then gene trees are constructed, the gene trees are compared 
+with the tree representing the species phylogeny, and the gene tree
+is rooted so as to minimize the number of duplication and loss events
+needed to reconcile the (rooted) tree with the species tree. (Other
+rooting options are implemented also, e.g. midpoint.) The nodes of this
+rooted gene tree are labeled as duplications or speciations. Two genes
+are identified as orthologous if their LCA node (root of minimal subtree 
+containing both) is a speciation. 
+
+Also uses the Parse.pm, Tree.pm and Node.pm modules in
+~/cxgn/cxgn-corelibs/lib/CXGN/Phylo
+
+Does bootstrapping, i.e. can specify (with arguments to bootstrap_ortholog.pl)
+the analysis of bootstrap resamples of alignments in the same way, producing
+for each a list of inferred ortholog pairs. Tree inference can either be
+done by NJ (clearcut) or ML (FastTree). 
