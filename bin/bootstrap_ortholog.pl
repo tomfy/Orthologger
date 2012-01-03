@@ -17,7 +17,7 @@ use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # read in an alignment file. get an overlap object.
 # repeat $n_bootstrap times:
 # 1) get bootstrap overlap
-# 2) get RNJ tree using clearcut
+# 2) get tree (using fasttree, quicktree (default) or clearcut)/
 # 3) optionally reroot this tree in various ways (midpoint, mindl, minvar ...)
 # 4) get orthologs for this tree
 # keep track of how many times a pair is predicted orthologous
@@ -36,12 +36,12 @@ use vars qw($opt_i $opt_s $opt_S $opt_f $opt_T $opt_N $opt_q $opt_Q $opt_k $opt_
 # -s <species_tree_filename>    (file containing species tree in newick format.)
 # -S <seed>  (rng seed, default: get from clock)
 # -f <fraction> (fraction of non-gap chars required in alignment column to keep it.)
-# -T <tree finding method> (NJ, RNJ, or ML. Use NJ, RNJ, or ML to infer tree. Default: RNJ)
+# -T <tree finding method> (NJ, or ML. Use NJ, or ML to infer tree. Default: NJ)
 # -N <n>    (number of bootstrap data sets to create and process. Default is 1.)
 # -q <species>  (query species. Default is show all.)
 # -Q <sequence_id regex> (query id. Show sequences whose id matches this as a regular expression.)
 # -k    (kimura correction to distances. default is no correction.)
-# -n <n>  (produce this many RNJ trees for the actual data set. default is 1. ignored for NJ, ML)
+# -n <n>  (produce this many trees for the actual data set. default is 1. ignored for NJ, ML)
 # -r <reroot type> (mindl midpoint minvar, none, etc. Default is mindl)
 # -m <min bootstrap support> (Output only orthologs having >= this bootstrap support; if > 1 interpret as %)
 
@@ -78,6 +78,7 @@ if ($min_bs_support > 1) {
   $min_bs_support *= 0.01;
 }				# 30 means 30%, i.e. 0.3.
 $clearcut_base_cl .= ($opt_k)? '-k ': '';
+my $quicktree_distance_correction = ($opt_k)? 'kimura' : 'none';
 
 #### Get the alignment:
 my $align_string =  `cat $input_file`;
@@ -147,8 +148,11 @@ print "# overlap length: $overlap_length.\n";
  print "# clearcut command line: $clearcut_cl \n";
 print "# fasttree command line: $fasttree_cl \n";
 
-my $newicks_out = run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
+my $newicks_out = # run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
+  run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
 
+#print "$newicks_out\n";
+#exit;
 my $first = 1;
 my $rerooted_gene_tree_newick;
 foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
@@ -204,8 +208,8 @@ $clearcut_overlap_fasta_string =~ s/>(\S)/> $1/g; # put in the space
 
 #  my $clearcut_newicks_out = run_clearcut($overlap_fasta_string, $clearcut_cl);
 
-my $newicks_out = run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
-
+my $newicks_out = #run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
+ run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
   my @ccnewicks = split("\n", $newicks_out);
   foreach my $gene_tree_newick (@ccnewicks) {
     next if($gene_tree_newick =~ /^NJ/);
@@ -274,6 +278,25 @@ sub run_clearcut{
   my $clearcut_newicks_out = `$clearcut_cl < tmp_alignment_fasta`;
 # print STDERR "clearcut finished.\n";
   return $clearcut_newicks_out;
+}
+
+sub run_quicktree{
+  my $overlap_fasta_string = shift;
+my $correction = shift || 'kimura';
+  open my $fhtmp, ">tmp_overlap_fasta";
+  print $fhtmp $overlap_fasta_string, "\n";
+  close $fhtmp;
+
+  my $overlap_stockholm_string = `sreformat stockholm tmp_overlap_fasta > tmp_overlap_stockholm`;
+  my $newick_out;
+  if ($correction eq 'kimura') {
+    $newick_out = `quicktree -kimura tmp_overlap_stockholm`;
+  } else {
+    $newick_out = `quicktree  tmp_overlap_stockholm`;
+  }
+
+  $newick_out =~ s/\s+//g;
+  return $newick_out;
 }
 
 sub run_fasttree{
