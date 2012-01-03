@@ -2,7 +2,8 @@ These are scripts and modules used to analyze a set of clusters (families)
 coming out of ORTHOMCL for orthologs in a different way from what
 ORTHOMCL itself does. In particular the families get aligned (no script for
 that here), then gene trees are constructed, the gene trees are compared 
-with the tree representing the species phylogeny, and the gene tree
+with the tree representing the species phylogeny (the species tree), 
+and the gene tree
 is rooted so as to minimize the number of duplication and loss events
 needed to reconcile the (rooted) tree with the species tree. (Other
 rooting options are implemented also, e.g. midpoint.) The nodes of this
