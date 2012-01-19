@@ -101,7 +101,7 @@ if ($bw == 1 and $data_all_ints) {
 		$total_count += $xcount;
 		if($x < $xmin){ $underflow_count += $xcount; }
 		elsif($x > $xmax){ $overflow_count += $xcount; }	
-		$xmidhash{$bin_n} += $xcount; 
+		else{ $xmidhash{$bin_n} += $xcount; } 
 	}
 	print "# underflow $underflow_count \n";
 	for (my $jj=0; $jj<=$n_bins; $jj++) {
