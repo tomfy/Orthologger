@@ -8,11 +8,13 @@ use Getopt::Std;
 # -l <(lower) minx> min x value to include in histogram. Default is 0 for positive data, if negative values in data, min of them all is used as minx.
 # -u <upper. xmax> max x val to include in histogram. Default is to include all values.
 # -w <bin width> By default bin width is 1.
+# -q 'c3=1' only use rows with 1 in column 3.
+# -r '0.5<c2<2.0' only use rows with col2 having number in interval (0.5,2.0)
 
-use vars qw($opt_c $opt_l $opt_u $opt_w $opt_g $opt_s);
+use vars qw($opt_c $opt_l $opt_u $opt_w $opt_g $opt_s $opt_q $opt_r);
 
 # get options
-getopts("c:l:u:w:hgs:");
+getopts("c:l:u:w:hgs:q:r:");
 
 print "# \'histogram.pl -c 1  -l -3.0 -u 11.0 -w 0.1 -s 150  < data\'\n";
 print "# Use column 1 (0 based), lower upper limits -3.0 11.0, binwidth 0.1. Skip first 150 lines of data.\n";
@@ -27,6 +29,26 @@ my $maxcol = ($col2 > $col1)? $col2: $col1;
 my $xmin = $opt_l; 
 my $xmax = $opt_u || undef; #by default determined from data
 my $bw = $opt_w; $bw ||= 1.0;
+
+my ($qcol, $qval) = (undef, undef);
+if(defined $opt_q){
+	if($opt_q =~ /c(\d+)=(\d+)/){
+		$qcol = $1; $qval = $2;
+	}		
+}
+#print "qcol: $qcol, qval: $qval \n";
+
+my ($rcol, $rll, $rul) = (undef, undef, undef);
+if(defined $opt_r){
+	if($opt_r =~ /(\d+)<c(\d+)/){
+		$rcol = $2; $rll = $1;
+	}
+	if($opt_r =~ /c(\d+)<(\d+)/){
+		$rcol = $1; $rul = $2;
+	}	
+}
+#print "$rcol  $rll  $rul \n";
+
 my %xhash = ();
 my %xmidhash = ();
 
@@ -40,7 +62,13 @@ while (<>) {
 	next if(/^#/);
 	my @cols = split(" ", $_);		#split on whitespace
 		next if(scalar @cols <= $maxcol);  #skip rows with not enough columns	
-		my $x;
+#		print $_, "\n";
+		next if(defined $qcol and (!is_number($cols[$qcol])  or  $cols[$qcol] != $qval)); 	
+	next if(defined $rcol and (!is_number($cols[$rcol]) or 
+				(defined $rul and $cols[$rcol] > $rul)  or 
+				(defined $rll and $cols[$rcol] < $rll)));	
+# 		print "$_\n";	
+	my $x;
 	if($xcol =~ /(\d)+m(\d+)/){ # can subtract values in 2 columns
 		my $is_number1 = is_number($cols[$1]);
 		my $is_number2 = is_number($cols[$2]);
