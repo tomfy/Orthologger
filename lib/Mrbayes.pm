@@ -11,23 +11,23 @@ my $default_chunk_size = 2000;
 
 sub  new {
   my $class = shift;
-  my $arg = shift; # a hashref for setting various options
+  my $arg = shift;	       # a hashref for setting various options
   my $default_arguments = {'alignment_nex_filename' => undef,
-			 'file_basename' => undef,
-			 'seed' => undef,
-			 'swapseed' => undef,
-			 'n_runs' => 2,
-			 'n_temperatures' => 4,
-			 'temperature_gap' => 0.25,
-			 'chunk_size' => $default_chunk_size,
-			 'print_freq' => undef,
-			 'sample_freq' => 20,
-			 'burnin_frac' => 0.1,
-			 'diag_freq' => undef,
-			 'converged_chunks_required' => 10,
+			   'file_basename' => undef,
+			   'seed' => undef,
+			   'swapseed' => undef,
+			   'n_runs' => 2,
+			   'n_temperatures' => 4,
+			   'temperature_gap' => 0.25,
+			   'chunk_size' => $default_chunk_size,
+			   'print_freq' => undef,
+			   'sample_freq' => 20,
+			   'burnin_frac' => 0.1,
+			   'diag_freq' => undef,
+			   'converged_chunks_required' => 10,
 
 			   'fixed_pinvar' => undef, # undef -> leaves default of uniform(0,1) in effect
-# convergence criteria
+			   # convergence criteria
 			   'splits_min_hits' => 25,
 			   'splits_max_ok_stddev' => 0.03,
 			   'splits_max_ok_avg_stddev' => 0.01,
@@ -35,124 +35,128 @@ sub  new {
 			   'modelparam_max_ok_PSRF' => 1.02,
 			   'modelparam_max_ok_KSD' => 0.2,
 			   'ngens_run' => 0
-};
- my $self = bless $default_arguments, $class;
+			  };
+  my $self = bless $default_arguments, $class;
 
-  foreach my $option (keys %$arg){
+  foreach my $option (keys %$arg) {
     warn "Unknown option: $option in Mrbayes constructor.\n" if(!exists $self->{$option});
     $self->{$option} = $arg->{$option};
   }
   $self->{print_freq} = $self->{chunk_size} if(!defined $self->{print_freq});
   $self->{diag_freq} = $self->{chunk_size} if(!defined $self->{diag_freq});
-# print "print, diag freq: ", $self->{print_freq}, "  ", $self->{diag_freq}, "\n";
+  # print "print, diag freq: ", $self->{print_freq}, "  ", $self->{diag_freq}, "\n";
 
   my $alignment_nex_filename = $self->{alignment_nex_filename};
-#  if(defined $self->{file_basename}){
-#  my  $file_basename;
+  #  if(defined $self->{file_basename}){
+  #  my  $file_basename;
   if (!defined $self->{file_basename}) {
     my $file_basename = $alignment_nex_filename;
     $file_basename =~ s/[.]nex$//; # delete .nex ending
     $self->{file_basename} = $file_basename;
   }
   my $n_runs = $self->{n_runs};
-my $burnin_frac = $self->{burnin_frac};
-my $n_temperatures = $self->{n_temperatures};
-my $temperature_gap = $self->{temperature_gap};
-my $sample_freq = $self->{sample_freq};
-my $print_freq = $self->{print_freq};
-my $chunk_size = $self->{chunk_size};
-my $fixed_pinvar = $self->{fixed_pinvar};
-my $prset_pinvarpr = (defined $fixed_pinvar)? "prset pinvarpr=fixed($fixed_pinvar);\n" : '';
+  my $burnin_frac = $self->{burnin_frac};
+  my $n_temperatures = $self->{n_temperatures};
+  my $temperature_gap = $self->{temperature_gap};
+  my $sample_freq = $self->{sample_freq};
+  my $print_freq = $self->{print_freq};
+  my $chunk_size = $self->{chunk_size};
+  my $fixed_pinvar = $self->{fixed_pinvar};
+  my $prset_pinvarpr = (defined $fixed_pinvar)? "prset pinvarpr=fixed($fixed_pinvar);\n" : '';
 
-my $begin_piece =
-  "begin mrbayes;\n" .
-  "set autoclose=yes nowarn=yes;\n";
-my $seed_piece = '';
-if(defined $self->{seed}){ my $seed = $self->{seed}; $seed_piece .=  "set seed=$seed;\n"; } 
-if(defined $self->{swapseed}){ my $swapseed = $self->{swapseed}; $seed_piece .= "set swapseed=$swapseed;\n"; }
-my $middle_piece =  "execute $alignment_nex_filename;\n" .
-  "set precision=6;\n" .
-  "lset rates=invgamma;\n" .
-  "prset aamodelpr=fixed(wag);\n" .
-  "$prset_pinvarpr" . 
-  # "prset pinvarpr=fixed(0.15);\n" .
-  "mcmcp minpartfreq=0.02;\n" . # bipartitions with freq. less than this are not used in the  diagnostics (default is 0.10)
- "mcmcp allchains=yes;\n" .
-  "mcmcp burninfrac=$burnin_frac;\n" .
-  "mcmcp nchains=$n_temperatures;\n" .
-  "mcmcp nruns=$n_runs;\n" .
-  "mcmcp temp=$temperature_gap;\n" .
-  "mcmcp samplefreq=$sample_freq;\n" .
-  "mcmcp printfreq=$print_freq;\n" .
-#  "mcmcp filename=$file_basename;\n" .
-  "mcmcp checkpoint=yes checkfreq=$chunk_size;\n";
-my $end_piece = "sump;\n" . "sumt;\n" . "end;\n";
+  my $begin_piece =
+    "begin mrbayes;\n" .
+      "set autoclose=yes nowarn=yes;\n";
+  my $seed_piece = '';
+  if (defined $self->{seed}) {
+    my $seed = $self->{seed}; $seed_piece .=  "set seed=$seed;\n";
+  } 
+  if (defined $self->{swapseed}) {
+    my $swapseed = $self->{swapseed}; $seed_piece .= "set swapseed=$swapseed;\n";
+  }
+  my $middle_piece =  "execute $alignment_nex_filename;\n" .
+    "set precision=6;\n" .
+      "lset rates=invgamma;\n" .
+	"prset aamodelpr=fixed(wag);\n" .
+	  "$prset_pinvarpr" . 
+	    # "prset pinvarpr=fixed(0.15);\n" .
+	    "mcmcp minpartfreq=0.02;\n" . # bipartitions with freq. less than this are not used in the  diagnostics (default is 0.10)
+	      "mcmcp allchains=yes;\n" .
+		"mcmcp burninfrac=$burnin_frac;\n" .
+		  "mcmcp nchains=$n_temperatures;\n" .
+		    "mcmcp nruns=$n_runs;\n" .
+		      "mcmcp temp=$temperature_gap;\n" .
+			"mcmcp samplefreq=$sample_freq;\n" .
+			  "mcmcp printfreq=$print_freq;\n" .
+			    #  "mcmcp filename=$file_basename;\n" .
+			    "mcmcp checkpoint=yes checkfreq=$chunk_size;\n";
+  my $end_piece = "sump;\n" . "sumt;\n" . "end;\n";
 
-$self->{mrbayes_block1} = 
-  $begin_piece . $seed_piece .
-  $middle_piece . "mcmc ngen=$chunk_size;\n" .
-  $end_piece;
+  $self->{mrbayes_block1} = 
+    $begin_piece . $seed_piece .
+      $middle_piece . "mcmc ngen=$chunk_size;\n" .
+	$end_piece;
 
-$self->{mrbayes_block2} = 
-  $begin_piece . $middle_piece .
-  "mcmc append=yes ngen=$chunk_size;\n" .
-  $end_piece;
+  $self->{mrbayes_block2} = 
+    $begin_piece . $middle_piece .
+      "mcmc append=yes ngen=$chunk_size;\n" .
+	$end_piece;
 
-return $self;
+  return $self;
 }
 
 sub run{
-my $self = shift;
+  my $self = shift;
 
-my $chunk_size = $self->{chunk_size};
-my $ngen = $chunk_size;
-my $mrbayes_block1 = $self->{mrbayes_block1};
+  my $chunk_size = $self->{chunk_size};
+  my $ngen = $chunk_size;
+  my $mrbayes_block1 = $self->{mrbayes_block1};
 
-open my $fh, ">tmp_mrb1.nex";
-print $fh "$mrbayes_block1";
-close $fh;
-
-my $mb_output_string = `mb tmp_mrb1.nex`;
-$self->{ngens_run} = $ngen;
-
-my $mc3swap_filename = $self->{file_basename} . ".mc3swap";
-open my $fhmc3, ">$mc3swap_filename";
-print $fhmc3 "$ngen ", $self->extract_swap_info($mb_output_string), "\n";
-
-open $fh, ">mb1.stdout";
-print $fh "$mb_output_string \n";
-close $fh;
-
-my ($converged, $conv_string) = $self->test_convergence($self->{file_basename});
-my $converge_count += $converged;
-open my $fhc, ">MB.converge";
-print $fhc "$ngen $converge_count  $conv_string\n";
-
-foreach (my $i=1; $i>0; $i++) { # infinite loop
-  $ngen += $chunk_size;
-  my $mrbayes_block2 = $self->{mrbayes_block2};
-  $mrbayes_block2 =~ s/ngen=\d+;/ngen=$ngen;/; # subst in the new ngen
-
-  open $fh, ">tmp_mrb2.nex";
-  print $fh "$mrbayes_block2";
+  open my $fh, ">tmp_mrb1.nex";
+  print $fh "$mrbayes_block1";
   close $fh;
 
-  $mb_output_string =  `mb tmp_mrb2.nex`;
-
+  my $mb_output_string = `mb tmp_mrb1.nex`;
   $self->{ngens_run} = $ngen;
 
+  my $mc3swap_filename = $self->{file_basename} . ".mc3swap";
+  open my $fhmc3, ">$mc3swap_filename";
   print $fhmc3 "$ngen ", $self->extract_swap_info($mb_output_string), "\n";
-  open $fh, ">mb2.stdout";
+
+  open $fh, ">mb1.stdout";
   print $fh "$mb_output_string \n";
   close $fh;
 
-  ($converged, $conv_string) = $self->test_convergence($self->{file_basename});
-  $converge_count += $converged;
+  my ($converged, $conv_string) = $self->test_convergence($self->{file_basename});
+  my $converge_count += $converged;
+  open my $fhc, ">MB.converge";
   print $fhc "$ngen $converge_count  $conv_string\n";
-  last if($converge_count >= $self->{converged_chunks_required});
-}
-close $fhmc3; close $fhc;
-return;
+
+  foreach (my $i=1; $i>0; $i++) { # infinite loop
+    $ngen += $chunk_size;
+    my $mrbayes_block2 = $self->{mrbayes_block2};
+    $mrbayes_block2 =~ s/ngen=\d+;/ngen=$ngen;/; # subst in the new ngen
+
+    open $fh, ">tmp_mrb2.nex";
+    print $fh "$mrbayes_block2";
+    close $fh;
+
+    $mb_output_string =  `mb tmp_mrb2.nex`;
+
+    $self->{ngens_run} = $ngen;
+
+    print $fhmc3 "$ngen ", $self->extract_swap_info($mb_output_string), "\n";
+    open $fh, ">mb2.stdout";
+    print $fh "$mb_output_string \n";
+    close $fh;
+
+    ($converged, $conv_string) = $self->test_convergence($self->{file_basename});
+    $converge_count += $converged;
+    print $fhc "$ngen $converge_count  $conv_string\n";
+    last if($converge_count >= $self->{converged_chunks_required});
+  }
+  close $fhmc3; close $fhc;
+  return;
 }
 
 
@@ -160,12 +164,12 @@ sub splits_convergence{
   my $self = shift;
   my $file_basename = shift;	# e.g. fam9877
   my $min_hits = $self->{splits_min_hits}; # ignore splits with fewer hits than this.
- my $max_ok_stddev = $self->{splits_max_ok_stddev}; # convergence is 'ok' for a split if stddev < this.
- my $max_ok_avg_stddev = $self->{splits_max_ok_avg_stddev}; # convergence is 'ok' for a split if stddev < this.
-#print "in splits convergence file basename: ", $file_basename, "\n"; #exit;
+  my $max_ok_stddev = $self->{splits_max_ok_stddev}; # convergence is 'ok' for a split if stddev < this.
+  my $max_ok_avg_stddev = $self->{splits_max_ok_avg_stddev}; # convergence is 'ok' for a split if stddev < this.
+  #print "in splits convergence file basename: ", $file_basename, "\n"; #exit;
 
   my $filename = $file_basename . ".nex.tstat";
-# print "filename: $filename\n";
+  # print "filename: $filename\n";
   open my $fh, "<$filename";
   my @lines = <$fh>;
 
@@ -190,15 +194,15 @@ sub splits_convergence{
 }
 
 
-sub modelparam_convergence{ # look at numbers in *.pstat file
-# to test convergence
+sub modelparam_convergence{	# look at numbers in *.pstat file
+  # to test convergence
   my $self = shift;
   my $file_basename = shift;
   my $min_ok_ESS = $self->{modelparam_min_ok_ESS};
   my $max_ok_PSRF = $self->{modelparam_max_ok_PSRF};
   my $max_ok_KSD = $self->{modelparam_max_ok_KSD};
   my $string = '';
-my $ngens_skip = int($self->{burnin_frac} * $self->{ngens_run});
+  my $ngens_skip = int($self->{burnin_frac} * $self->{ngens_run});
 
   open my $fh, "<$file_basename.nex.pstat";
   my @lines = <$fh>;
@@ -209,7 +213,7 @@ my $ngens_skip = int($self->{burnin_frac} * $self->{ngens_run});
   my $LL_KSD = $self->KSDmax($ngens_skip, 1);
   my $n_bad = ($LL_KSD <= $max_ok_KSD)? 0 : 1;
   my @KSDmaxes = ($LL_KSD);
-#  $n_bad++ if($LL_KSD > $self->{modelparam_max_ok_KSD}); # require LogL just to pass KSD test
+  #  $n_bad++ if($LL_KSD > $self->{modelparam_max_ok_KSD}); # require LogL just to pass KSD test
   foreach (@lines) {
     my @cols = split(" ", $_);
     my ($avgESS, $PSRF) = @cols[7, 8]; # col 6 is the min ESS among the runs, col 7 is avg.
@@ -232,31 +236,17 @@ sub test_convergence{
   my $self = shift;
   my $file_basename = shift;	# e.g. fam9877.nex
 
-#  my $splits_max_ok_stddev = $self->{splits_max_ok_stddev}; # convergence is 'ok' for a split if stddev < this.
-#  my $splits_min_hits = $self->{splits_min_hits}; # ignore splits with fewer hits than this.
-
- # my $model_param_min_ok_ESS = shift || 100;
- # my $model_param_max_ok_PSRF = shift || 1.05;
-
   my ($splits_converged, $splits_count, $splits_bad_count, $splits_avg_stddev) =
     $self->splits_convergence($file_basename);
   my ($modelparam_n_bad, $modelparam_string) =
     $self->modelparam_convergence($file_basename);
   my $ngens_skip = int($self->{burnin_frac} * $self->{ngens_run});
-#my @param_cols = (1..4); # choosing parameter to test col 1: logL, 2: TL, 3: alpha, 4: pinvar
-#  my @KSDmaxs = map $self->KSDmax($ngens_skip, $_), @param_cols;
-# print "KSDmax:  $KSDmax\n";
+ 
   my $conv_string = "$splits_count $splits_bad_count $splits_avg_stddev " .
     " $modelparam_string  $modelparam_n_bad  ";
-#. join(" ", map sprintf("%5.3f", $_), @KSDmaxs);
- # my ($ESS1, $PSRF1, $ESS2, $PSRF2) = split(" ", $modelparam_string);
-  #  my $bow1 = ($PSRF1-1); # bow = psrf**2-1
-  #  my $bow2 = ($PSRF2-1);
+ 
   my $converged = ($splits_converged  and  $modelparam_n_bad == 0);
-# (($splits_bad_count < 1) and 
-# 		   ($splits_avg_stddev < $splits_max_ok_stddev) and
-# 		   ($ESS1 > $model_param_min_ok_ESS and $ESS2 > $model_param_min_ok_ESS) and
-# 		   ($PSRF1 < $model_param_max_ok_PSRF and $PSRF2 < $model_param_max_ok_PSRF));
+ 
   return ($converged? 1 : 0, $conv_string);
 }
 
@@ -313,12 +303,12 @@ sub extract_swap_info{
       my $n_ntry = $i-1;
       my $n_pA = $n_chains-$i;
       foreach my $j (1..$n_ntry) {
-#	print "swap_tries key: [$i $j]\n";
+	#	print "swap_tries key: [$i $j]\n";
 	$ij_swap_tries{"$i $j"} = shift @xs;
       }
       foreach (1..$n_pA) {
 	my $j = $_ + $i;
-#	print "swap_pA key: [$j $i]\n";
+	#	print "swap_pA key: [$j $i]\n";
 	$ij_swap_pA{"$j $i"} = shift @xs;
       }
     }				# loop over chains
@@ -332,7 +322,7 @@ sub extract_swap_info{
 
 	last if($j > $n_chains);
 	my $key = "$j $i";
-#	print "i,j: $i, $j, key: [$key] \n";
+	#	print "i,j: $i, $j, key: [$key] \n";
 	if (exists $ij_swap_pA{$key} and exists $ij_swap_tries{$key}) {
 	  $ij_swap_accepts{$key} = $ij_swap_tries{$key} * $ij_swap_pA{$key};
 	  $out_string .= int($ij_swap_accepts{$key}+0.5) . " " . $ij_swap_tries{$key} . "  ";
@@ -348,68 +338,54 @@ sub extract_swap_info{
 }
 
 
-sub KSDmax{ # This does all pairwise comparisons between runs
-# for one of the params in the *.run?.p files
-# and returns the largest Kolmogorov-Smirnov D
-my $self = shift;
+sub KSDmax{	     # This does all pairwise comparisons between runs
+  # for one of the params in the *.run?.p files
+  # and returns the largest Kolmogorov-Smirnov D
+  my $self = shift;
 
-my $ngen_skip = shift || 0;
-my $datacol = shift; # data column to use.
-$datacol = 1 if(!defined $datacol);
+  my $ngen_skip = shift || 0;
+  my $datacol = shift;		# data column to use.
+  $datacol = 1 if(!defined $datacol);
 
-my $bigneg = -1e300;
+  my $bigneg = -1e300;
 
-my $file_basename = $self->{alignment_nex_filename}; # e.g. fam9877
-# print "in KSDmax: $file_basename\n";
-# store data in hashes
-my @val_count_hashes = ({}, {}); #
-my @counts = (0, 0);
-my @files = `ls $file_basename.run?.p`;
-my $runs_to_analyze = scalar @files;
-warn "in KSDmax. n_runs: ", $self->{n_runs}, " *.p files found: ", $runs_to_analyze, " should agree, using min of the two.\n" if($self->{n_runs} != $runs_to_analyze);
-$runs_to_analyze = min($runs_to_analyze, $self->{n_runs});
+  my $file_basename = $self->{alignment_nex_filename}; # e.g. fam9877
+  # store data in hashes
+  my @val_count_hrefs = ({}, {}); #
+  my @counts = (0, 0);
+  my @files = `ls $file_basename.run?.p`;
+  my $runs_to_analyze = scalar @files;
+  warn "in KSDmax. n_runs: ", $self->{n_runs}, " *.p files found: ", $runs_to_analyze, " should agree, using min of the two.\n" if($self->{n_runs} != $runs_to_analyze);
+  $runs_to_analyze = min($runs_to_analyze, $self->{n_runs});
 
-#foreach my $filename (@files){
-#  $filename =~ /[.]run(\d+)[.]p/;
-#  my $i = $1 - 1;
-  foreach my $irun (1..$runs_to_analyze){
+  foreach my $irun (1..$runs_to_analyze) {
     my $i = $irun - 1;
     my $filename = "$file_basename.run" . $irun . ".p"; 
-#	my $filename = "$file_basename.run" . $irun . ".p"; 
-#print "filename: $filename\n";
-	open my $fh, "<$filename";
-	while(<$fh>){
-		my @cols = split(" ", $_);
-# skip non-numerical stuff.
-		next unless($cols[0] =~ /^\d+$/); 
-		my ($ngens, $x) = @cols[0,$datacol];
-		next if($ngens < $ngen_skip);
-		$val_count_hashes[$i]->{$x}++;
-		$counts[$i]++;
-	}
-	close $fh;
-}
-
-# get cumulative distributions:
-my @val_cumeprob_hashes = (); #({$bigneg=>0}, {$bigneg=>0});
-foreach my $filename (@files) {
-  $filename =~ /[.]run(\d+)[.]p/;
-  my $i = $1 - 1;
-  my $cume_prob = 0;
-  push @val_cumeprob_hashes, {$bigneg=>0};
-  foreach (sort {$a <=> $b} keys %{$val_count_hashes[$i]}) {
-    $cume_prob += $val_count_hashes[$i]->{$_}/$counts[$i];
-    $val_cumeprob_hashes[$i]->{$_} = $cume_prob;
-    #		print "$i $_ $cume_prob ", $val_count_hashes[$i]->{$_}, "\n";	
+    open my $fh, "<$filename";
+    while (<$fh>) {
+      my @cols = split(" ", $_);
+      # skip non-numerical stuff.
+      next unless($cols[0] =~ /^\d+$/); 
+      my ($ngens, $x) = @cols[0,$datacol];
+      next if($ngens < $ngen_skip);
+      $val_count_hrefs[$i]->{$x}++;
+      $counts[$i]++;
+    }
+    close $fh;
   }
-  #	print "\n";
-}
-my @KSDs = (); # Kolmogorov-Smirnov D for each pairwise comparison between runs
-foreach my $i (0..scalar @files - 2){
-  foreach my $j ($i+1..scalar @files - 1){
-push @KSDs, TlyUtil::Kolmogorov_Smirnov_D(@val_cumeprob_hashes[$i,$j]);
-}
-}
-return max(@KSDs);
+
+  # get cumulative distributions:
+  my @val_cumeprob_hrefs = ();
+  foreach my $i (0..$runs_to_analyze-1) {
+    push @val_cumeprob_hrefs, TlyUtil::cumulative_prob($val_count_hrefs[$i], $counts[$i]);
+  }
+
+  my @KSDs = (); # Kolmogorov-Smirnov D for each pairwise comparison between runs
+  foreach my $i (0..scalar @files - 2) {
+    foreach my $j ($i+1..scalar @files - 1) {
+      push @KSDs, TlyUtil::Kolmogorov_Smirnov_D(@val_cumeprob_hrefs[$i,$j]);
+    }
+  }
+  return max(@KSDs);
 }
 
