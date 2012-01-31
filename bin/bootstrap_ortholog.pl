@@ -74,9 +74,9 @@ if($tree_find_method eq 'NJ'){
   $n_rep = 1;
 }
 my $min_bs_support = (defined $opt_m)? $opt_m : 0.0; #default is keep all.
-if ($min_bs_support > 1) {
+if ($min_bs_support > 1) { # interpret as percentage if > 1.
   $min_bs_support *= 0.01;
-}				# 30 means 30%, i.e. 0.3.
+}
 $clearcut_base_cl .= ($opt_k)? '-k ': '';
 my $quicktree_distance_correction = ($opt_k)? 'kimura' : 'none';
 
@@ -200,8 +200,8 @@ for my $i_bs (1..$n_bootstrap) {
   my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
 my $clearcut_overlap_fasta_string = $overlap_fasta_string;
 $clearcut_overlap_fasta_string =~ s/>(\S)/> $1/g; # put in the space
-  my $clearcut_cl = $clearcut_base_cl . (($opt_S)? " -s $tree_find_seed ": '');
-  my $fasttree_cl = $fasttree_base_cl .  (($opt_S)? " -seed $tree_find_seed ": '');
+  my $clearcut_cl = $clearcut_base_cl . (($opt_S)? " -s $tree_find_seed " : '');
+  my $fasttree_cl = $fasttree_base_cl . (($opt_S)? " -seed $tree_find_seed " : '');
 
 #print STDERR "$i_bs  $overlap_fasta_string \n";
 #print STDERR "$i_bs  $clearcut_cl \n";
