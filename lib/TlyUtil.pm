@@ -2,14 +2,28 @@ package TlyUtil;
 use strict;
 use List::Util qw ( min max sum );
 
-# 
+my $bigneg = -1e300;
+
+sub cumulative_prob{
+  my $val_weight_href = shift;
+  my $sum_weights = shift;
+  my $val_cumeprob_href = { $bigneg => 0};
+  my $cume_prob = 0;
+  foreach (sort {$a <=> $b} keys %{$val_weight_href}) {
+    $cume_prob += $val_weight_href->{$_}/$sum_weights;
+    $val_cumeprob_href->{$_} = $cume_prob;
+    #		print "$i $_ $cume_prob ", $val_count_hashes[$i]->{$_}, "\n";	
+  }
+  #	print "\n";
+  return $val_cumeprob_href;
+}
 
 
 sub Kolmogorov_Smirnov_D{
 # get the maximum difference between two empirical cumulative distributions.
 # Arguments are two hashrefs, each representing an empirical cumulative distribution.
 # Each key is a data point (a real number), and the corresponding hash value is
-# the proportion of data pts <= to it. So the largest key should have value 1.
+# the proportion of data pts <= to it. So the largest value should be 1.
 	my $val_cumeprob1 = shift; 
 	my $val_cumeprob2 = shift;
 	my @sorted_vals1 = sort {$a <=> $b} keys %{$val_cumeprob1};
