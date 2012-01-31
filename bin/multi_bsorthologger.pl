@@ -2,7 +2,7 @@
 use strict;
 
 my $ls_pattern = shift;
-my $n_bootstrap = shift || 400;
+my $n_bootstrap = shift || 100;
 my $q_species = shift || 'castorbean';
 my $min_support = shift || 0.15;
 my $seed = shift || 1123456;
