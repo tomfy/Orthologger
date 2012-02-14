@@ -34,7 +34,8 @@ sub  new {
 			   'modelparam_min_ok_ESS' => 250,
 			   'modelparam_max_ok_PSRF' => 1.02,
 			   'modelparam_max_ok_KSD' => 0.2,
-			   'ngens_run' => 0
+			   'ngens_run' => 0,
+			   'id_species_map' => {}
 			  };
   my $self = bless $default_arguments, $class;
 
@@ -101,6 +102,8 @@ sub  new {
     $begin_piece . $middle_piece .
       "mcmc append=yes ngen=$chunk_size;\n" .
 	$end_piece;
+
+  $self->setup_id_species_map();
 
   return $self;
 }
@@ -389,3 +392,165 @@ sub KSDmax{	     # This does all pairwise comparisons between runs
   return max(@KSDs);
 }
 
+
+
+sub retrieve_param_samples{
+  # read data from  run?.p files
+  # store in 
+  my $self = shift;
+  my $pattern = shift || $self->{alignment_nex_filename}; # e.g. fam9877.nex
+  my $p_files = `ls $pattern.run?.p`;
+  my @p_infiles = split(" ", $p_files);
+  my $n_runs_p = scalar @p_infiles;
+
+  # the following has one elem for each run, and it is
+  # a hash ref, with generation numbers as keys, 
+  # parameter strings (logL, TL, alpha ...) as values
+  my @gen_param_hashes = ();
+  foreach (1..$n_runs_p) {
+    push @gen_param_hashes, {};
+  }
+  #my $p_run = 1;
+  foreach my $i_run_p (1..$n_runs_p) {
+    my $p_file = "$pattern.run$i_run_p.p";
+    open  my $fhp, "<$p_file";
+
+    while (my $line = <$fhp>) {
+      chomp $line;
+      next unless($line =~ /^\s*(\d+)/);
+      #  print "$line \n";
+      my @cols = split(" ", $line);
+      my $generations = shift @cols;
+      my $param_string = join("  ", @cols);
+      $gen_param_hashes[$i_run_p-1]->{$generations} = $param_string;
+    }
+    $i_run_p++;
+  }
+  return \@gen_param_hashes;
+}
+# end of reading in parameter values
+
+sub retrieve_topology_samples{
+  my $self = shift;
+my $pattern = shift || $self->{alignment_nex_filename}; # e.g. fam987?.nex
+
+ my $t_files = `ls $pattern.run?.t`;
+  my @t_infiles = split(" ", $t_files);
+  my $n_runs = scalar @t_infiles;
+  my @gen_ntopo_hashes = ();
+  foreach (1..$n_runs) {
+    push @gen_ntopo_hashes, {};
+  }
+my %newick_number_map = ();
+my %number_newick_map = ();
+  my $topology_count = 0;
+  foreach my $i_run (1..$n_runs) {
+    my $t_infile = "$pattern.run$i_run.t";
+    open my $fh, "<$t_infile";
+
+    # read trees in, remove branch lengths, store in array
+
+    while (my $line = <$fh>) {
+      chomp $line;
+      if ($line =~ s/tree gen[.](\d+) = .{4}\s+//) {
+	my $newick = $line;
+	my $generation = $1;
+	$newick =~ s/:[0-9e\-.]*(,|[)])/$1/g; # remove branch lengths
+	#print "[$newick]\n";
+	$newick =~ s/^\s+//; 
+	$newick =~ s/;\s*//;
+	$newick = TlyUtil::order_newick($newick);
+	#	print $newick, "\n";
+	#		exit;
+	if (!exists $newick_number_map{$newick}) {
+	  $topology_count++;
+	  $newick_number_map{$newick} = $topology_count; # 1,2,3,...
+	  $number_newick_map{$topology_count} = $newick;
+	}
+	$gen_ntopo_hashes[$i_run-1]->{$generation} = $newick_number_map{$newick};
+      }
+    } # now $gen_ntopo_hashes[$i_run] is hash ref with generations as keys, and topology numbers as values.
+  }
+return (\@gen_ntopo_hashes, \%newick_number_map, \%number_newick_map);
+}
+
+
+sub retrieve_number_id_map{
+  my $self = shift;
+  my $pattern = shift || $self->{alignment_nex_filename}; # e.g. fam9877.nex
+
+  my $trprobs_file = "$pattern.trprobs";
+  open my $fh, "<$trprobs_file";
+
+  my %number_id_map = ();
+  while (my $line = <$fh>) {
+    last if($line =~ /^\s*tree\s+tree_/);
+    if ($line =~ /^\s*(\d+)\s+(\S+)/) {
+      my $number = $1;
+      my $id = $2;
+      $id =~ s/[,;]$//;		# delete final comma
+      $number_id_map{$number} = $id;
+    }
+  }
+  return \%number_id_map;
+}
+
+
+sub count_topologies{
+my $self = shift;
+my $gen_ntopo_hrefs = shift;
+my %topo_count = (); # key: topology number, value: arrayref with counts in each run
+# e.g. $topo_count{13} = [3,5] means that topo 13 occurred 3 times in run1, 5 times in run 2.
+my $total_trees = 0;
+foreach my $i_run (1..scalar @$gen_ntopo_hrefs) {
+  my $gen_ntopo = $gen_ntopo_hrefs->[$i_run-1];
+  my $trees_read_in = scalar keys %{$gen_ntopo};
+  print "Run: $i_run. Trees read in: $trees_read_in\n";
+  # store trees from array in hash, skipping burn-in
+  my $n_burnin = int($self->{burnin_frac} * $trees_read_in);
+#  print "trees read in: $trees_read_in. Post burn-in: ", $trees_read_in - $n_burnin, "\n";
+  my @sorted_generations = sort {$a <=> $b} keys %{$gen_ntopo};
+  foreach my $i_gen (@sorted_generations[$n_burnin..$trees_read_in-1]) {
+    my $topo_number = $gen_ntopo->{$i_gen};
+    if (!exists $topo_count{$topo_number}) {
+      my @zeroes = ((0) x scalar @$gen_ntopo_hrefs);
+      $topo_count{$topo_number} = \@zeroes;
+    }
+    $topo_count{$topo_number}->[$i_run-1]++;
+    $total_trees++;
+  }
+  $i_run++;
+}
+return (\%topo_count, $total_trees);
+}
+
+sub restore_ids_to_newick{
+  my $self = shift;
+  my $newick = shift;
+  my $number_id_map = shift;
+
+  foreach my $number (keys %$number_id_map) {
+    my $id = $number_id_map->{$number};
+$id .= '[species=' . $self->{id_species_map}->{$id} . ']';
+    $newick =~ s/([(,])$number([,)])/$1$id$2/;
+  }
+  return $newick;
+}
+
+sub setup_id_species_map{
+my $self = shift;
+my $file = $self->{alignment_nex_filename};
+#$file =~ s/[.]nex/.fasta/;
+open my $fh, "<$file";
+while (my $line = <$fh>){
+ # print $line;
+  next unless($line =~ /^(\S+)\[species=(\S+)\]/);
+  my $id = $1;
+my $species = $2;
+#print $line;
+  $self->{id_species_map}->{$id} = $species;
+  print "$id  $species \n";
+}
+#exit;
+return;
+}
