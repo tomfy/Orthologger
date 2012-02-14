@@ -166,7 +166,7 @@ if($first){
 }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
 
-  store_orthologger_out($orthologger_outstring, \%idpair_orthocount_all, \%idpair_actual_orthocountNJ);
+  store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountNJ]);
 $orthologger_obj->decircularize();
 #find_cycle($orthologger_obj);
 }
@@ -186,7 +186,7 @@ if($first){
 }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
 
-  store_orthologger_out($orthologger_outstring, \%idpair_orthocount_all, \%idpair_actual_orthocountML);
+  store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountML]);
 $orthologger_obj->decircularize();
 }
 print STDERR "Actual data done.\n";
@@ -220,7 +220,7 @@ my $newicks_out = #run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
     $orthologger_obj->decircularize();
     #find_cycle($orthologger_obj);
-    store_orthologger_out($orthologger_outstring, \%idpair_orthocount_all, \%idpair_bs_orthocountNJ);
+    store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountNJ]);
   }
 
   if($tree_find_method eq 'ML'){ # also construct/analyze ML trees for the bootstrap
@@ -232,7 +232,7 @@ my $newicks_out = #run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
     $orthologger_obj->decircularize();
     #find_cycle($orthologger_obj);
-    store_orthologger_out($orthologger_outstring, \%idpair_orthocount_all, \%idpair_bs_orthocountML);
+    store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountML]);
   }
 
   $tree_find_seed += $seed_increment;
@@ -314,7 +314,8 @@ sub run_fasttree{
 
 sub store_orthologger_out{
   my $orthologger_outstring = shift;
-  my @idpair_count_hrefs = @_;
+  my $idpair_count_hrefs = shift;
+my $weight = shift || 1;
   my @orthologger_out = split("\n", $orthologger_outstring);
   foreach my $id_orthologs (@orthologger_out) {
     if ($id_orthologs =~ /orthologs of\s+(\S+):\s+(.*)/) {
@@ -322,11 +323,21 @@ sub store_orthologger_out{
       my @orthologs = split(" ", $2);
       foreach my $id2 (@orthologs) {
 	my $idpair = $id1 . "   " . $id2;
-	foreach my $idpair_orthocount (@idpair_count_hrefs) {
-	  $idpair_orthocount->{$idpair}++;
+	foreach my $idpair_orthocount (@$idpair_count_hrefs) {
+	  $idpair_orthocount->{$idpair} += $weight;
 	}
       }	      # loop over ortholog names in line of orthologger output
     }
   }			       # loop over lines in orthologger output
 }
+
+
+# Bayesian
+# we have set of gene tree newicks (for topologies visited by markov chain)
+# each one has associated vector of hits in the various runs done.
+# Want to analyze each topology with Orthologger, for each potential
+# ortholog relationship, keep track of the number of hits (just sum over runs for now).
+
+#sub process_MB_out{
+#my $alignment_nex_filename = shift;
 
