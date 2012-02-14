@@ -4,8 +4,12 @@ use List::Util qw ( min max sum );
 
 my $bigneg = -1e300;
 
+# given a set of numbers (some of which may occur more than once), which
+# are stored as keys in a hash, with the values being how many times they occur
+# or more generally whatever weights you want, sort the keys and get the
+# cumulative distribution.
 sub cumulative_prob{
-  my $val_weight_href = shift;
+  my $val_weight_href = shift; # hashref, key: numbers, values: weights.
   my $sum_weights = shift;
   my $val_cumeprob_href = { $bigneg => 0};
   my $cume_prob = 0;
@@ -56,6 +60,58 @@ sub Kolmogorov_Smirnov_D{
 	}
 	return $D;
 }
+
+# operates on a newick of form (3,(6,4))
+# i.e. no whitespace, no branch lengths, ids must be numbers.
+# so just parens, commas and numbers
+# puts the leaves in order, such that at each node the
+# subtree with smaller value is on left. The value of an
+# internal node is the min of the values of the two child
+# nodes, and the value of a leave is its id, which must be a number.
+sub order_newick{
+  my $newick = shift;
+  if ($newick =~ /^(\d+)$/) {	# subtree is leaf!
+    return ($1, $newick);
+  } else {			# subtree has > 1 leaf.
+    my %label_newick = ();
+    $newick =~ /^[(](.*)[)]$/;
+    my @newick_chars = split('',$1); # without surrounding ()
+    my $lmr_paren_count = 0;
+    my ($il, $ir) = (0, 0);
+    my $n_chars = scalar @newick_chars;
+    my $min_label = 10000000;
+    foreach (@newick_chars) {
+      die "$_ ", $newick_chars[$ir], " not same!\n" if($_ ne $newick_chars[$ir]);
+      if ($_ eq '(') {
+	$lmr_paren_count++;
+      }
+      if ($_ eq ')') {
+	$lmr_paren_count--;
+      }
+
+      if (($ir == $n_chars-1) or ($_ eq ',' and $lmr_paren_count == 0)) { #split
+	my $ilast = ($ir == $n_chars-1)? $ir : $ir-1;
+	my $sub_newick = join('', @newick_chars[$il..$ilast]);
+	#       print "subnewick $sub_newick\n";
+	my ($label, $ordered_subnewick) = order_newick($sub_newick);
+	$label_newick{$label} = $ordered_subnewick;
+	$min_label = min($min_label, $label);
+	$il = $ir+1; $ir = $il; # skip the ','
+      } else {
+	$ir++;
+      }
+    }				# loop over chars in @newick_chars
+    my $ordered_newick = '';
+    foreach (sort {$a <=> $b} keys %label_newick) {
+      $ordered_newick .= $label_newick{$_} . ",";
+    }
+    $ordered_newick =~ s/,$//;
+    $ordered_newick = '(' . $ordered_newick . ')';
+    return ($min_label, $ordered_newick);
+  }
+  die "shouldnt get here, in order_newick\n";
+}
+
 
 1;
 
