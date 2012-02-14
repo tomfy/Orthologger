@@ -60,6 +60,8 @@ my $alignment_nex_filename = $mrb_outfile_basename . '.nex';
 
 open my $fh1, ">$alignment_nex_filename";
 my $overlap_nexus_string = $overlap_obj->overlap_nexus_string();
+
+print $overlap_nexus_string, "\n";
 print $fh1 $overlap_nexus_string, "\n";
 close $fh1;
 
