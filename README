@@ -17,4 +17,5 @@ Also uses the Parse.pm, Tree.pm and Node.pm modules in
 Does bootstrapping, i.e. can specify (with arguments to bootstrap_ortholog.pl)
 the analysis of bootstrap resamples of alignments in the same way, producing
 for each a list of inferred ortholog pairs. Tree inference can either be
-done by NJ (clearcut) or ML (FastTree). 
+done by NJ (clearcut) or ML (FastTree). Also can use MrBayes to get Bayesian
+posterior probabilities of orthology. 
