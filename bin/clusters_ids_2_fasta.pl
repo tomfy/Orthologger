@@ -17,11 +17,12 @@ use File::Slurp qw ( slurp );
 my $fasta_filename = shift;
 my $cluster_filename = shift;
 my $idfile = shift;
-my @ids = split(" ", slurp($idfile));
+my @ids = split("\n", slurp($idfile));
 my %selected_clusters = (); # keys: cluster ids; values: strings with the ids of interest which are in the cluster 
 my $singleton_count = 0;
 for my $id (@ids){ # loop of the ids
-
+$id =~ /^\s*(\S+)/;
+$id = $1; # just use the first col. of $idfile. 
 	my $cluster = `grep $id $cluster_filename`; # get line (i.e. the cluster) with $id
 	my $cluster_id;
 	if($cluster =~ /\S/){
