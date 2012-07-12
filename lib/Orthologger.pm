@@ -116,21 +116,6 @@ sub reroot{
     if ($reroot_method eq "mindl") { # min duplicate & loss
    #   $gene_tree->set_branch_lengths_equal(0.0001);
 
-if(0){	
-print "before pruning: ", $gene_tree->generate_newick(), "\n";
-	my @non_st_leaf_nodes = values %{$gene_tree->non_speciestree_leafnode_names()};
-	foreach (keys %{$gene_tree->non_speciestree_leafnode_names()}){
-	print "nonsptr leaf name: $_ \n";
-	}
-	foreach (@non_st_leaf_nodes){
-	    print STDERR "nonsptr leaf name2, species: ", $_->get_name(), " ", $_->get_species(), 
-	    "  [", $_->get_attribute('species_bit_pattern'), "]\n";
-	}
-	$gene_tree->prune_leaves(@non_st_leaf_nodes);
-	print "shown attributes: ", join("; ", $gene_tree->newick_shown_attributes()), "\n";
-	print "after pruning: ", $gene_tree->generate_newick(), "\n";
-}
-
       @new_root_point = $gene_tree->find_mindl_node($species_tree);
       die "find_mindl_node failed\n" if(!defined $new_root_point[0]);
     } elsif ($reroot_method eq "minvar") { # min variance
