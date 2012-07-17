@@ -3,9 +3,9 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
-use lib '/home/tomfy/Orthologger/lib';
-use Overlap;
-use Mrbayes; # perl module encapsulating mrbayes bayesian phylogeny program.
+#use lib '/home/tomfy/Orthologger/lib';
+use CXGN::Phylo::Overlap;
+use CXGN::Phylo::Mrbayes; # perl module encapsulating mrbayes bayesian phylogeny program.
 
 #use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
