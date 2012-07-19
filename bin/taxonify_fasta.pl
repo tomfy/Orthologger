@@ -3,8 +3,8 @@ use strict;
 
 # put taxon names into the fasta file id
 # e.g. AT1G26530[species=arabidopsis]
-use lib '/home/tomfy/Orthologger/lib';
-use IdTaxonMap;
+# use lib '/home/tomfy/Orthologger/lib';
+use CXGN::Phylo::IdTaxonMap;
 
 my $pattern = shift || '*.fasta';
 my @files = split(" ", `ls $pattern`);
@@ -33,9 +33,9 @@ foreach my $input_file (@files){
 	}
 
 	my $output_file = $input_file;
-	$output_file =~ s/[.]fasta/_fx.fasta/;
+	$output_file =~ s/[.]fasta/_tax.fasta/;
 	if($output_file eq $input_file){
-		$output_file .= '_fx';
+		$output_file .= '_tax';
 	}
 	open my $fhout, ">$output_file";
 	print $fhout $out_string;
