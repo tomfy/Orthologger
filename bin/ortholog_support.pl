@@ -4,15 +4,16 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
-use lib '/home/tomfy/Orthologger/lib';
-use Overlap;
-use Orthologger;
-use TlyUtil qw ( order_newick );
-use Mrbayes;
-
-#use lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 use CXGN::Phylo::File;
 use CXGN::Phylo::Parser;
+use CXGN::Phylo::Overlap;
+use CXGN::Phylo::Orthologger;
+use CXGN::Phylo::Mrbayes;
+#use lib '/home/tomfy/Orthologger/lib';
+#use CXGN::Phylo::IdTaxonMap;
+#use IdTaxonMap;
+
+#my $x = IdTaxonMap->new();
 
 # use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
@@ -151,7 +152,6 @@ if (defined $opt_s) {
   }
 }
 # my $species_tree = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error)->parse();
-print "YYY in ortholog_support.pl about to call Parse_newick. [$do_set_error]\n";
 my $sparser = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error);
 my $species_tree = $sparser->parse();
 #find_cycle($sparser);
@@ -192,7 +192,7 @@ foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
   next if($gene_tree_newick =~ /^NJ/);
   $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
  
-  my $orthologger_obj = Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+  my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
   print "# Orthologger object constructed.\n";
   if ($first) {
     $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
@@ -213,7 +213,7 @@ if ($tree_find_method eq 'ML') {
   #foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
   #  next if($gene_tree_newick =~ /^NJ/);
   $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
-  my $orthologger_obj = Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+  my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
   if ($first) {
     $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
     print "# Actual data rerooted $tree_find_method gene tree newick:\n# $rerooted_gene_tree_newick\n";
@@ -257,7 +257,7 @@ for my $i_bs (1..$n_NJ_bootstrap) {
     next if($gene_tree_newick =~ /^NJ/);
     $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
 
-    my $orthologger_obj = Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+    my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
 
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
     $orthologger_obj->decircularize();
@@ -277,7 +277,7 @@ for my $i_bs (1..$n_ML_bootstrap) {
     my $gene_tree_newick = run_fasttree($overlap_fasta_string, $fasttree_cl);
     $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
 
-    my $orthologger_obj = Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+    my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
 
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
     $orthologger_obj->decircularize();
@@ -290,27 +290,26 @@ for my $i_bs (1..$n_ML_bootstrap) {
   print STDERR "ML Bootstraps 1..$i_bs done.";
 }
 }
-print STDERR "\n";		# loop over bootstraps
+print STDERR "\n";		# end of loop over bootstraps
 
+my $sum_MB_count = 0;
+if($analyze_mr_bayes){ # do Bayesian analysis (using precomputed MrBayes output, if present), if not precomputed, skip.
 # do Bayesian analysis
+    warn "Attempting to do Bayesian analysis.\n";
 my $alignment_nex_filename = $input_file . ".nex";
 $alignment_nex_filename =~ s/[.]fasta//;
-#print "$alignment_nex_filename \n";
 
 my $MB_tree_count = process_MB_out($alignment_nex_filename);
 
-my $sum_MB_count = 0;
-if($analyze_mr_bayes){ # do Bayesian analysis (using precomputed MrBayes output, if present), if not precomputed skip.
 foreach my $gene_tree_newick (keys %$MB_tree_count){
 my $MB_count = $MB_tree_count->{$gene_tree_newick};
 $sum_MB_count += $MB_count;
-# print "XXXXXXX: $MB_count  ", $gene_tree_newick, "\n";
+
 my $d = 1; # distance to use
 $gene_tree_newick =~ s/(\S)([,)])/$1:$d$2/g; # put in distances.
 $gene_tree_newick =~ s/([)])([,)])/$1:$d$2/g;
 
- #print "XXXXX [$MB_count]  $gene_tree_newick \n";
- my $orthologger_obj = Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+ my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
   # if ($first) {
   #   $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
   #   print "# Actual data rerooted NJ gene tree newick:\n# $rerooted_gene_tree_newick\n";
@@ -321,10 +320,10 @@ $gene_tree_newick =~ s/([)])([,)])/$1:$d$2/g;
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_orthocountMB], $MB_count);
   $orthologger_obj->decircularize();
 }
-}
+} # end of Bayesian analysis block
 
 # output
-
+print STDERR "output orthologs filename: $output_orthologs_filename \n";
 open my $fh_ortho, ">$output_orthologs_filename";
 
 $n_bootstrap = max($n_NJ_bootstrap, $n_ML_bootstrap);
