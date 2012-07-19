@@ -11,10 +11,15 @@ rooted gene tree are labeled as duplications or speciations. Two genes
 are identified as orthologous if their LCA node (root of minimal subtree 
 containing both) is a speciation. 
 
+
+The modules for ortholog finding, Orthologger.pm, Overlap.pm, IdTaxonMap.pm,
+and Mrbayes.pm are now in cxgn-corelibs.
 Also uses the Parse.pm, Tree.pm and Node.pm modules in
 ~/cxgn/cxgn-corelibs/lib/CXGN/Phylo
 
-Does bootstrapping, i.e. can specify (with arguments to bootstrap_ortholog.pl)
+Also the testing script, orthologger.t is in cxgn-corelibs/t/
+
+Does bootstrapping, i.e. can specify (with arguments to ortholog_support.pl)
 the analysis of bootstrap resamples of alignments in the same way, producing
 for each a list of inferred ortholog pairs. Tree inference can either be
 done by NJ (clearcut) or ML (FastTree). Also can use MrBayes to get Bayesian

@@ -3,9 +3,9 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
-use lib '/home/tomfy/Orthologger/lib';
-use Overlap;
-use Mrbayes; # perl module encapsulating mrbayes bayesian phylogeny program.
+#use lib '/home/tomfy/Orthologger/lib';
+use CXGN::Phylo::Overlap;
+use CXGN::Phylo::Mrbayes; # perl module encapsulating mrbayes bayesian phylogeny program.
 
 #use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
@@ -46,7 +46,7 @@ my $swapseed = ($opt_S)? $opt_S + 1000 : undef;
 #my $n_temperatures = 4;
 #my $n_runs = 2;
 #my $temperature_gap = 0.3;   # temperature spacing of chains
-my $chunk_size = 100;	   # steps between decisions whether to go on.
+my $chunk_size = 1000;	   # steps between decisions whether to go on.
 #my $print_freq = int($chunk_size/2);
 my $sample_freq = 20;
 $sample_freq = max($sample_freq, 1);

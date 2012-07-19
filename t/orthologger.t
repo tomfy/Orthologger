@@ -5,11 +5,12 @@ use warnings FATAL => 'all';
 # tests for Orthologger Module/
 use Test::More tests => 10;
 
-use lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
-use lib '/home/tomfy/Orthologger/lib';
+#use lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+#use lib '/home/tomfy/Orthologger/lib';
 
 use CXGN::Phylo::Parser;
-use Orthologger;
+use CXGN::Phylo::Orthologger;
+use CXGN::Phylo::IdTaxonMap;
 
 # This is family 2830, with 25 genes in 13 taxa.
 my $gene_tree_newick =
