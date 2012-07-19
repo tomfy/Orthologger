@@ -141,6 +141,12 @@ if (defined $opt_r) {
 }
 # default species tree: 13-species tree:
 my $species_newick = "(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
+
+$species_newick = '( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( turnip[species=Brassica_rapa]:1, ( salt_cress[species=Thellungiella_parvula]:1, ( red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
+
+
+
+
 # get the species tree if specified on c.l.
 my $species_tree_file_name;
 if (defined $opt_s) {
@@ -189,7 +195,7 @@ my $newicks_out = # run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
 my $first = 1;
 my $rerooted_gene_tree_newick;
 foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
-  next if($gene_tree_newick =~ /^NJ/);
+  next if($gene_tree_newick =~ /^\s*NJ/);
   $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
  
   my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
@@ -200,7 +206,7 @@ foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
     $first = 0;
   }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
-
+ print STDERR $orthologger_outstring, "\n";
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountNJ]);
   $orthologger_obj->decircularize();
   #find_cycle($orthologger_obj);
@@ -226,7 +232,7 @@ close $fh_tree;
     $first = 0;
   }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
-
+ 
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountML]);
   $orthologger_obj->decircularize();
 }
@@ -335,17 +341,19 @@ foreach my $idpair (@sorted_idpairs) {
   my $actual_countNJ = (defined $idpair_actual_orthocountNJ{$idpair})? 
     $idpair_actual_orthocountNJ{$idpair} : 0;
   my $actual_countML = (defined $idpair_actual_orthocountML{$idpair})? 
-    $idpair_actual_orthocountML{$idpair} : 0;
+    $idpair_actual_orthocountML{$idpair} : 0; # print STDERR $orthologger_outstring, "\n";
   my $bs_countNJ = (defined $idpair_bs_orthocountNJ{$idpair})? $idpair_bs_orthocountNJ{$idpair} : 0;
   my $n_bootstrap_ML = ($tree_find_method eq 'ML')? $n_ML_bootstrap : 0;
   my $n_rep_ML = ($tree_find_method eq 'ML')? $n_rep : 0;
   my $bs_countML = (defined $idpair_bs_orthocountML{$idpair})?  $idpair_bs_orthocountML{$idpair} : 0;
   my $count_MB = (defined $idpair_orthocountMB{$idpair})? $idpair_orthocountMB{$idpair} : 0;
-  next if( ($actual_countNJ == 0) and
+  my $NJ_support = ($n_NJ_bootstrap > 0)? $bs_countNJ/$n_NJ_bootstrap: 1;
+  my $ML_support = ($n_ML_bootstrap > 0)? $bs_countML/$n_ML_bootstrap: 1;
+next if( ($actual_countNJ == 0) and
 	   ($actual_countML == 0) and
-	   ($bs_countNJ/$n_NJ_bootstrap) < $min_bs_support and
-	   ($bs_countML/$n_ML_bootstrap) < $min_bs_support and
-	      ($count_MB/$sum_MB_count) < $min_bs_support);
+	   ($NJ_support) and
+	   ($ML_support) and
+	     ($sum_MB_count > 0 and  ($count_MB/$sum_MB_count) < $min_bs_support) );
   my ($id1, $id2) = split(" ", $idpair);
   if ($id1 ne $id1_old) {
     printf($fh_ortho "\n%-38s NJ($iformat)  ML($iformat) bootstrap: NJ($iformat)  ML($iformat)  MB($iformat)\n", 
