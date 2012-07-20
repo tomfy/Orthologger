@@ -10,7 +10,7 @@ use Test::More tests => 10;
 
 use CXGN::Phylo::Parser;
 use CXGN::Phylo::Orthologger;
-use CXGN::Phylo::IdTaxonMap;
+
 
 # This is family 2830, with 25 genes in 13 taxa.
 my $gene_tree_newick =
@@ -34,9 +34,9 @@ my $species_tree = $st_parser->parse();
 
 #********* test Orthologger->new returns Orthologger obj. **********
 my $Orthologger_obj =
-  Orthologger->new( { 'gene_tree' => $gene_tree, 'species_tree' => $species_tree, 'reroot_method' => 'mindl' } );
+  CXGN::Phylo::Orthologger->new( { 'gene_tree' => $gene_tree, 'species_tree' => $species_tree, 'reroot_method' => 'mindl' } );
 ok( defined $Orthologger_obj, 'new() returned something.' );
-isa_ok( $Orthologger_obj, 'Orthologger' );
+isa_ok( $Orthologger_obj, 'CXGN::Phylo::Orthologger' );
 
 #********* test mindl rerooting of tree ***************
 $Orthologger_obj->get_gene_tree()->show_newick_attribute('species');
@@ -120,9 +120,9 @@ $species_tree = $st_parser->parse();
 
 #********* test Orthologger->new returns Orthologger obj. **********
 $Orthologger_obj =
-  Orthologger->new( { 'gene_tree' => $gene_tree, 'species_tree' => $species_tree, 'reroot_method' => 'mindl' } );
+  CXGN::Phylo::Orthologger->new( { 'gene_tree' => $gene_tree, 'species_tree' => $species_tree, 'reroot_method' => 'mindl' } );
 ok( defined $Orthologger_obj, 'new() returned something.' );
-isa_ok( $Orthologger_obj, 'Orthologger' );
+isa_ok( $Orthologger_obj, 'CXGN::Phylo::Orthologger' );
 
 #********* test mindl rerooting of tree ***************
 $Orthologger_obj->get_gene_tree()->show_newick_attribute('species');
