@@ -9,7 +9,7 @@ use CXGN::Phylo::IdTaxonMap;
 my $pattern = shift || '*.fasta';
 my @files = split(" ", `ls $pattern`);
 
-my $id_taxon_map = IdTaxonMap->new();
+my $id_taxon_map = CXGN::Phylo::IdTaxonMap->new();
 
 foreach my $input_file (@files){
 
