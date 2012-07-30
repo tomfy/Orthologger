@@ -6,7 +6,8 @@ use strict;
 # use lib '/home/tomfy/Orthologger/lib';
 use CXGN::Phylo::IdTaxonMap;
 
-my $pattern = shift || '*.fasta';
+my $pattern = shift; # || '*.fasta';
+die "No input file specified. Usage example:  taxonify_fasta '*.fasta'" unless (defined $pattern);
 my @files = split(" ", `ls $pattern`);
 
 my $id_taxon_map = CXGN::Phylo::IdTaxonMap->new();
@@ -40,7 +41,7 @@ foreach my $input_file (@files){
 	open my $fhout, ">$output_file";
 	print $fhout $out_string;
 	close $fhout;
-	print $output_file, "\n";
+	print "Created output file: ", $output_file, "\n";
 }
 
 
