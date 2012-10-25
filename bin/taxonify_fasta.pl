@@ -4,6 +4,14 @@ use strict;
 # put taxon names into the fasta file id
 # e.g. AT1G26530[species=arabidopsis]
 # use lib '/home/tomfy/Orthologger/lib';
+
+no lib '/home/tomfy/bin';
+no lib '/home/tomfy/Orthologger/bin';
+no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+
 use CXGN::Phylo::IdTaxonMap;
 
 my $pattern = shift; # || '*.fasta';
@@ -41,22 +49,24 @@ foreach my $input_file (@files){
 	open my $fhout, ">$output_file";
 	print $fhout $out_string;
 	close $fhout;
-	print "Created output file: ", $output_file, "\n";
+	print #"Created output file: ", 
+		$output_file, "\n";
 }
 
 
 
 sub fix_id{ # this does a couple of fixes to the id name
-# 1) IMGA|... -> IMGA_...
-# 2) otherwise everything from first '|' on is deleted
-# 3) prepend X_ to id which starts with numeral (castorbean)
+#  IMGA|... -> IMGA_... and back to IMGA| after del rest of stuff after |
+
 	my $id_string = shift;
 # fixes to $align_string:
 	$id_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
-#$align_string =~ s/(>[^|]+)[|][^\n]+\n/$1\n/; # delete from first pipe to end of line.
-		$id_string =~ s/(>[^|]+)[|].*/$1/g; # delete from first pipe to end of line.
-#print "XXXXX: $1\n";
-		my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this.
-		$id_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg;
+		$id_string =~ s/(>[^|]+)[|].*/$1/g; # delete everything from first pipe on.
+$id_string =~ s/^>?IMGA_/IMGA|/;
+#print STDERR "In taxonify. IMGA=containing id: $id_string \n" if($id_string =~ /IMGA/);
+
+#		my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this. Only needed for 'clearcut' NJ program - so don't need now.
+#		$id_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg;
+
 	return $id_string;
 }
