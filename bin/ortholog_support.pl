@@ -134,7 +134,7 @@ my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this.
 
 
 # construct an overlap object.
-my $overlap_obj = Overlap->new($align_string, $nongap_fraction, $bootstrap_seed);
+my $overlap_obj = CXGN::Phylo::Overlap->new($align_string, $nongap_fraction, $bootstrap_seed);
 
 ### Setup for orthologger.
 # set up cl for orthologger. options $opt_s, $opt_r are relevant.
