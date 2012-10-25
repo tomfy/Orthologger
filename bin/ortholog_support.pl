@@ -9,9 +9,7 @@ use CXGN::Phylo::Parser;
 use CXGN::Phylo::Overlap;
 use CXGN::Phylo::Orthologger;
 use CXGN::Phylo::Mrbayes;
-#use lib '/home/tomfy/Orthologger/lib';
-#use CXGN::Phylo::IdTaxonMap;
-#use IdTaxonMap;
+use CXGN::Phylo::IdTaxonMap;
 
 #my $x = IdTaxonMap->new();
 
@@ -111,13 +109,15 @@ my $quicktree_distance_correction = ($opt_k)? 'kimura' : 'none';
 
 #### Get the alignment:
 my $align_string =  `cat $input_file`;
+if(0){
 # fixes to $align_string:
 $align_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
 #$align_string =~ s/(>[^|]+)[|][^\n]+\n/$1\n/; # delete from first pipe to end of line.
 $align_string =~ s/(>[^|]+)[|][^\n]*\n/$1\n/g; # delete from first pipe to end of line.
-
+}
+ 
 my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this.
-$align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut happy.
+# $align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut happy.
 # print "align string: $align_string\n";
 
 
