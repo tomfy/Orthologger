@@ -4,6 +4,18 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
+no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+
+use File::Basename 'dirname';
+use Cwd 'abs_path';
+my ($bindir, $libdir);
+BEGIN{
+$bindir = dirname(abs_path(__FILE__)); # this has to go in Begin block so happens at compile time
+$libdir = $bindir . '/../lib';
+$libdir = abs_path($libdir); # collapses the bin/../lib to just lib
+}
+use lib $libdir;
+
 use CXGN::Phylo::File;
 use CXGN::Phylo::Parser;
 use CXGN::Phylo::Overlap;
