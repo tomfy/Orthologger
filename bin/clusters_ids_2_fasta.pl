@@ -39,15 +39,17 @@ close $fh_id_in;
 my %selected_clusters = (); # keys: cluster ids; values: strings with the ids of interest which are in the cluster 
 my $no_cluster_count = 0;
 for my $id (@ids){ # loop of the ids
-$id =~ /^\s*(\S+)/;
-$id = $1; # just use the first col. 
+$id = ($id =~ /^\s*(\S+)/)? $1: undef;
+next if(!defined $id); # handle blank lines in id file
+#$id = $1; # just use the first col. 
 my $grep_id = "'$id'"; # enclose it in single quotes, or | character will cause a problem in grep command.
 #print STDERR "[", $grep_id, "]\n";
+#print STDERR "before grep.  id: $id, grep_id:[", $grep_id, "]\n";
 # IMGA| -> IMGA_
 # $id =~ s/^IMGA[|]/IMGA_/;
 
 	my $cluster = `grep $grep_id $cluster_filename`; # get line (i.e. the cluster) with $id
-
+#print "after grep. \n\n"; #cluster $cluster.\n\n";
 	my $cluster_id;
 	if($cluster =~ /\S/){ # if non-empty
 		$cluster =~ s/([^:]+:)\s*//; # remove initial part with cluster id, 
