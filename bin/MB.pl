@@ -78,7 +78,7 @@ $align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut h
 # construct an overlap object.
 # my $bootstrap_seed = 1234567;	# ($opt_S)? $opt_S : undef;
 #my $nongap_fraction = ($opt_f)? $opt_f : 0.8;
-my $overlap_obj = Overlap->new($align_string, $nongap_fraction); # , $bootstrap_seed);
+my $overlap_obj = CXGN::Phylo::Overlap->new($align_string, $nongap_fraction); # , $bootstrap_seed);
 
 # construct MrBayes object and run
 #my $seed = ($opt_S)? $opt_S : undef;
