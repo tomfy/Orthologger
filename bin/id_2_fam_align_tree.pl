@@ -20,8 +20,9 @@ use CXGN::Phylo::BasicTree;
 use CXGN::Phylo::File;
 use CXGN::Phylo::Species_name_map;
 
-my $default_fasta_file_path   = "/home/tomfy/MHarrison/fall2011families/all.fa";
-my $default_cluster_file_path = "/home/tomfy/MHarrison/fall2011families/all_orthomcl.out";
+# you can set default paths to the fasta and cluster files here, or supply as cl arguments
+my $default_fasta_file_path   = "$bindir/../tst/7families.fasta";  # "/home/tomfy/MHarrison/fall2011families/all.fa";
+my $default_cluster_file_path = "$bindir/../tst/all_fams"; # "/home/tomfy/MHarrison/fall2011families/all_fams";
 
 # Defaults
 my $id_list_or_file = undef;
@@ -40,6 +41,8 @@ GetOptions('ids=s' => \$id_list_or_file,
 	  'reroot=s' => \$reroot_method,
 	  'prune_threshold=i' => \$prune_threshold,
 	  );
+
+
 print STDERR "ids: $id_list_or_file\n",
   "reroot method: $reroot_method\n",
   "prune_threshold: $prune_threshold.\n";
@@ -56,18 +59,18 @@ print STDERR "ids: $id_list_or_file\n",
  ###################
 # print "id_list_or_file: [$id_list_or_file]\n";
 
-die "id_2_fam_align_tree.pl requires 3 arguments:\n"
-  . " id_or_file (either a seq id or a file containing seq ids 1/line in first column).\n"
-  . " x.fasta (sequences, must include id or ids specified by id_or_file).\n"
-  . " clusterfile (file w 1 cluster per line).\n"
-  if ( !defined $id_list_or_file or !-f $all_fasta_filename or !-f $cluster_filename );
+die "usage: id_2_fam_align_tree.pl --ids id_file --sequencefile something.fasta --clusterfile clusterfilename \n"
+  if ( !defined $id_list_or_file );
+# or !-f $all_fasta_filename or !-f $cluster_filename );
+# die "id_2_fam_align_tree.pl  File $all_fasta_filename  not found.\n";
+# die "id_2_fam_align_tree.pl  File $cluster_filename  not found.\n";
 # print "$all_fasta_filename  $cluster_filename \n";
 
 my $id_file = '';
 if ( -f $id_list_or_file ) {
   $id_file = $id_list_or_file;
   print STDERR "Getting ids from file: $id_file.\n";
-} else {		  # argument is not file, should just be an id
+} else { # argument is not file, should just be an id, or whitespace separated list, e.g. 'AT1g12345 AT3g13456' 
   my $ids = $id_list_or_file;
   print STDERR "Getting ids from list:[$ids]. Sequence, cluster files: $all_fasta_filename  $cluster_filename \n";
 $ids =~ s/^\s+//;
@@ -112,15 +115,18 @@ foreach my $fasta_file (@fasta_files) {
   print "Done with alignment using muscle. alignment filename: [$align_filename]\n";
 
   if ($do_ortholog_support) {
-
+ print STDERR "Ortholog finding using ortholog_support.pl not implemented in this script (id_2_fam_align_tree.pl).\n";
     # print `~/Orthologger/bin/ortholog_support.pl -i $align_filename -T ML -N $bootstraps_param`;
   } else {
+print STDERR "Now run FastTree on $align_filename.\n";
     my $FT_cl = "FastTree -wag -gamma -bionj $align_filename 2> $align_filename.out";
-    my $FT_out_newick = `$FT_cl`;        
-
+    my $FT_out_newick = `$FT_cl`;
+print STDERR "FastTree finished.\n";
     my $parser = CXGN::Phylo::Parse_newick->new($FT_out_newick, 1);
     my $tree = $parser->parse(CXGN::Phylo::BasicTree->new());
-
+ $tree->impose_branch_length_minimum();
+  $tree->show_newick_attribute("species");
+    $tree->set_show_standard_species(0);
     $tree->get_root()->recursive_implicit_names();
     $tree->get_root()->recursive_implicit_species();
     # if species is empty, (because no [species=x] in newick), get it from the name...
@@ -128,11 +134,12 @@ foreach my $fasta_file (@fasta_files) {
 
     $tree->set_show_standard_species(1);
     $tree->set_species_standardizer(CXGN::Phylo::Species_name_map->new() );
-
+#print "Tree object constructed.\n";
     # rerooting
 #    my $opt_r = 'midpoint';
     my $custom_species_tree_newick = undef; # needed only for mindl rerooting. and reroot has default tree for this.
     $tree = reroot($tree, $reroot_method, $custom_species_tree_newick);
+
     my $whole_tree_newick = $tree->generate_newick();
     print "whole rerooted tree: $whole_tree_newick \n";
     open my $fh_whole_newick, ">$align_filename.newick";
@@ -160,8 +167,9 @@ sub reroot{
   my $tree = shift;
   my $reroot_method = shift || 'midpoint';
   my $species_tree_arg = shift; # used for mindl rerooting. 
-  #print "reroot method $reroot_method,  sp tree file: $species_tree_arg \n";
-
+ 
+#  print "in reroot. reroot method $reroot_method \n";
+#print $tree->generate_newick(), "\n";
   my ($new_root, $dist_above) = (undef, undef);
   if($reroot_method eq 'none'){
     return $tree;
