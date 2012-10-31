@@ -151,6 +151,7 @@ if (defined $opt_r) {
     warn "reroot option $opt_r unknown. using default: mindl\n";
   }
 }
+print "Rerooting method: $reroot_method.\n";
 # default species tree: 13-species tree:
 my $species_newick = "(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
 
@@ -171,7 +172,7 @@ if (defined $opt_s) {
 }
 # my $species_tree = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error)->parse();
 my $sparser = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error);
-my $species_tree = $sparser->parse();
+my $species_tree = $sparser->parse(CXGN::Phylo::BasicTree->new());
 #find_cycle($sparser);
 if (!$species_tree) {
   die"Species tree. Parse_newick->parse() failed to return a tree object. Newick string: "
@@ -201,8 +202,7 @@ print "# overlap length: $overlap_length.\n";
 #print "# clearcut command line: $clearcut_cl \n";
 print "# fasttree command line: $fasttree_cl \n";
 
-my $newicks_out = # run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
-  run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
+my $newicks_out = run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
 
 my $first = 1;
 my $rerooted_gene_tree_newick;
