@@ -15,9 +15,27 @@ use lib "$Bin/../lib";
 use CXGN::Phylo::IdTaxonMap;
 
 my $pattern = shift; # || '*.fasta';
+
 die "No input file specified. Usage example:  taxonify_fasta '*.fasta'" unless (defined $pattern);
 my @files = split(" ", `ls $pattern`);
 
+my $using_gg = 0;
+my %seqid_species = ();
+my $gg_file = shift;
+print STDERR join(", ", @files), "  $gg_file \n";
+if(defined $gg_file and -f $gg_file){
+  $using_gg = 1;
+  open my $fh_gg, "<$gg_file";
+  while(<$fh_gg>){
+    my @cols = split(" ", $_);
+    my $species = shift @cols;
+    $species =~ s/:$//; # remove final colon if present.
+    for (@cols){
+      $seqid_species{$_} = $species;
+    }
+  }
+}
+print STDERR "Done with storing info from gg file.\n";
 my $id_taxon_map = CXGN::Phylo::IdTaxonMap->new();
 
 foreach my $input_file (@files){
@@ -28,17 +46,27 @@ foreach my $input_file (@files){
 
 	my $out_string = '';
 	foreach (@lines) {
-		if (/^>/) {
-			my $id = $_;
-			chomp $id;
-			$id = fix_id($id);
-			$id =~ s/^>//;
-			my $taxon_name = $id_taxon_map->id_to_taxonname($id);
-			$id = '>' . $id . "[species=$taxon_name]";
-			$out_string .= "$id\n";
-		} else {
-			$out_string .= $_;
-		}
+	  if (/^>/) {
+	    /^\s*(\S+)/;
+	    my $id = $1;
+	    $id = fix_id($id);
+	    $id =~ s/^>//;
+	    my $taxon_name;
+	    if ($using_gg) {
+	      if (exists $seqid_species{$id}) {
+		$taxon_name = $seqid_species{$id};
+	      } else {
+		warn "no taxon found for [$id] using gg file.\n";
+		$taxon_name = $id_taxon_map->id_to_taxonname($id);
+	      }
+	    } else {
+	      $taxon_name = $id_taxon_map->id_to_taxonname($id);
+	    }
+	    $id = '>' . $id . "[species=$taxon_name]";
+	    $out_string .= "$id\n";
+	  } else {
+	    $out_string .= $_;
+	  }
 	}
 
 	my $output_file = $input_file;
@@ -61,7 +89,7 @@ sub fix_id{ # this does a couple of fixes to the id name
 	my $id_string = shift;
 # fixes to $align_string:
 	$id_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
-		$id_string =~ s/(>[^|]+)[|].*/$1/g; # delete everything from first pipe on.
+		$id_string =~ s/^(>?[^|]+)[|].*/$1/g; # delete everything from first pipe on.
 $id_string =~ s/^>?IMGA_/IMGA|/;
 #print STDERR "In taxonify. IMGA=containing id: $id_string \n" if($id_string =~ /IMGA/);
 
