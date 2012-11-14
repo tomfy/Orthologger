@@ -21,13 +21,22 @@ use CXGN::Phylo::File;
 use CXGN::Phylo::Species_name_map;
 
 # you can set default paths to the fasta and cluster files here, or supply as cl arguments
-my $default_fasta_file_path   = "$bindir/../tst/7families.fasta";  # "/home/tomfy/MHarrison/fall2011families/all.fa";
-my $default_cluster_file_path = "$bindir/../tst/all_fams"; # "/home/tomfy/MHarrison/fall2011families/all_fams";
+my $default_fasta_file_path   =
+#"$bindir/../tst/7families.fasta";
+"$bindir/../tst/21species-pep.fasta";
+#"/home/tomfy/MHarrison/fall2011families/all.fa";
+my $default_cluster_file_path =
+"$bindir/../tst/21species_mcl1.5_fams";
+#"$bindir/../tst/70clusters";
+#"/home/tomfy/MHarrison/fall2011families/all_fams";
+my $default_gg_file_path =
+"$bindir/../tst/21species.gg";
 
 # Defaults
 my $id_list_or_file = undef;
 my $all_fasta_filename = $default_fasta_file_path; # path to file with sequences in fasta format
 my $cluster_filename = $default_cluster_file_path; # path to cluster file (1 line has ids in 1 cluster)
+my $gg_filename = $default_gg_file_path; 
 my $do_ortholog_support = 0; # shift || 0; # otherwise just get tree with FastTree
 #my $bootstraps_param; #    = shift || '10,10'; # bootstrap params to pass to ortholog_support.pl
 my $do_taxonify         = 1;
@@ -38,6 +47,7 @@ my $prune_threshold = 3;
 GetOptions('ids=s' => \$id_list_or_file,
 	   'sequencefile=s' => \$all_fasta_filename,
 	   'clusterfile=s' => \$cluster_filename,
+	   'ggfile=s' => \$gg_filename,
 	  'reroot=s' => \$reroot_method,
 	  'prune_threshold=i' => \$prune_threshold,
 	  );
@@ -87,7 +97,8 @@ my $fasta0_filename         = `$clusters_ids_2_fasta_cl`;
 
 my $seqid0;
 my @fasta_files = split( "\n", $fasta0_filename );
-
+open my $fh_famselids, ">fams_select_ids";
+print $fh_famselids  join("\n", @fasta_files), "\n";
 foreach my $fasta_file (@fasta_files) {
   my @cols = split(" ", $fasta_file);
   $fasta_file = shift @cols;    # just use first col
@@ -95,7 +106,7 @@ foreach my $fasta_file (@fasta_files) {
   my $muscle_input_filename = $fasta_file;
   if ($do_taxonify) {
     my $taxonify_cl = $bindir . '/' . 
-      "taxonify_fasta.pl $fasta_file";
+      "taxonify_fasta.pl $fasta_file $gg_filename";
     $muscle_input_filename = `$taxonify_cl`;
   }
 
