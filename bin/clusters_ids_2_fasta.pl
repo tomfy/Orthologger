@@ -69,8 +69,8 @@ my $grep_id = "'$id'"; # enclose it in single quotes, or | character will cause 
 		$selected_clusters{$cluster_id} = $cluster; # store this cluster id with it string of seq ids.
 	}
 
-$clusterid_seqids{$cluster_id} .= "$id ";
-$seqid_clusterids{$id} .= "$cluster_id ";
+$clusterid_seqids{$cluster_id} .= "$id "; # concatenate ids (space separated)
+$seqid_clusterids{$id} .= "$cluster_id "; 
 }
 
 if ($verbose) {
