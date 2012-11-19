@@ -1,11 +1,13 @@
-package Orthologger;
+package CXGN::Phylo::Orthologger;
 use strict;
 use List::Util qw ( min max sum );
+
+use CXGN::Phylo::Parser;
 
 # use Devel::Cycle; # not gonna use this anymore?
 
 my $default_arg_href = {
-			'reroot_method' => 'none',
+			'reroot_method' => 'none', # choices are  mindl  maxmin  minmax  minvar
 			'gene_tree' => undef,
 			'gene_tree_newick' => undef,
 			'species_tree' => undef, # tree object.
@@ -26,6 +28,7 @@ sub new {
   }
   # reset any parameters specified in argument hash ref.
   foreach (keys %$arg_href) {
+    if(!exists $default_arg_href->{$_}) { warn "In Orthologger::new. Setting unknown field: ", $_, " to: ", $arg_href->{$_}, "\n"; }
 #      print STDERR "param => value: $_ => ", $arg_href->{$_}, "\n";
     $self->{$_} = $arg_href->{$_};
   }
@@ -37,11 +40,11 @@ sub new {
   my $do_set_error = 0;
   my $gene_tree;
   if (defined $self->get_gene_tree()) {
-  #  print "gene tree branch \n";
-    $gene_tree = $self->get_gene_tree();
+ $gene_tree = $self->get_gene_tree();
+#    print STDERR "gene tree branch. ref(gene_tree): ", ref($gene_tree), " \n";
   } else {
     my $gene_tree_newick = $self->get_gene_tree_newick();
-    $gene_tree = CXGN::Phylo::Parse_newick->new($gene_tree_newick, $do_set_error)->parse();
+    $gene_tree = CXGN::Phylo::Parse_newick->new($gene_tree_newick, $do_set_error)->parse( CXGN::Phylo::BasicTree->new("") );
     $gene_tree->show_newick_attribute('species'); 
     if (!$gene_tree) {
       die "Gene tree. Parser_newick->parse() failed to return a tree object.\n Newick string: ". $gene_tree_newick . "\n";
@@ -57,8 +60,9 @@ sub new {
   $gene_tree->set_missing_species_from_names();
 
   $gene_tree->set_show_standard_species(1);
-  $gene_tree->update_label_names();
+  #$gene_tree->update_label_names();
   $gene_tree->set_species_standardizer($self->get_species_name_map());
+#print STDERR "Done tweaking gene_tree.\n";
 
   # now tweak species tree:
   $species_tree->set_missing_species_from_names(); # get species from name if species undef
@@ -74,12 +78,12 @@ sub new {
 
 
   $species_tree->set_show_standard_species(1);
-  $species_tree->update_label_names();
+  #$species_tree->update_label_names();
   $species_tree->set_species_standardizer($self->get_species_name_map());
   
-#print STDERR "in Orthogger->new. About to call reroot. \n";
-
+#print STDERR "in Orthologger->new. About to call reroot. \n";
   $self->reroot();
+#print STDERR "in Orthologger->new. After reroot. \n";
 
   $gene_tree->get_root()->recursive_set_leaf_species_count();
   $gene_tree->get_root()->recursive_set_leaf_count();
@@ -109,13 +113,11 @@ sub reroot{
   my $gene_tree = $self->get_gene_tree();
   my $species_tree = $self->get_species_tree();
   my $reroot_method = $self->get_reroot_method();
- # print "top of reroot. reroot method: $reroot_method ; \n", $gene_tree->generate_newick(), "\n";
   my @new_root_point = (undef, undef);
   if (defined $reroot_method and $reroot_method ne 'none') {
     # reset root
     if ($reroot_method eq "mindl") { # min duplicate & loss
-   #   $gene_tree->set_branch_lengths_equal(0.0001);
-
+   #   gene_tree->set_branch_lengths_equal(0.0001);
       @new_root_point = $gene_tree->find_mindl_node($species_tree);
       die "find_mindl_node failed\n" if(!defined $new_root_point[0]);
     } elsif ($reroot_method eq "minvar") { # min variance
@@ -135,49 +137,15 @@ sub ortholog_result_string{
   my $self = shift;
   my $gene_tree = $self->get_gene_tree();
   my $ortholog_str = '';
-  my @leaves = $gene_tree->get_leaves();
-  my $query_species = $self->get_query_species();
-  my $standard_query_species = undef;
-  if (defined $query_species) {
-    $standard_query_species =  $self->get_species_name_map()->get_standard_name($query_species); #e.g. "Ipomoea_batatas";
-  }
-  my $query_id_regex = $self->get_query_id_regex();
-
-  my $non_species_tree_leaf_node_names = $self->get_gene_tree()->non_speciestree_leafnode_names();
-  foreach my $leaf (@leaves) {
-    my $species_ok = (! defined $query_species or ( $leaf->get_standard_species() =~ /$standard_query_species/) );
-    my $name_ok = (! defined $query_id_regex or $leaf->get_name() =~ /$query_id_regex/);
-    next if(!$species_ok or !$name_ok);
-    my $leafname = $leaf->get_name();
-    next if( exists $non_species_tree_leaf_node_names->{$leafname} );
+  my $leaf_ortholog_hashref = $gene_tree->leaf_ortholog_table();
+  foreach my $leafname (keys %$leaf_ortholog_hashref) {
     $ortholog_str .= "orthologs of " . $leafname . ":  ";
-
-  my @cand_orthologs = $leaf->collect_orthologs_of_leaf();
-
-            # keep only leaves whose species appear in species tree
-            my @orthologs = ();
-
-            #  my $non_species_tree_leaf_node_names =
-            #  $browser->get_tree()->non_speciestree_leafnode_names();
-            if ( scalar keys %$non_species_tree_leaf_node_names > 0 ) {
-                foreach (@cand_orthologs) {
-                    if ( exists $non_species_tree_leaf_node_names->{$_} ) {
-                        #  unknown species, can't claim orthology
-                    } else {
-                        push @orthologs, $_;
-                    }
-                }
-            } else {
-                @orthologs = @cand_orthologs;
-            }
-
- #   my @orthologs = $leaf->collect_orthologs_of_leaf(); # list of leaf names
+    my @orthologs = @{$leaf_ortholog_hashref->{$leafname}};
     $ortholog_str .= join(" ", @orthologs) . "\n";
   }
-  my $non_speciestree_names_str = "Leaves not in species tree: " . join(" ", keys %{$non_species_tree_leaf_node_names}) . "\n";
-  $ortholog_str .= $non_speciestree_names_str;
+  $ortholog_str .= "Leaves not in species tree: " . join(" ", keys %{$self->get_gene_tree()->non_speciestree_leafnode_names()}) . "\n";
   return $ortholog_str;
-} # end of ortholog_result_string
+}				# end of ortholog_result_string
 
 sub get_species_bithash{ #  get a hash giving a bit pattern for each species which is in both $gene_tree and $spec_tree
   my $self = shift;

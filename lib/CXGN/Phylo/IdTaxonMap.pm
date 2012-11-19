@@ -1,4 +1,4 @@
-package IdTaxonMap;
+package CXGN::Phylo::IdTaxonMap;
 
 use strict;
 use List::Util qw ( min max sum );
@@ -10,7 +10,7 @@ my %default_map =
    '^(?:X_)?\d{5}[.]m\d{6}' => 'castorbean', # can have X_ prefix or not
    '^GSVIV' => 'grape',
    '^(?:GRMZM|AC\d{6})' => 'maize',
-   '^IMGA[|_](?:Medtr|AC|CU)' => 'medicago',
+   '^IMGA[|_](?:Medtr|AC|CU)' => 'medicago', # can have | or _ between IMGA and Medtr
    '^evm' => 'papaya',
    '^POPTR' => 'poplar',
    '^LOC_Os' => 'rice',
@@ -64,6 +64,7 @@ sub id_to_taxonname{
     return $map->{$_} if($id =~ /$_/);
   }
   warn "No taxon name found for id: $id\n";
+  return;
 }
 
 1;
