@@ -4,14 +4,24 @@ use strict;
 use Getopt::Std;
 use List::Util qw ( min max sum );
 
+no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+
+use File::Basename 'dirname';
+use Cwd 'abs_path';
+my ($bindir, $libdir);
+BEGIN{
+$bindir = dirname(abs_path(__FILE__)); # this has to go in Begin block so happens at compile time
+$libdir = $bindir . '/../lib';
+$libdir = abs_path($libdir); # collapses the bin/../lib to just lib
+}
+use lib $libdir;
+
 use CXGN::Phylo::File;
 use CXGN::Phylo::Parser;
 use CXGN::Phylo::Overlap;
 use CXGN::Phylo::Orthologger;
 use CXGN::Phylo::Mrbayes;
-#use lib '/home/tomfy/Orthologger/lib';
-#use CXGN::Phylo::IdTaxonMap;
-#use IdTaxonMap;
+use CXGN::Phylo::IdTaxonMap;
 
 #my $x = IdTaxonMap->new();
 
@@ -111,18 +121,20 @@ my $quicktree_distance_correction = ($opt_k)? 'kimura' : 'none';
 
 #### Get the alignment:
 my $align_string =  `cat $input_file`;
+if(0){
 # fixes to $align_string:
 $align_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
 #$align_string =~ s/(>[^|]+)[|][^\n]+\n/$1\n/; # delete from first pipe to end of line.
 $align_string =~ s/(>[^|]+)[|][^\n]*\n/$1\n/g; # delete from first pipe to end of line.
-
+}
+ 
 my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this.
-$align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut happy.
+# $align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut happy.
 # print "align string: $align_string\n";
 
 
 # construct an overlap object.
-my $overlap_obj = Overlap->new($align_string, $nongap_fraction, $bootstrap_seed);
+my $overlap_obj = CXGN::Phylo::Overlap->new($align_string, $nongap_fraction, $bootstrap_seed);
 
 ### Setup for orthologger.
 # set up cl for orthologger. options $opt_s, $opt_r are relevant.
@@ -139,6 +151,7 @@ if (defined $opt_r) {
     warn "reroot option $opt_r unknown. using default: mindl\n";
   }
 }
+print "Rerooting method: $reroot_method.\n";
 # default species tree: 13-species tree:
 my $species_newick = "(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
 
@@ -159,7 +172,7 @@ if (defined $opt_s) {
 }
 # my $species_tree = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error)->parse();
 my $sparser = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error);
-my $species_tree = $sparser->parse();
+my $species_tree = $sparser->parse(CXGN::Phylo::BasicTree->new());
 #find_cycle($sparser);
 if (!$species_tree) {
   die"Species tree. Parse_newick->parse() failed to return a tree object. Newick string: "
@@ -189,8 +202,7 @@ print "# overlap length: $overlap_length.\n";
 #print "# clearcut command line: $clearcut_cl \n";
 print "# fasttree command line: $fasttree_cl \n";
 
-my $newicks_out = # run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
-  run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
+my $newicks_out = run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
 
 my $first = 1;
 my $rerooted_gene_tree_newick;

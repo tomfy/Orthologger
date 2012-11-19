@@ -1,6 +1,9 @@
 #!/usr/bin/perl -w
 use strict;
 
+# read in the output of a previously executed MrBayes run.
+# and get posterior probabilities for the orthology relationships
+
 use lib '/home/tomfy/Orthologger/lib';
 use List::Util qw ( min max sum );
 use TlyUtil qw ( order_newick );
