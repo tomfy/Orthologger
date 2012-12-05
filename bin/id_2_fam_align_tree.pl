@@ -22,12 +22,12 @@ use CXGN::Phylo::Species_name_map;
 
 # you can set default paths to the fasta and cluster files here, or supply as cl arguments
 my $default_fasta_file_path   =
-#"$bindir/../tst/7families.fasta";
+#"$bindir/../tst/cluster2tree_test/7families.fasta";
 "$bindir/../tst/21species-pep.fasta";
 #"/home/tomfy/MHarrison/fall2011families/all.fa";
 my $default_cluster_file_path =
-"$bindir/../tst/21species_mcl1.5_fams";
-#"$bindir/../tst/70clusters";
+"$bindir/../tst/21species_mclI1.5_fams";
+#"$bindir/../tst/cluster2tree_test/3families";
 #"/home/tomfy/MHarrison/fall2011families/all_fams";
 my $default_gg_file_path =
 "$bindir/../tst/21species.gg";
@@ -42,6 +42,7 @@ my $do_ortholog_support = 0; # shift || 0; # otherwise just get tree with FastTr
 my $do_taxonify         = 1;
 my $reroot_method = 'none';
 my $prune_threshold = 3;
+my $threads = 1;
 
 # Process long cl options
 GetOptions('ids=s' => \$id_list_or_file,
@@ -50,6 +51,7 @@ GetOptions('ids=s' => \$id_list_or_file,
 	   'ggfile=s' => \$gg_filename,
 	  'reroot=s' => \$reroot_method,
 	  'prune_threshold=i' => \$prune_threshold,
+	'threads=i' => \$threads,	
 	  );
 
 
@@ -124,13 +126,13 @@ foreach my $fasta_file (@fasta_files) {
   my $muscle_out = `muscle -in $muscle_input_filename -out $align_filename`;
 
   print "Done with alignment using muscle. alignment filename: [$align_filename]\n";
-
   if ($do_ortholog_support) {
  print STDERR "Ortholog finding using ortholog_support.pl not implemented in this script (id_2_fam_align_tree.pl).\n";
     # print `~/Orthologger/bin/ortholog_support.pl -i $align_filename -T ML -N $bootstraps_param`;
   } else {
 print STDERR "Now run FastTree on $align_filename.\n";
     my $FT_cl = "FastTree -wag -gamma -bionj $align_filename 2> $align_filename.out";
+$FT_cl =~ s/FastTree/FastTreeMP/ if($threads > 1);
     my $FT_out_newick = `$FT_cl`;
 print STDERR "FastTree finished.\n";
     my $parser = CXGN::Phylo::Parse_newick->new($FT_out_newick, 1);
@@ -152,7 +154,7 @@ print STDERR "FastTree finished.\n";
     $tree = reroot($tree, $reroot_method, $custom_species_tree_newick);
 
     my $whole_tree_newick = $tree->generate_newick();
-    print "whole rerooted tree: $whole_tree_newick \n";
+  #  print "whole rerooted tree: $whole_tree_newick \n";
     open my $fh_whole_newick, ">$align_filename.newick";
     print $fh_whole_newick  "$whole_tree_newick\n";
     close $fh_whole_newick;
@@ -165,7 +167,7 @@ print STDERR "FastTree finished.\n";
     my $pruned_tree_root = $tree->min_clade($seqid0, 3, $outer_species);
 
     my $pruned_tree_newick = $pruned_tree_root->recursive_generate_newick();
-    print "pruned tree: $pruned_tree_newick \n";
+  #  print "pruned tree: $pruned_tree_newick \n";
     my $pruned_newick_filename = $align_filename . "_pruned.newick";
     open my $fh_pruned_newick, ">$pruned_newick_filename";
     print $fh_pruned_newick  "$pruned_tree_newick\n";
@@ -196,7 +198,9 @@ sub reroot{
       $species_tree_newick = $species_tree_file->get_tree_string();
     } else {
       $species_tree_newick = 
-	"(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
+'( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thelungiella_h[species=Thelungiella_halophila]:0.01, Thelungiella_s[species=Thelungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
+
+# "(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
     }
     my $species_tree_parser = CXGN::Phylo::Parse_newick->new($species_tree_newick, 1);
     my $species_tree = $species_tree_parser->parse(CXGN::Phylo::BasicTree->new());
