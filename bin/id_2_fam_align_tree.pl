@@ -22,15 +22,15 @@ use CXGN::Phylo::Species_name_map;
 
 # you can set default paths to the fasta and cluster files here, or supply as cl arguments
 my $default_fasta_file_path   =
-#"$bindir/../tst/cluster2tree_test/7families.fasta";
-"$bindir/../tst/21species-pep.fasta";
-#"/home/tomfy/MHarrison/fall2011families/all.fa";
+"$bindir/../tst/cluster2tree_test/3families.fasta";
+#"$bindir/../tst/21species-pep.fasta";
 my $default_cluster_file_path =
-"$bindir/../tst/21species_mclI1.5_fams";
+"$bindir/../tst/cluster2tree_test/3families";
+#"$bindir/../tst/21species_mclI1.5_fams";
 #"$bindir/../tst/cluster2tree_test/3families";
-#"/home/tomfy/MHarrison/fall2011families/all_fams";
 my $default_gg_file_path =
 "$bindir/../tst/21species.gg";
+my $default_species_tree_file_path = "$bindir/../species_tree_plant_52.newick";
 
 # Defaults
 my $id_list_or_file = undef;
@@ -43,15 +43,20 @@ my $do_taxonify         = 1;
 my $reroot_method = 'none';
 my $prune_threshold = 3;
 my $threads = 1;
+my $species_tree_newick_file = $default_species_tree_file_path;
+if(! -f $species_tree_newick_file){
+die "$species_tree_newick_file is not a regular file. Will use default species tree.\n";
+$species_tree_newick_file = undef; }
 
 # Process long cl options
-GetOptions('ids=s' => \$id_list_or_file,
-	   'sequencefile=s' => \$all_fasta_filename,
-	   'clusterfile=s' => \$cluster_filename,
-	   'ggfile=s' => \$gg_filename,
-	  'reroot=s' => \$reroot_method,
-	  'prune_threshold=i' => \$prune_threshold,
-	'threads=i' => \$threads,	
+GetOptions('ids=s' => \$id_list_or_file,    # contains ids to be analyzed. ids in first column
+	   'sequencefile=s' => \$all_fasta_filename,  # sequences in fasta format, superset of needed sequences
+	   'clusterfile=s' => \$cluster_filename, # defines families. 1 line per family: familyname followed by whitespace-separated sequence ids.
+	   'ggfile=s' => \$gg_filename, # defines species-sequence association. 1 line per species: species name followed by whitespace-separated sequence ids.
+	  'reroot=s' => \$reroot_method, # selects rerooting method. options: none, midpoint, minvar, mindl.
+	  'prune_threshold=i' => \$prune_threshold, # prune to minimal tree containing id of interest, and $prune_threshold non-dicot sequences.
+	'threads=i' => \$threads,
+	   'speciestreefile=s' => \$species_tree_newick_file # to override built-in species tree with 52 species (see sub reroot below for this tree).
 	  );
 
 
@@ -131,7 +136,11 @@ foreach my $fasta_file (@fasta_files) {
     # print `~/Orthologger/bin/ortholog_support.pl -i $align_filename -T ML -N $bootstraps_param`;
   } else {
 print STDERR "Now run FastTree on $align_filename.\n";
-    my $FT_cl = "FastTree -wag -gamma -bionj $align_filename 2> $align_filename.out";
+my $FT_stderr_filename = $align_filename;
+$FT_stderr_filename =~ s/_tax_align[.]fasta//;
+$FT_stderr_filename .= '_FastTree.out';
+print STDERR "FastTree stderr output to $FT_stderr_filename\n";
+    my $FT_cl = "FastTree -wag -gamma -bionj $align_filename 2> $FT_stderr_filename";
 $FT_cl =~ s/FastTree/FastTreeMP/ if($threads > 1);
     my $FT_out_newick = `$FT_cl`;
 print STDERR "FastTree finished.\n";
@@ -150,12 +159,18 @@ print STDERR "FastTree finished.\n";
 #print "Tree object constructed.\n";
     # rerooting
 #    my $opt_r = 'midpoint';
-    my $custom_species_tree_newick = undef; # needed only for mindl rerooting. and reroot has default tree for this.
-    $tree = reroot($tree, $reroot_method, $custom_species_tree_newick);
+#    my $custom_species_tree_newick_file = undef; # needed only for mindl rerooting. and reroot has default tree for this.
+    $tree = reroot($tree, $reroot_method, $species_tree_newick_file);
 
     my $whole_tree_newick = $tree->generate_newick();
   #  print "whole rerooted tree: $whole_tree_newick \n";
-    open my $fh_whole_newick, ">$align_filename.newick";
+my $newick_filename = $align_filename;
+$newick_filename =~ s/[.]fasta$//;
+$newick_filename =~ s/_align//;
+$newick_filename =~ s/_tax//;
+my $pruned_newick_filename = $newick_filename . "_pruned.newick";
+$newick_filename .= ".newick";
+    open my $fh_whole_newick, ">$newick_filename";
     print $fh_whole_newick  "$whole_tree_newick\n";
     close $fh_whole_newick;
 
@@ -168,7 +183,7 @@ print STDERR "FastTree finished.\n";
 
     my $pruned_tree_newick = $pruned_tree_root->recursive_generate_newick();
   #  print "pruned tree: $pruned_tree_newick \n";
-    my $pruned_newick_filename = $align_filename . "_pruned.newick";
+#    my $pruned_newick_filename = $align_filename . "_pruned.newick";
     open my $fh_pruned_newick, ">$pruned_newick_filename";
     print $fh_pruned_newick  "$pruned_tree_newick\n";
     close $fh_pruned_newick;
@@ -179,7 +194,7 @@ print STDERR "FastTree finished.\n";
 sub reroot{
   my $tree = shift;
   my $reroot_method = shift || 'midpoint';
-  my $species_tree_arg = shift; # used for mindl rerooting. 
+  my $species_tree_arg = shift; # file name of species tree newick file. overrides default species tree
  
 #  print "in reroot. reroot method $reroot_method \n";
 #print $tree->generate_newick(), "\n";
