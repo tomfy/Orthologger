@@ -1,26 +1,64 @@
-These are scripts and modules used to analyze a set of clusters (families)
-coming out of ORTHOMCL for orthologs in a different way from what
-ORTHOMCL itself does. In particular the families get aligned (no script for
-that here), then gene trees are constructed, the gene trees are compared 
-with the tree representing the species phylogeny (the species tree), 
-and the gene tree
-is rooted so as to minimize the number of duplication and loss events
-needed to reconcile the (rooted) tree with the species tree. (Other
-rooting options are implemented also, e.g. midpoint.) The nodes of this
-rooted gene tree are labeled as duplications or speciations. Two genes
-are identified as orthologous if their LCA node (root of minimal subtree 
-containing both) is a speciation. 
+Gene family phylogeny and orthology analysis scripts.
+
+id_2_fam_align_tree.pl   From sequence id to tree for family containing that sequence. Can reroot and prune the tree.
+
+ortholog_support.pl   Takes an alignment, constructs tree, reroots it, and analyzes it for orthology relationships, with bootstrapping. 
+
+MB.pl   Takes an alignment and uses MrBayes to sample the posterior distribution of trees. A perl frontend to MrBayes with some additional convergence diagnostics, and gives output useable by ortholog_suport.pl 
+
+cluster_ids_2_fasta.pl  Given clusters, ids, and fasta, produces fasta for families containing one of the ids.
 
 
-The modules for ortholog finding, Orthologger.pm, Overlap.pm, IdTaxonMap.pm,
-and Mrbayes.pm are now in cxgn-corelibs.
-Also uses the Parse.pm, Tree.pm and Node.pm modules in
-~/cxgn/cxgn-corelibs/lib/CXGN/Phylo
+Installation:
+1) Extract the tar file:
+tar -xf orthologger.tar
+This will create a directory Orthologger with various subdirectories and files.
 
-Also the testing script, orthologger.t is in cxgn-corelibs/t/
+2) Install a few external programs:
+   FastTree (used by id_2_fam_align_tree.pl, ortholog_support)
+   quicktree (used by ortholog_supportl.pl)
+   MrBayes (used by MB.pl, not needed otherwise)
+   Muscle (used by id_2_fam_align_tree.pl)
+ The executables (FastTree, quicktree, mb, muscle) need to be on $PATH.
+   
+3) Compile urec (used for rerooting of trees by ortholog_support.pl, id_2_fam_align_tree.pl)
+   go to Orthologger/lib/CXGN/Phylo/Urec , then:
+   make
 
-Does bootstrapping, i.e. can specify (with arguments to ortholog_support.pl)
-the analysis of bootstrap resamples of alignments in the same way, producing
-for each a list of inferred ortholog pairs. Tree inference can either be
-done by NJ (clearcut) or ML (FastTree). Also can use MrBayes to get Bayesian
-posterior probabilities of orthology. 
+4) Test
+   go to Orthologger/tst/cluster2tree_test , then:
+   ../../bin/id_2_fam_align_tree.pl --ids one_id_file --reroot mindl
+   It should run for several seconds, and you should get several output files, including 
+    ....
+   
+
+Usage:
+id_2_fam_align_tree.pl --ids <idfile>  --clusterfile <clusterfile>  --sequencefile <sequencefile> --ggfile <ggfile> --reroot <midpoint | mindl | minvar | none; default: none, mindl recommended > --prune_threshold <default = 3>  --speciestreefile <default is tree with 52 species > 
+
+Takes as input:
+ 
+idfile        File with sequence ids (in first column),
+clusterfile   File with clusters (families), one line per family: family name followed by tab separated sequence ids.
+sequencefile  File with sequence data (fasta format) for all the sequences in the families of interest.
+ggfile        File to specify which species go with each sequence id. One species per line, species name in first column followed by whitespace-separated sequence ids.
+speciestreefile  Newick file defining phylogenetic tree for a set of species (should contain all the species in your families). Default is 52 plant species.
+
+You may want to edit the defaults for these files, which are defined near the top of the script.
+
+The script looks at ids in idfile, and for each one:
+	looks in clusterfile to find the family it belongs to, and all the sequence ids of that family,
+	picks those sequences from the fasta file and constructs a fasta file for just that family,
+	aligns the sequences using muscle,
+	constructs a tree from the alignment using FastTree,
+	reroots the tree in the specified way, e.g. midpoint. mindl reroots so as to get best agreement with
+		species tree (i.e. minimize number of duplication, gene loss events needed to reconcile gene
+		and species trees).
+	prunes the tree to smallest clade including the specified sequence, and prune_threshold non-dicot sequences.
+
+
+ortholog_support.pl
+	......
+
+MB.pl
+	......
+	
