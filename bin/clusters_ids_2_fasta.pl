@@ -25,7 +25,7 @@ my $idfile = shift;
 my $verbose = shift || 0;
 
 if(!(defined $fasta_filename and defined $cluster_filename and defined $idfile)){
-	die "clusters_ids_2_fasta.pl called with no arguments.\n Usage: cluster_ids_2_fasta.pl x.fasta clusterfile idfile. \n x.fasta includes fasta for all sequences in clusterfile, clusterfile has 1 cluster (cluster id & sequence ids) per line. idfile has sequence ids of interest in leftmost col.\n";
+	die "clusters_ids_2_fasta.pl called with no arguments.\n Usage: cluster_ids_2_fasta.pl seqfile clusterfile idfile. \n seqfile: name of file with fasta for all sequences in clusterfile, clusterfile has 1 cluster (cluster id & sequence ids) per line. idfile has sequence ids of interest in leftmost col.\n";
 }
 my %clusterid_seqids = (); # keys are cluster names, values are string of space separated ids
 my %seqid_clusterids = (); # keys are ids, values are strings of space separated cluster names (should be just one cluster)
