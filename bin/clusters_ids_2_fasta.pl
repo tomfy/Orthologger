@@ -50,7 +50,7 @@ my $grep_id = "'$id'"; # enclose it in single quotes, or | character will cause 
 
 	my $cluster = `grep $grep_id $cluster_filename`; # get line (i.e. the cluster) with $id
 #print "after grep. \n\n"; #cluster $cluster.\n\n";
-	my $cluster_id;
+	my $cluster_id; # i.e. family name.
 	if($cluster =~ /\S/){ # if non-empty
 		$cluster =~ s/([^:]+:)\s*//; # remove initial part with cluster id, 
 			$cluster_id = $1; # and put cluster id in scalar $cluster_id
