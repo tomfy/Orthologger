@@ -49,16 +49,15 @@ die "$species_tree_newick_file is not a regular file. Will use default species t
 $species_tree_newick_file = undef; }
 
 # Process long cl options
-GetOptions('ids=s' => \$id_list_or_file,    # contains ids to be analyzed. ids in first column
+GetOptions('ids|idfile=s' => \$id_list_or_file,    # contains ids to be analyzed. ids in first column
 	   'sequencefile=s' => \$all_fasta_filename,  # sequences in fasta format, superset of needed sequences
 	   'clusterfile=s' => \$cluster_filename, # defines families. 1 line per family: familyname followed by whitespace-separated sequence ids.
 	   'ggfile=s' => \$gg_filename, # defines species-sequence association. 1 line per species: species name followed by whitespace-separated sequence ids.
 	  'reroot=s' => \$reroot_method, # selects rerooting method. options: none, midpoint, minvar, mindl.
 	  'prune_threshold=i' => \$prune_threshold, # prune to minimal tree containing id of interest, and $prune_threshold non-dicot sequences.
-	'threads=i' => \$threads,
+	   'threads=i' => \$threads,
 	   'speciestreefile=s' => \$species_tree_newick_file # to override built-in species tree with 52 species (see sub reroot below for this tree).
 	  );
-
 
 print STDERR "ids: $id_list_or_file\n",
   "reroot method: $reroot_method\n",
@@ -99,7 +98,7 @@ $ids = "'" . $ids . "'";
 }
 
 my $clusters_ids_2_fasta_cl = $bindir . '/' . 
-  "clusters_ids_2_fasta.pl $all_fasta_filename $cluster_filename $id_file";
+  "clusters_ids_2_fasta.pl -sequencefile $all_fasta_filename -clusterfile $cluster_filename -id $id_file";
 my $fasta0_filename         = `$clusters_ids_2_fasta_cl`;
 
 my $seqid0;
