@@ -6,6 +6,7 @@ no lib '/home/tomfy/Orthologger/bin';
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 use FindBin qw($Bin);
 use lib "$Bin/../lib"; 
+use Getopt::Long;
 
 #use File::Slurp qw ( slurp );
 
@@ -19,13 +20,21 @@ use lib "$Bin/../lib";
 # print in fasta format the ids and sequences in fastafile 
 # which are in the cluster.
 
-my $fasta_filename = shift;
-my $cluster_filename = shift;
-my $idfile = shift;
-my $verbose = shift || 0;
+my $fasta_filename;
+my $cluster_filename;
+my $idfile;
+my $verbose = 0;
+
+# Process long cl options
+GetOptions('ids|idfile=s' => \$idfile,    # contains ids to be analyzed. ids in first column
+	   'sequencefile=s' => \$fasta_filename,  # sequences in fasta format, superset of needed sequences
+	   'clusterfile=s' => \$cluster_filename, # defines families. 1 line per family: familyname followed by whitespace-separated sequence ids.
+	  'verbose' => \$verbose );
+
+# print STDERR "idfile: $idfile;  sequencefile: $fasta_filename;  clusterfile: $cluster_filename.\n";
 
 if(!(defined $fasta_filename and defined $cluster_filename and defined $idfile)){
-	die "clusters_ids_2_fasta.pl called with no arguments.\n Usage: cluster_ids_2_fasta.pl seqfile clusterfile idfile. \n seqfile: name of file with fasta for all sequences in clusterfile, clusterfile has 1 cluster (cluster id & sequence ids) per line. idfile has sequence ids of interest in leftmost col.\n";
+	die "clusters_ids_2_fasta.pl called without specifying input files.\n Usage: cluster_ids_2_fasta.pl seqfile clusterfile idfile. \n seqfile: name of file with fasta for all sequences in clusterfile, clusterfile has 1 cluster (cluster id & sequence ids) per line. idfile has sequence ids of interest in leftmost col.\n";
 }
 my %clusterid_seqids = (); # keys are cluster names, values are string of space separated ids
 my %seqid_clusterids = (); # keys are ids, values are strings of space separated cluster names (should be just one cluster)
