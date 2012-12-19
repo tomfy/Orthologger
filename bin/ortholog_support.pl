@@ -55,7 +55,6 @@ my $treefind_method = 'NJ';
 my $min_bs_support = 0.0;
 my $reroot_method = 'mindl';
 my $species_tree_filename = undef;
-my $n_rep = 1;
 my $query_species = undef;
 my $query_id_regex = undef;
 my $show_help = 0;
@@ -70,13 +69,12 @@ GetOptions('inputfile|alignment=s' => \$input_file, # contains ids to be analyze
 	   'reroot_method=s' => \$reroot_method,
 	   'species_tree_filename=s' => \$species_tree_filename,
 	   'kimura' => \$kimura,
-	   'n_rep=s' => \$n_rep, # do ML treefinding this many times with actual data (but different seeds)
 	   'query_species=s' => \$query_species,
 	   'query_regex=s' => \$query_id_regex,
 	   'help' => \$show_help,
 	   'output_filename=s' => \$ortholog_output_filename
 	  );
-my $treefind_seed = (defined $bootstrap_seed)? $bootstrap_seed + $seed_increment : undef;
+#my $treefind_seed = (defined $bootstrap_seed)? $bootstrap_seed + $seed_increment : undef;
 # $bootstrap_seed = 13579;
 
 die help_message() . "\n" if($show_help);
@@ -131,18 +129,14 @@ if ($n_bootstrap =~ /(\d+),(\d+)/) {
 #my $query_species = undef; # ($opt_q)? $opt_q: undef;
 #my $query_id_regex = undef; # ($opt_Q)? $opt_Q: undef;
 
-
-
-my $fasttree_base_cl = 'FastTree -wag -gamma -bionj ';  #  -quiet '; # -noml -nosupport';
-
-#my $n_rep = ($n_rep)? $n_rep : 1;
-# my $treefind_method = (defined $opt_T)? $opt_T : 'NJ';
-if ($treefind_method eq 'NJ') {
-  $n_rep = 1;
-}
+my $fasttree_cl = 'FastTree -wag -gamma -bionj ';  #  -quiet '; # -noml -nosupport';
 
 if ($min_bs_support > 1) {	# interpret as percentage if > 1.
   $min_bs_support *= 0.01;
+  if($min_bs_support >= 1){
+    warn "Requested min bs support is > 1; Setting to zero.\n";
+    $min_bs_support = 0.0;
+}
 }
 my $quicktree_distance_correction = ($kimura)? 'kimura' : 'none';
 
@@ -207,8 +201,7 @@ my %idpair_orthocountMB = ();  # Posterior prob. results from MrBayes.
 # ********************** Analyze actual data: **************************
 my $overlap_fasta_string = $overlap_obj->overlap_fasta_string('');
 my $overlap_length = $overlap_obj->get_overlap_length();
-my $fasttree_cl = $fasttree_base_cl;
-$fasttree_cl .= (defined $treefind_seed)? " -seed $treefind_seed ": ''; 
+
 print "# overlap length: $overlap_length.\n";
 print "# fasttree command line: $fasttree_cl \n";
 
@@ -235,23 +228,11 @@ foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
 }
 
 if ($treefind_method eq 'ML') {
-
-#  my $first = 1;
-
-#  for(my $i_rep = 0; $i_rep <= $n_rep; $i_rep++){
-
- my $fasttree_cl = $fasttree_base_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
   my ($gene_tree_newick, $ft_loglikelihood) = run_fasttree($overlap_fasta_string, $fasttree_cl);
 
-#print stderr "XXXXX!: ", $overlap_fasta_string, "  ", $ft_loglikelihood, "\n";
-#print stderr "YYYYYYYYY: \n", $gene_tree_newick, "\n";
-
-
   my $rerooted_gene_tree_newick;
-  $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
   my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
-# print stderr "i_rep, LL: $i_rep  $ft_loglikelihood\n";
-#  if ($first) {
+
     $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
 
     print "# Actual data rerooted $treefind_method gene tree newick:\n# $rerooted_gene_tree_newick\n";
@@ -260,28 +241,22 @@ if ($treefind_method eq 'ML') {
     print $fh_tree "# Actual data rerooted $treefind_method gene tree newick:\n $rerooted_gene_tree_newick\n";
     close $fh_tree;
 
-#    $first = 0;
-#  }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
 
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountML]);
   $orthologger_obj->decircularize();
-  $treefind_seed += $seed_increment;
-# }
 }
 print STDERR "Actual data done.\n";
 
-#$treefind_seed += $seed_increment;
 # **************** Done with actual data. ******************************
 
 # **************** Now the bootstrap data. *****************************
 for my $i_bs (1..$n_NJ_bootstrap) {
-  my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
- $fasttree_cl = $fasttree_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
-  my $fasttree_cl = $fasttree_base_cl . ''; # " -noml -nosupport "; 
+  my $bs_overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
+ # my $fasttree_cl = $fasttree_cl . ''; # " -noml -nosupport "; 
 
-my $gene_tree_newick =  run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
-# print "YYYYYYYYYYYYYYYYYYYYYYYYYYY NJ gtn: $gene_tree_newick.\n";
+my $gene_tree_newick =  run_quicktree($bs_overlap_fasta_string, $quicktree_distance_correction);
+
     next if($gene_tree_newick =~ /^NJ/);
     $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
 
@@ -292,7 +267,6 @@ my $gene_tree_newick =  run_quicktree($overlap_fasta_string, $quicktree_distance
     #find_cycle($orthologger_obj);
     store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountNJ]);
 
-# }
   print  "\r                          \r";
   print  "NJ Bootstraps 1..$i_bs done.";
 }				# end of NJ bootstraps
@@ -301,13 +275,8 @@ print "\n";
 
 if ($treefind_method eq 'ML') { # also construct/analyze ML trees for the bootstrap
   for my $i_bs (1..$n_ML_bootstrap) {
-    my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
-    my $fasttree_cl = $fasttree_base_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
-    my ($gene_tree_newick, $bs_ft_ll) = run_fasttree($overlap_fasta_string, $fasttree_base_cl);
-    $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
-
- #   print "XXXXX bs gene_tree_newick: $gene_tree_newick\n";
-
+    my $bs_overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
+    my ($gene_tree_newick, $bs_ft_ll) = run_fasttree($bs_overlap_fasta_string, $fasttree_cl);
     my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
 
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
@@ -316,7 +285,7 @@ if ($treefind_method eq 'ML') { # also construct/analyze ML trees for the bootst
     store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountML]);
 
 
-    $treefind_seed += $seed_increment;
+ #   $treefind_seed += $seed_increment;
     print STDERR "\r                          \r";
     print STDERR "ML Bootstraps 1..$i_bs done.";
   }
@@ -354,7 +323,7 @@ print STDERR "output orthologs filename: [$ortholog_output_filename] \n";
 my $ortholog_output_string = '';
 
 $n_bootstrap = max($n_NJ_bootstrap, $n_ML_bootstrap);
-my $iwidth = length(max($n_rep, $n_bootstrap));
+my $iwidth = length($n_bootstrap);
 my $iformat = '%' . $iwidth . 'i';
 my $id1_old = '';
 my @sorted_idpairs = sort {$a cmp $b} keys %idpair_orthocount_all;
@@ -365,7 +334,7 @@ foreach my $idpair (@sorted_idpairs) {
     $idpair_actual_orthocountML{$idpair} : 0; # print STDERR $orthologger_outstring, "\n";
   my $bs_countNJ = (defined $idpair_bs_orthocountNJ{$idpair})? $idpair_bs_orthocountNJ{$idpair} : 0;
   my $n_bootstrap_ML = ($treefind_method eq 'ML')? $n_ML_bootstrap : 0;
-  my $n_rep_ML = ($treefind_method eq 'ML')? $n_rep : 0;
+  my $n_rep_ML = ($treefind_method eq 'ML')? $1 : 0;
   my $bs_countML = (defined $idpair_bs_orthocountML{$idpair})?  $idpair_bs_orthocountML{$idpair} : 0;
   my $count_MB = (defined $idpair_orthocountMB{$idpair})? $idpair_orthocountMB{$idpair} : 0;
   my $NJ_support = ($n_NJ_bootstrap > 0)? $bs_countNJ/$n_NJ_bootstrap: 1;
@@ -379,7 +348,7 @@ foreach my $idpair (@sorted_idpairs) {
 
   if ($id1 ne $id1_old) {
     $ortholog_output_string .= sprintf("\n%-38s NJ($iformat)  ML($iformat) bootstrap: NJ($iformat)  ML($iformat)  MB($iformat)\n", 
-				       $id1, $n_rep, $n_rep_ML, $n_NJ_bootstrap, $n_bootstrap_ML, $sum_MB_count);
+				       $id1, 1, $n_rep_ML, $n_NJ_bootstrap, $n_bootstrap_ML, $sum_MB_count);
     $id1_old = $id1;
   }
   $ortholog_output_string .= sprintf("    %-37s $iformat      $iformat                $iformat      $iformat    $iformat\n", 
@@ -412,15 +381,17 @@ sub run_quicktree{
 sub run_fasttree{
   my $overlap_fasta_string = shift;
   my $fasttree_cl = shift;
- 
+
   my $fasttree_newick_out = "ft_newick_default_output";
   my $fasttree_stderr_out = "ft_stderr_default_output";
     run3("$fasttree_cl", \$overlap_fasta_string, \$fasttree_newick_out, \$fasttree_stderr_out);
- 
+
 # Gamma(20) LogLk = -5372.474 alpha = 1.562 rescaling lengths by 1.044   # parse ll out of ft stderr output.
   my $fasttree_loglikelihood = 
 ( $fasttree_stderr_out =~ / Gamma [(] \d+ [)] \s+ LogLk \s+ = \s+ ([-] \d+ [.] \d*) \s+ alpha/xm )?
     $1 : undef;
+$fasttree_newick_out =~ s/\s+//g;
+$fasttree_newick_out =~ s/;$//;
   return ($fasttree_newick_out, $fasttree_loglikelihood);
 }
 
@@ -443,7 +414,6 @@ sub store_orthologger_out{
     }
   }			       # loop over lines in orthologger output
 }
-
 
 # Bayesian
 # we have set of gene tree newicks (for topologies visited by markov chain)
@@ -558,7 +528,6 @@ sub help_message{
 		  " -reroot_method RR_METHOD                  Choices: midpoint, minvar, mindl, none. Tree rerooting. Default: mindl.\n" .
 		    " -speciestree_file SPECIESTREE_PATH        Species tree newick file. Default: hard-coded tree with 55 plant species.\n" .
 		      " -kimura                                   Enable kimura correction of distances for NJ. Default: not enabled.\n" .
-			" -n_rep N_REPS                             Do ML treefinding this many times with actual data (but different seeds). Default: 1.\n" .
 			  " -query_species QUERY_SPECIES              Output only orthologs of sequences from this species.\n" .
 			    " -query_regex QUERY_REGEX                  Output only orthologs of sequences matching this (perl) regular expression.\n" .
 			      " -help                                     Output this help message and exit.\n" .
