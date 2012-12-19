@@ -1,18 +1,18 @@
 #!/usr/bin/perl 
 
 use strict;
-use Getopt::Std;
+use Getopt::Long;
 use List::Util qw ( min max sum );
-
+use IPC::Run3;
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 
 use File::Basename 'dirname';
 use Cwd 'abs_path';
 my ($bindir, $libdir);
 BEGIN{
-$bindir = dirname(abs_path(__FILE__)); # this has to go in Begin block so happens at compile time
-$libdir = $bindir . '/../lib';
-$libdir = abs_path($libdir); # collapses the bin/../lib to just lib
+  $bindir = dirname(abs_path(__FILE__)); # this has to go in Begin block so happens at compile time
+  $libdir = $bindir . '/../lib';
+  $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
 
@@ -23,11 +23,8 @@ use CXGN::Phylo::Orthologger;
 use CXGN::Phylo::Mrbayes;
 use CXGN::Phylo::IdTaxonMap;
 
-#my $x = IdTaxonMap->new();
-
 # use Devel::Cycle; # for finding circular refs - cause of memory leaks.
 # find_cycle($test); # to find circular refs in $test (which might be an object, e.g.)
-
 
 # find orthologs, with levels of support - either bootstrap support, or
 # bayesian posterior probability from MrBayes.
@@ -35,7 +32,7 @@ use CXGN::Phylo::IdTaxonMap;
 # read in an alignment file. get an overlap object.
 # repeat $n_bootstrap times:
 # 1) get bootstrap overlap
-# 2) get tree (using fasttree, quicktree (default) or clearcut)/
+# 2) get tree (using fasttree, quicktree (default))/
 # 3) optionally reroot this tree in various ways (midpoint, mindl, minvar ...)
 # 4) get orthologs for this tree
 # keep track of how many times a pair is predicted orthologous
@@ -44,134 +41,148 @@ use CXGN::Phylo::IdTaxonMap;
 
 my $seed_increment = 1000; # if seed is given on c.l. increment by this for each bootstrap.
 my $do_set_error = 0; # 0 speeds up parsing by skipping many calls to set_error.
-my $clearcut_spacer = ' '; # this goes between the '>' and the id in fasta
-# input to clearcut. Otherwise clearcut sometimes puts funny characters in its newick output.
 my $analyze_mr_bayes = 0; # if true, look for MrBayes output to analyze.
 
-print "# $0 ", join(" ", @ARGV), "\n";
+print STDERR "# $0 ", join(" ", @ARGV), "\n";
 
-use vars qw($opt_i $opt_s $opt_S $opt_f $opt_T $opt_N $opt_q $opt_Q $opt_k $opt_n $opt_r $opt_m);
-# -i <input_alignment_filename>     (name of input alignment file, fasta format)
-# -s <species_tree_filename>    (file containing species tree in newick format.)
-# -S <seed>  (rng seed, default: get from clock)
-# -f <fraction> (fraction of non-gap chars required in alignment column to keep it.)
-# -T <tree finding method> (NJ, or ML. Use NJ, or ML to infer tree. Default: NJ)
-# -N <n>    (number of bootstrap data sets to create and process. Default is 1.)
-# -q <species>  (query species. Default is show all.)
-# -Q <sequence_id regex> (query id. Show sequences whose id matches this as a regular expression.)
-# -k    (kimura correction to distances. default is no correction.)
-# -n <n>  (produce this many trees for the actual data set. default is 1. ignored for NJ, ML)
-# -r <reroot type> (mindl midpoint minvar, none, etc. Default is mindl)
-# -m <min bootstrap support> (Output only orthologs having >= this bootstrap supportor posterior probability; if > 1 interpret as %)
+# defaults
+my $input_file = '';
+my $n_bootstrap = 0;
+my $nongap_fraction = 0.8;
+my $kimura = 1;			# kimura distance correction
+my $bootstrap_seed = undef;
+my $treefind_method = 'NJ';
+my $min_bs_support = 0.0;
+my $reroot_method = 'mindl';
+my $species_tree_filename = undef;
+my $n_rep = 1;
+my $query_species = undef;
+my $query_id_regex = undef;
+my $show_help = 0;
+my $ortholog_output_filename = undef;
 
-# typical usage: perl bootstrap_ortholog.pl -i $align_filename -T ML -k -n 1 -N 100 -S 12345 -r mindl -m 0.015 -q castorbean > outfile
+GetOptions('inputfile|alignment=s' => \$input_file, # contains ids to be analyzed. ids in first column
+	   'bootstraps|n_bootstrap=s' => \$n_bootstrap,	# sequences in fasta format, superset of needed sequences
+	   'nongap=f' => \$nongap_fraction,		#
+	   'seed=i' => \$bootstrap_seed,
+	   'treefind_method=s' => \$treefind_method,
+	   'minsupport=f' => \$min_bs_support,
+	   'reroot_method=s' => \$reroot_method,
+	   'species_tree_filename=s' => \$species_tree_filename,
+	   'kimura' => \$kimura,
+	   'n_rep=s' => \$n_rep, # do ML treefinding this many times with actual data (but different seeds)
+	   'query_species=s' => \$query_species,
+	   'query_regex=s' => \$query_id_regex,
+	   'help' => \$show_help,
+	   'output_filename=s' => \$ortholog_output_filename
+	  );
+my $treefind_seed = (defined $bootstrap_seed)? $bootstrap_seed + $seed_increment : undef;
+# $bootstrap_seed = 13579;
 
-# get options
-getopts("i:s:S:f:T:N:q:Q:kn:r:m:");
+die help_message() . "\n" if($show_help);
 
-die "usage: bootstrap_ortholog.pl -i <input_filename> [-s species_tree -S <rng seed> -f <overlap fraction> -T <tree infer type>  -N <#bootstrap data sets> -q <query sequence id> -k -n <# rng trees from each data set> i" unless($opt_i and -f $opt_i);
+print STDERR '@ARGV array after parsing out options: ', join("\n", @ARGV), "\n";
+my $file_arg = shift @ARGV; # the first argument (should be alignment filename if present).
 
-my $input_file = $opt_i;
+if ($input_file) {
+  if ($file_arg) {
+    warn "Alignment specified both as argument ($file_arg), and as -alignment option ($input_file). Using $input_file.\n";
+  }
+} elsif ($file_arg) {
+  $input_file = $file_arg;
+}
+if( $input_file ){
+print STDERR "input_file: $input_file \n";
+}else{
+  warn "Alignment input file not specified as argument nor with -aligment option. Will attempt to read from stdin.\n";
+}
+#my $have_named_input_file = ;
+
+die "Usage example: bootstrap_ortholog.pl -input fam12345_alignment.fasta  -bootstraps 100,20  -treefind ML  -reroot mindl \n" .
+  "This will do 100 NJ bootstraps and 20 ML bootstraps, with mindl rerooting (i.e. to give best consistency with species tree)."
+  if ( $input_file and ! -f $input_file);
+
 my $output_tree_filename = $input_file;
 $output_tree_filename =~ s/fasta/newick/;
 $output_tree_filename .= '.newick' if(! $output_tree_filename =~ /newick/);
-my $output_orthologs_filename = $input_file;
-$output_orthologs_filename =~ s/fasta/orthologs/;
-$output_orthologs_filename .= '.orthologs' if(! $output_orthologs_filename =~ /orthologs/);
 
+if (!defined $ortholog_output_filename) { # if output filename not specified as option
+  if($input_file and -f $input_file){
+  $ortholog_output_filename = $input_file;
+  $ortholog_output_filename =~ s/fasta/orthologs/;
+}else{
+  $ortholog_output_filename = 'ortholog_support.out';
+}
+}
+print STDERR "output_output_filename:  $ortholog_output_filename \n";
 
-
-my $n_bootstrap = $opt_N || 0; # default is just do the actual data, not bootstraps.
 my ($n_NJ_bootstrap, $n_ML_bootstrap) = (0, 0);
-if($n_bootstrap =~ /(\d+),(\d+)/){
+if ($n_bootstrap =~ /(\d+),(\d+)/) {
   $n_NJ_bootstrap = $1;
-$n_ML_bootstrap = $2;
-}elsif($n_NJ_bootstrap =~ /(\d+)/){
+  $n_ML_bootstrap = $2;
+} elsif ($n_NJ_bootstrap =~ /(\d+)/) {
   $n_NJ_bootstrap = $n_bootstrap;
   $n_ML_bootstrap = $n_bootstrap;
-}else{
-  warn "opt_N: $opt_N; invalid. No bootstraps will be performed.\n";
+} else {
+  warn "n_bootstrap: $n_bootstrap; invalid. No bootstraps will be performed.\n";
   $n_bootstrap = 0;
 }
 
-my $nongap_fraction = $opt_f || 0.8;
+#my $query_species = undef; # ($opt_q)? $opt_q: undef;
+#my $query_id_regex = undef; # ($opt_Q)? $opt_Q: undef;
 
-my $query_species = ($opt_q)? $opt_q: undef;
-my $query_id_regex = ($opt_Q)? $opt_Q: undef;
 
-my $bootstrap_seed = ($opt_S)? $opt_S: undef;
-my $tree_find_seed = ($opt_S)? $opt_S + $seed_increment: undef;
 
-my $clearcut_base_cl = 'clearcut --stdin --stdout -a -P ';
-#$clearcut_base_cl = 'MrRogers --stdin --stdout -a -P ';
-my $fasttree_base_cl = 'FastTree -wag -gamma -bionj -quiet '; # -noml -nosupport';
+my $fasttree_base_cl = 'FastTree -wag -gamma -bionj ';  #  -quiet '; # -noml -nosupport';
 
-my $n_rep = ($opt_n)? $opt_n : 1;
-my $tree_find_method = (defined $opt_T)? $opt_T : 'NJ';
-if ($tree_find_method eq 'NJ') {
-  $clearcut_base_cl .= '-N ';
+#my $n_rep = ($n_rep)? $n_rep : 1;
+# my $treefind_method = (defined $opt_T)? $opt_T : 'NJ';
+if ($treefind_method eq 'NJ') {
   $n_rep = 1;
 }
-my $min_bs_support = (defined $opt_m)? $opt_m : 0.0; #default is keep all.
+
 if ($min_bs_support > 1) {	# interpret as percentage if > 1.
   $min_bs_support *= 0.01;
 }
-$clearcut_base_cl .= ($opt_k)? '-k ': '';
-my $quicktree_distance_correction = ($opt_k)? 'kimura' : 'none';
+my $quicktree_distance_correction = ($kimura)? 'kimura' : 'none';
 
 #### Get the alignment:
-my $align_string =  `cat $input_file`;
-if(0){
-# fixes to $align_string:
-$align_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
-#$align_string =~ s/(>[^|]+)[|][^\n]+\n/$1\n/; # delete from first pipe to end of line.
-$align_string =~ s/(>[^|]+)[|][^\n]*\n/$1\n/g; # delete from first pipe to end of line.
+my $align_string = '';
+if ($input_file and -f $input_file) {
+  # $align_string = `cat $input_file`;
+  open my $fh, "<$input_file";
+  $align_string = join("", <$fh>);
+} else {
+  # $align_string = join("\n", <>);
+  $align_string = join("", <STDIN>);
 }
- 
-my $fixprefix = 'X_'; # if id begins with non-alphabetic char, prefix with this.
-# $align_string =~ s/^>(\s*)([^a-zA-Z])/>$1$fixprefix$2/xmsg; # to make clearcut happy.
-# print "align string: $align_string\n";
+
+if (0) {
+  # fixes to $align_string:
+  $align_string =~ s/IMGA[|]/IMGA_/g; #pipes in id cause problem; replace '|' with '_'.
+  #$align_string =~ s/(>[^|]+)[|][^\n]+\n/$1\n/; # delete from first pipe to end of line.
+  $align_string =~ s/(>[^|]+)[|][^\n]*\n/$1\n/g; # delete from first pipe to end of line.
+}
 
 
+print STDERR $align_string, "\n";
 # construct an overlap object.
 my $overlap_obj = CXGN::Phylo::Overlap->new($align_string, $nongap_fraction, $bootstrap_seed);
 
 ### Setup for orthologger.
-# set up cl for orthologger. options $opt_s, $opt_r are relevant.
-my $reroot_method = 'mindl';
-if (defined $opt_r) {
-  if ($opt_r eq 'none') {
-    $reroot_method = '';
-  } elsif ($opt_r eq 'mindl' or
-	   $opt_r eq 'midpoint' or
-	   $opt_r eq 'minvar' or
-	   $opt_r eq 'maxmin') {
-    $reroot_method = "$opt_r";
-  } else {
-    warn "reroot option $opt_r unknown. using default: mindl\n";
-  }
-}
+# my $reroot_method = 'mindl';
 print "Rerooting method: $reroot_method.\n";
-# default species tree: 13-species tree:
+# default species tree: 52-species tree:
 my $species_newick = 
-'( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thelungiella_h[species=Thelungiella_halophila]:0.01, Thelungiella_s[species=Thelungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
-
-
-#"(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
-
-#$species_newick = '( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( turnip[species=Brassica_rapa]:1, ( salt_cress[species=Thellungiella_parvula]:1, ( red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
-
-
-
+  '( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thelungiella_h[species=Thelungiella_halophila]:0.01, Thelungiella_s[species=Thelungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
 
 # get the species tree if specified on c.l.
-my $species_tree_file_name;
-if (defined $opt_s) {
-  if (-f $opt_s) {		# read species tree newick from file
-    my $species_tree_file = CXGN::Phylo::File->new($opt_s);
+if (defined $species_tree_filename) {
+  if (-f $species_tree_filename) { # read species tree newick from file
+    my $species_tree_file = CXGN::Phylo::File->new($species_tree_filename);
     $species_newick = $species_tree_file->get_tree_string();
   } else {
-    die "species tree file: [$opt_s]; no such file.\n"; 
+    die "species tree file: [$species_tree_filename]; no such file.\n"; 
   }
 }
 # my $species_tree = CXGN::Phylo::Parse_newick->new($species_newick, $do_set_error)->parse();
@@ -182,28 +193,23 @@ if (!$species_tree) {
   die"Species tree. Parse_newick->parse() failed to return a tree object. Newick string: "
     . $species_newick."\n";
 }
-print "# species tree: \n# $species_newick \n";
+print STDERR "# species tree: \n# $species_newick \n";
 # find_cycle($species_tree);
+# *********** done getting species tree ********************************************************
 
 my %idpair_orthocount_all = (); # includes results for both actual and bootstrap data.
 my %idpair_actual_orthocountNJ = (); # results for actual data only.
 my %idpair_actual_orthocountML = (); # results for actual data only.
 my %idpair_bs_orthocountNJ = (); # results for ML analyzed bootstrap data.
 my %idpair_bs_orthocountML = (); # results for ML analyzed bootstrap data.
-my %idpair_orthocountMB = (); # Posterior prob. results from MrBayes.
+my %idpair_orthocountMB = ();  # Posterior prob. results from MrBayes.
 
-#my $spacer = $clearcut_spacer; #($tree_find_method eq 'ML')? '' : $clearcut_spacer;
-# Analyze actual data:
+# ********************** Analyze actual data: **************************
 my $overlap_fasta_string = $overlap_obj->overlap_fasta_string('');
-my $clearcut_overlap_fasta_string = $overlap_obj->overlap_fasta_string($clearcut_spacer);
 my $overlap_length = $overlap_obj->get_overlap_length();
-my $clearcut_cl = $clearcut_base_cl;
 my $fasttree_cl = $fasttree_base_cl;
-$clearcut_cl .= ($opt_S)? " -s $tree_find_seed ": '';
-$fasttree_cl .= ($opt_S)? " -seed $tree_find_seed ": ''; 
-#$clearcut_cl .= ($opt_n)? " -n $n_rep ": ''; # actual data, do multiple runs (RNJ or ML)
+$fasttree_cl .= (defined $treefind_seed)? " -seed $treefind_seed ": ''; 
 print "# overlap length: $overlap_length.\n";
-#print "# clearcut command line: $clearcut_cl \n";
 print "# fasttree command line: $fasttree_cl \n";
 
 my $newicks_out = run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
@@ -222,60 +228,60 @@ foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
     $first = 0;
   }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
- print STDERR $orthologger_outstring, "\n";
+#  print STDERR $orthologger_outstring, "\n";
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountNJ]);
   $orthologger_obj->decircularize();
   #find_cycle($orthologger_obj);
 }
 
-if ($tree_find_method eq 'ML') {
-  my $gene_tree_newick = run_fasttree($overlap_fasta_string, $fasttree_cl);
-  my $first = 1;
+if ($treefind_method eq 'ML') {
+
+#  my $first = 1;
+
+#  for(my $i_rep = 0; $i_rep <= $n_rep; $i_rep++){
+
+ my $fasttree_cl = $fasttree_base_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
+  my ($gene_tree_newick, $ft_loglikelihood) = run_fasttree($overlap_fasta_string, $fasttree_cl);
+
+#print stderr "XXXXX!: ", $overlap_fasta_string, "  ", $ft_loglikelihood, "\n";
+#print stderr "YYYYYYYYY: \n", $gene_tree_newick, "\n";
+
+
   my $rerooted_gene_tree_newick;
-  #foreach my $gene_tree_newick ( split("\n", $newicks_out) ) {
-  #  next if($gene_tree_newick =~ /^NJ/);
   $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
   my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
-  if ($first) {
+# print stderr "i_rep, LL: $i_rep  $ft_loglikelihood\n";
+#  if ($first) {
     $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
-    print "# Actual data rerooted $tree_find_method gene tree newick:\n# $rerooted_gene_tree_newick\n";
+
+    print "# Actual data rerooted $treefind_method gene tree newick:\n# $rerooted_gene_tree_newick\n";
     print "output tree filename: $output_tree_filename \n";
-
     open my $fh_tree, ">$output_tree_filename";
-    print $fh_tree "# Actual data rerooted $tree_find_method gene tree newick:\n $rerooted_gene_tree_newick\n";
-close $fh_tree;
+    print $fh_tree "# Actual data rerooted $treefind_method gene tree newick:\n $rerooted_gene_tree_newick\n";
+    close $fh_tree;
 
-    $first = 0;
-  }
+#    $first = 0;
+#  }
   my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
- 
+
   store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_actual_orthocountML]);
   $orthologger_obj->decircularize();
+  $treefind_seed += $seed_increment;
+# }
 }
 print STDERR "Actual data done.\n";
-# print STDERR "XXX: ", $rerooted_gene_tree_newick, "\n";
 
-$tree_find_seed += $seed_increment;
-# Done with actual data.
+#$treefind_seed += $seed_increment;
+# **************** Done with actual data. ******************************
 
-# Now the bootstrap data.
+# **************** Now the bootstrap data. *****************************
 for my $i_bs (1..$n_NJ_bootstrap) {
   my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
-  my $clearcut_overlap_fasta_string = $overlap_fasta_string;
-  $clearcut_overlap_fasta_string =~ s/>(\S)/> $1/g; # put in the space
-  my $clearcut_cl = $clearcut_base_cl . (($opt_S)? " -s $tree_find_seed " : '');
+ $fasttree_cl = $fasttree_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
   my $fasttree_cl = $fasttree_base_cl . ''; # " -noml -nosupport "; 
-    $fasttree_cl = $fasttree_cl . (($opt_S)? " -seed $tree_find_seed " : '');
 
-  #print STDERR "$i_bs  $overlap_fasta_string \n";
-  #print STDERR "$i_bs  $clearcut_cl \n";
-
-  #  my $clearcut_newicks_out = run_clearcut($overlap_fasta_string, $clearcut_cl);
-
-  my $newicks_out = #run_clearcut($clearcut_overlap_fasta_string, $clearcut_cl);
-    run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
-  my @ccnewicks = split("\n", $newicks_out);
-  foreach my $gene_tree_newick (@ccnewicks) {
+my $gene_tree_newick =  run_quicktree($overlap_fasta_string, $quicktree_distance_correction);
+# print "YYYYYYYYYYYYYYYYYYYYYYYYYYY NJ gtn: $gene_tree_newick.\n";
     next if($gene_tree_newick =~ /^NJ/);
     $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
 
@@ -285,19 +291,22 @@ for my $i_bs (1..$n_NJ_bootstrap) {
     $orthologger_obj->decircularize();
     #find_cycle($orthologger_obj);
     store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountNJ]);
-  }
-  print STDERR "\r                          \r";
-  print STDERR "NJ Bootstraps 1..$i_bs done.";
-} # end of NJ bootstraps
+
+# }
+  print  "\r                          \r";
+  print  "NJ Bootstraps 1..$i_bs done.";
+}				# end of NJ bootstraps
 print "\n";
 
 
-  if ($tree_find_method eq 'ML') { # also construct/analyze ML trees for the bootstrap
-for my $i_bs (1..$n_ML_bootstrap) {
- my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
- my $fasttree_cl = $fasttree_base_cl . (($opt_S)? " -seed $tree_find_seed " : '');
-    my $gene_tree_newick = run_fasttree($overlap_fasta_string, $fasttree_cl);
+if ($treefind_method eq 'ML') { # also construct/analyze ML trees for the bootstrap
+  for my $i_bs (1..$n_ML_bootstrap) {
+    my $overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
+    my $fasttree_cl = $fasttree_base_cl . ((defined $treefind_seed)? " -seed $treefind_seed " : '');
+    my ($gene_tree_newick, $bs_ft_ll) = run_fasttree($overlap_fasta_string, $fasttree_base_cl);
     $gene_tree_newick =~ s/;\s*$//; # this is gene tree newick on one line.
+
+ #   print "XXXXX bs gene_tree_newick: $gene_tree_newick\n";
 
     my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
 
@@ -307,46 +316,42 @@ for my $i_bs (1..$n_ML_bootstrap) {
     store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_bs_orthocountML]);
 
 
-  $tree_find_seed += $seed_increment;
-  print STDERR "\r                          \r";
-  print STDERR "ML Bootstraps 1..$i_bs done.";
-}
+    $treefind_seed += $seed_increment;
+    print STDERR "\r                          \r";
+    print STDERR "ML Bootstraps 1..$i_bs done.";
+  }
 }
 print STDERR "\n";		# end of loop over bootstraps
+# *************** Done with bootstraps ***********************************************
 
 my $sum_MB_count = 0;
-if($analyze_mr_bayes){ # do Bayesian analysis (using precomputed MrBayes output, if present), if not precomputed, skip.
-# do Bayesian analysis
-    warn "Attempting to do Bayesian analysis.\n";
-my $alignment_nex_filename = $input_file . ".nex";
-$alignment_nex_filename =~ s/[.]fasta//;
+if ($analyze_mr_bayes) { # do Bayesian analysis (using precomputed MrBayes output, if present), if not precomputed, skip.
+  # do Bayesian analysis
+  warn "Attempting to do Bayesian analysis.\n";
+  my $alignment_nex_filename = $input_file . ".nex";
+  $alignment_nex_filename =~ s/[.]fasta//;
 
-my $MB_tree_count = process_MB_out($alignment_nex_filename);
+  my $MB_tree_count = process_MB_out($alignment_nex_filename);
 
-foreach my $gene_tree_newick (keys %$MB_tree_count){
-my $MB_count = $MB_tree_count->{$gene_tree_newick};
-$sum_MB_count += $MB_count;
+  foreach my $gene_tree_newick (keys %$MB_tree_count) {
+    my $MB_count = $MB_tree_count->{$gene_tree_newick};
+    $sum_MB_count += $MB_count;
 
-my $d = 1; # distance to use
-$gene_tree_newick =~ s/(\S)([,)])/$1:$d$2/g; # put in distances.
-$gene_tree_newick =~ s/([)])([,)])/$1:$d$2/g;
+    my $d = 1;				     # distance to use
+    $gene_tree_newick =~ s/(\S)([,)])/$1:$d$2/g; # put in distances.
+    $gene_tree_newick =~ s/([)])([,)])/$1:$d$2/g;
 
- my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
-  # if ($first) {
-  #   $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
-  #   print "# Actual data rerooted NJ gene tree newick:\n# $rerooted_gene_tree_newick\n";
-  #   $first = 0;
-  # }
-  my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
+    my $orthologger_obj = CXGN::Phylo::Orthologger->new({'gene_tree_newick' => $gene_tree_newick, 'species_tree' => $species_tree, 'reroot_method' => $reroot_method, 'query_species' => $query_species, 'query_id_regex' => $query_id_regex});
+    my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
 
-  store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_orthocountMB], $MB_count);
-  $orthologger_obj->decircularize();
-}
-} # end of Bayesian analysis block
+    store_orthologger_out($orthologger_outstring, [\%idpair_orthocount_all, \%idpair_orthocountMB], $MB_count);
+    $orthologger_obj->decircularize();
+  }
+}				# end of Bayesian analysis block
 
 # output
-print STDERR "output orthologs filename: $output_orthologs_filename \n";
-open my $fh_ortho, ">$output_orthologs_filename";
+print STDERR "output orthologs filename: [$ortholog_output_filename] \n";
+my $ortholog_output_string = '';
 
 $n_bootstrap = max($n_NJ_bootstrap, $n_ML_bootstrap);
 my $iwidth = length(max($n_rep, $n_bootstrap));
@@ -359,39 +364,31 @@ foreach my $idpair (@sorted_idpairs) {
   my $actual_countML = (defined $idpair_actual_orthocountML{$idpair})? 
     $idpair_actual_orthocountML{$idpair} : 0; # print STDERR $orthologger_outstring, "\n";
   my $bs_countNJ = (defined $idpair_bs_orthocountNJ{$idpair})? $idpair_bs_orthocountNJ{$idpair} : 0;
-  my $n_bootstrap_ML = ($tree_find_method eq 'ML')? $n_ML_bootstrap : 0;
-  my $n_rep_ML = ($tree_find_method eq 'ML')? $n_rep : 0;
+  my $n_bootstrap_ML = ($treefind_method eq 'ML')? $n_ML_bootstrap : 0;
+  my $n_rep_ML = ($treefind_method eq 'ML')? $n_rep : 0;
   my $bs_countML = (defined $idpair_bs_orthocountML{$idpair})?  $idpair_bs_orthocountML{$idpair} : 0;
   my $count_MB = (defined $idpair_orthocountMB{$idpair})? $idpair_orthocountMB{$idpair} : 0;
   my $NJ_support = ($n_NJ_bootstrap > 0)? $bs_countNJ/$n_NJ_bootstrap: 1;
   my $ML_support = ($n_ML_bootstrap > 0)? $bs_countML/$n_ML_bootstrap: 1;
-next if( ($actual_countNJ == 0) and
+  next if( ($actual_countNJ == 0) and
 	   ($actual_countML == 0) and
 	   ($NJ_support) and
 	   ($ML_support) and
-	     ($sum_MB_count > 0 and  ($count_MB/$sum_MB_count) < $min_bs_support) );
+	   ($sum_MB_count > 0 and  ($count_MB/$sum_MB_count) < $min_bs_support) );
   my ($id1, $id2) = split(" ", $idpair);
+
   if ($id1 ne $id1_old) {
-    printf($fh_ortho "\n%-38s NJ($iformat)  ML($iformat) bootstrap: NJ($iformat)  ML($iformat)  MB($iformat)\n", 
-	   $id1, $n_rep, $n_rep_ML, $n_NJ_bootstrap, $n_bootstrap_ML, $sum_MB_count);
+    $ortholog_output_string .= sprintf("\n%-38s NJ($iformat)  ML($iformat) bootstrap: NJ($iformat)  ML($iformat)  MB($iformat)\n", 
+				       $id1, $n_rep, $n_rep_ML, $n_NJ_bootstrap, $n_bootstrap_ML, $sum_MB_count);
     $id1_old = $id1;
   }
-  printf($fh_ortho "    %-37s $iformat      $iformat                $iformat      $iformat    $iformat\n", 
-	 $id2, $actual_countNJ, $actual_countML, $bs_countNJ, $bs_countML, $count_MB);
+  $ortholog_output_string .= sprintf("    %-37s $iformat      $iformat                $iformat      $iformat    $iformat\n", 
+				     $id2, $actual_countNJ, $actual_countML, $bs_countNJ, $bs_countML, $count_MB);
 }
-close $fh_ortho;
 
-sub run_clearcut{
-  my $overlap_fasta_string = shift;
-  my $clearcut_cl = shift;
-  open my $fhtmp, ">tmp_alignment_fasta";
-  print $fhtmp $overlap_fasta_string, "\n";
-  close $fhtmp;
-  #  print STDERR "about to run clearcut. $clearcut_cl \n";
-  my $clearcut_newicks_out = `$clearcut_cl < tmp_alignment_fasta`;
-  # print STDERR "clearcut finished.\n";
-  return $clearcut_newicks_out;
-}
+  open my $fh_ortho, ">$ortholog_output_filename";
+  print $fh_ortho $ortholog_output_string;
+  close $fh_ortho;
 
 sub run_quicktree{
   my $overlap_fasta_string = shift;
@@ -415,13 +412,16 @@ sub run_quicktree{
 sub run_fasttree{
   my $overlap_fasta_string = shift;
   my $fasttree_cl = shift;
-  open my $fhtmp, ">tmp_alignment_fasta";
-  print $fhtmp $overlap_fasta_string, "\n";
-  close $fhtmp;
-  #  print STDERR "about to run fasttree. $fasttree_cl \n";
-  my $fasttree_newick_out = `$fasttree_cl  tmp_alignment_fasta`;
-  # print STDERR "fasttree finished.\n";
-  return $fasttree_newick_out;
+ 
+  my $fasttree_newick_out = "ft_newick_default_output";
+  my $fasttree_stderr_out = "ft_stderr_default_output";
+    run3("$fasttree_cl", \$overlap_fasta_string, \$fasttree_newick_out, \$fasttree_stderr_out);
+ 
+# Gamma(20) LogLk = -5372.474 alpha = 1.562 rescaling lengths by 1.044   # parse ll out of ft stderr output.
+  my $fasttree_loglikelihood = 
+( $fasttree_stderr_out =~ / Gamma [(] \d+ [)] \s+ LogLk \s+ = \s+ ([-] \d+ [.] \d*) \s+ alpha/xm )?
+    $1 : undef;
+  return ($fasttree_newick_out, $fasttree_loglikelihood);
 }
 
 
@@ -457,13 +457,13 @@ sub process_MB_out{
 
   my $mrb_obj = Mrbayes->new({'alignment_nex_filename' =>$alignment_nex_filename});
   my $newick_count = {}; # ref to hash of (newick(with ids): hit_count) pairs
-	# check if MrBayes output files are present:
-	my $MB_output_present = 1;
-	my $run_filename = $alignment_nex_filename . "run1.t";
-	if(! (-f $alignment_nex_filename and -f $run_filename)){
-	warn "MrBayes output not available, no Bayesian analysis performed.\n";
-	return $newick_count;
-	}
+  # check if MrBayes output files are present:
+  my $MB_output_present = 1;
+  my $run_filename = $alignment_nex_filename . "run1.t";
+  if (! (-f $alignment_nex_filename and -f $run_filename)) {
+    warn "MrBayes output not available, no Bayesian analysis performed.\n";
+    return $newick_count;
+  }
 
   my $gen_param_hrefs = 
     #load_params($alignment_nex_filename);
@@ -515,9 +515,9 @@ sub process_MB_out{
     $newick_count->{$newick_with_ids} = $treecount;
     $index++;
   }
-  foreach (keys %$newick_count){
-print "count, newick: ", $newick_count->{$_}, " $_ \n";
-}
+  foreach (keys %$newick_count) {
+    print "count, newick: ", $newick_count->{$_}, " $_ \n";
+  }
   #print "$sum_diff, $total_trees $L1_denom\n";
   printf("topology post. distrib. L1 difference between runs: %8.5f \n", 0.5*$sum_diff/$L1_denom);
   print "total tree hits: $total_trees \n";
@@ -545,4 +545,24 @@ print "count, newick: ", $newick_count->{$_}, " $_ \n";
   return $newick_count;
 }
 
-# (jgi_Selmo1_134275,jgi_Selmo1_448960,(((((((evm.model.supercontig_3.375,(Glyma05g33720.1,Glyma08g06000.1)),(Bradi4g29810.1,(((Sb07g009430.1,POPTR_0012s04240.1),POPTR_0015s04860.1),X_29653.m000293))),GSVIVT01008456001),GRMZM2G357034_P01),LOC_Os09g23640.1),Solyc01g097430.2.1),IMGA_Medtr8g107450.1))
+
+sub help_message{
+  my $help_string = "Usage: ortholog_support.pl alignment_xxx.fasta  -boots 100 -tree ML -seed 76543 -reroot midpoint \n" .
+    "(options case-insensitive, -x or --x OK, truncated option names suffice if unambiguous, e.g. -tree ML -boots 100, etc.\n" .
+      " -inputfile, -alignment ALIGNMENT_PATH     Input alignment in fasta format (no default).\n" .
+	" -bootstraps, -n_bootstrap N_BOOTSTRAP     N bootstrap replicates; default: 1. (or e.g. 100,20 for 100 NJ, 20 ML replicates.)\n" .
+	  " -nongap FRACTION                          Alignment columns not used if have > this fraction of non-gap characters. Default: 0.8\n" .
+	    " -seed BOOTSTRAP_SEED                      RNG seed used in bootstrapping. Default: ? \n" .
+	      " -treefind_method TREE_METHOD              Choices: NJ (neighbor joining) only, ML (max likelihood) in addition of NJ. Default: NJ.\n" .
+		" -minsupport MIN_BS_SUPPORT                Don't output orthologs with < this amount of bootstrap support. Default: 0.\n" .
+		  " -reroot_method RR_METHOD                  Choices: midpoint, minvar, mindl, none. Tree rerooting. Default: mindl.\n" .
+		    " -speciestree_file SPECIESTREE_PATH        Species tree newick file. Default: hard-coded tree with 55 plant species.\n" .
+		      " -kimura                                   Enable kimura correction of distances for NJ. Default: not enabled.\n" .
+			" -n_rep N_REPS                             Do ML treefinding this many times with actual data (but different seeds). Default: 1.\n" .
+			  " -query_species QUERY_SPECIES              Output only orthologs of sequences from this species.\n" .
+			    " -query_regex QUERY_REGEX                  Output only orthologs of sequences matching this (perl) regular expression.\n" .
+			      " -help                                     Output this help message and exit.\n" .
+                              " -output_filename OUTPUT_FILENAME          Output filename. Default: based on input filename, or 'ortholog_support.out' if reading from stdin.\n";
+  return $help_string;
+}
+;
