@@ -45,7 +45,7 @@ my $seed_increment   = 1000;    # if seed is given on c.l. increment by this for
 my $do_set_error     = 0;       # 0 speeds up parsing by skipping many calls to set_error.
 my $analyze_mr_bayes = 0;       # if true, look for MrBayes output to analyze.
 
-print STDERR "# $0 ", join( " ", @ARGV ), "\n";
+print "$0 ", join( " ", @ARGV ), "\n";
 
 # defaults
 my $input_file               = '';
@@ -61,7 +61,8 @@ my $query_species            = undef;
 my $query_id_regex           = undef;
 my $show_help                = 0;
 my $ortholog_output_filename = undef;
-
+my $additional_fasttree_options = '';
+my $show_lls = 0;
 GetOptions(
     'inputfile|alignment=s' => \$input_file,    # contains ids to be analyzed. ids in first column
     'bootstraps|n_bootstrap=s' =>
@@ -76,12 +77,14 @@ GetOptions(
     'query_species=s'         => \$query_species,
     'query_regex=s'           => \$query_id_regex,
     'help'                    => \$show_help,
-    'output_filename=s'       => \$ortholog_output_filename
+    'output_filename=s'       => \$ortholog_output_filename,
+	   'ft_options=s' => \$additional_fasttree_options,
+'show_lls' => \$show_lls, # show log likelihood from each bootstrap on its own line.
 );
 
 die help_message() . "\n" if ($show_help);
 
-print STDERR '@ARGV array after parsing out options: ', join( "\n", @ARGV ), "\n";
+# print STDERR '@ARGV array after parsing out options: ', join( "\n", @ARGV ), "\n";
 my $file_arg = shift @ARGV;    # the first argument (should be alignment filename if present).
 
 if ($input_file) {
@@ -94,11 +97,11 @@ elsif ($file_arg) {
     $input_file = $file_arg;
 }
 if ($input_file) {
-    print STDERR "input_file: $input_file \n";
+    print "Input file: $input_file \n";
 }
 else {
-    warn "Alignment input file not specified as argument nor with -aligment option. "
-      . "Will attempt to read from stdin.\n";
+    warn "Alignment input file not specified as argument nor with -aligment option. ";
+    print "Will read input alignment from stdin.\n";
 }
 my $base_output_filename;
 my $output_tree_filename = $input_file;
@@ -140,11 +143,14 @@ else {                                                 # will attempt to read al
         $run_params_filename      = 'run_params';
     }
 }
-
-print STDERR "ortholog_output_filename:  $ortholog_output_filename \n";
+my ($NJ_output_tree_filename, $ML_output_tree_filename) = ("NJ_$output_tree_filename", "ML_$output_tree_filename");
+print "Output files: \n";
+print "  Orthologs:  $ortholog_output_filename \n";
+print "  Run parameters:  $run_params_filename \n";
+print "  NJ tree newick:  $NJ_output_tree_filename \n";
+print "  ML tree newick:  $ML_output_tree_filename \n" if($treefind_method eq 'ML');
 
 my ( $n_NJ_bootstrap, $n_ML_bootstrap ) = ( 0, 0 );
-print "$n_bootstrap, [$n_NJ_bootstrap], [$n_ML_bootstrap] \n";
 if ( $n_bootstrap =~ /(\d+),(\d+)/ ) {
     $n_NJ_bootstrap = $1;
     $n_ML_bootstrap = $2;
@@ -157,7 +163,7 @@ else {
     warn "n_bootstraps option: '$n_bootstrap' invalid. No bootstraps will be performed.\n";
     $n_bootstrap = 0;
 }
-
+print "Bootstraps: NJ: $n_NJ_bootstrap, ML: $n_ML_bootstrap \n";
 #my $query_species = undef; # ($opt_q)? $opt_q: undef;
 #my $query_id_regex = undef; # ($opt_Q)? $opt_Q: undef;
 
@@ -223,23 +229,27 @@ if ( !$species_tree ) {
     die "Species tree. Parse_newick->parse() failed to return a tree object. Newick string: "
       . $species_newick . "\n";
 }
-print STDERR "# species tree: \n# $species_newick \n";
+
+#print STDERR "# species tree: \n# $species_newick \n";
 
 # find_cycle($species_tree);
 # *********** done getting species tree ********************************************************
 
 # ************* write run_params file **********************************************
-my ($W1, $W2) = ("30","30");
-my $run_params_string = sprintf("%-$W1\s %-$W2\s \n", 'alignment source:', ($input_file)? $input_file: 'STDIN');
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'nongap fraction:', $nongap_fraction);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'bootstrap sample size:', $n_bootstrap);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'bootstrap seed:', $bootstrap_seed);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'treefind method:', $treefind_method);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'min bootstrap support:', $min_bs_support);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'rerooting method:', $reroot_method);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'species tree file:', $species_tree_filename);
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'NJ uses kimura correction?', $kimura? 'yes': 'no');
-$run_params_string .= sprintf("%-$W1\s %-$W2\s \n", 'ortholog outputfile', $ortholog_output_filename);
+my ( $W1, $W2 ) = ( "30", "30" );
+my $run_params_string =
+  sprintf( "%-$W1\s %-$W2\s \n", 'alignment source:', ($input_file) ? $input_file : 'STDIN' );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'nongap fraction:',       $nongap_fraction );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'bootstrap sample size:', $n_bootstrap );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'bootstrap seed:',        $bootstrap_seed );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'treefind method:',       $treefind_method );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'min bootstrap support:', $min_bs_support );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'rerooting method:',      $reroot_method );
+$run_params_string .= sprintf( "%-$W1\s %-$W2\s \n", 'species tree file:', $species_tree_filename );
+$run_params_string .=
+  sprintf( "%-$W1\s %-$W2\s \n", 'NJ uses kimura correction?', $kimura ? 'yes' : 'no' );
+$run_params_string .=
+  sprintf( "%-$W1\s %-$W2\s \n", 'ortholog outputfile', $ortholog_output_filename );
 $run_params_string .= "\nSpecies tree: \n" . $species_newick . "\n";
 open my $fh_run_params, ">$run_params_filename";
 print $fh_run_params $run_params_string;
@@ -253,13 +263,17 @@ my %idpair_bs_orthocountNJ     = ();    # results for ML analyzed bootstrap data
 my %idpair_bs_orthocountML     = ();    # results for ML analyzed bootstrap data.
 my %idpair_orthocountMB        = ();    # Posterior prob. results from MrBayes.
 
-
 # ********************** Analyze actual data: **************************
 my $overlap_fasta_string = $overlap_obj->overlap_fasta_string('');
 my $overlap_length       = $overlap_obj->get_overlap_length();
 
-print "# overlap length: $overlap_length.\n";
-print "# fasttree command line: $fasttree_cl \n";
+print "Overlap length: $overlap_length.\n";
+
+open my $fh_overlap, ">overlap.fasta";
+print $fh_overlap "$overlap_fasta_string \n";
+close $fh_overlap;
+
+# print "# fasttree command line: $fasttree_cl \n";
 
 my $gene_tree_newick = run_quicktree( $overlap_fasta_string, $quicktree_distance_correction );
 
@@ -274,11 +288,20 @@ my $orthologger_obj = CXGN::Phylo::Orthologger->new(
         'query_id_regex'   => $query_id_regex
     }
 );
-print "# Orthologger object constructed.\n";
+print "Actual data: NJ analysis. Orthologger object constructed.\n";
 
 my $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
-print " Actual data rerooted NJ gene tree newick:\n# $rerooted_gene_tree_newick\n";
-
+# my $stripped_rrgtn = $rerooted_gene_tree_newick;
+# $stripped_rrgtn =~ s/\[sp.*?\]//g;
+# print $stripped_rrgtn, "\n";
+# my ($NJ_mllen_gene_tree_newick, $NJ_mllen_ll) = run_fasttree( $overlap_fasta_string, $fasttree_cl, $stripped_rrgtn, " -nome  -mllen ");
+# print "NJ mllen ll: $NJ_mllen_ll \n";
+print "Actual data; done finding rerooted NJ gene tree.\n"
+      . "Gene tree written to $NJ_output_tree_filename.\n";
+ open my $fh_tree, ">$NJ_output_tree_filename";
+    print $fh_tree "# Actual data rerooted NJ gene tree newick:\n "
+      . "$rerooted_gene_tree_newick\n";
+    close $fh_tree;
 my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
 store_orthologger_out( $orthologger_outstring,
     [ \%idpair_orthocount_all, \%idpair_actual_orthocountNJ ] );
@@ -288,8 +311,8 @@ $orthologger_obj->decircularize();
 
 if ( $treefind_method eq 'ML' ) {
     my ( $gene_tree_newick, $ft_loglikelihood ) =
-      run_fasttree( $overlap_fasta_string, $fasttree_cl );
-
+      run_fasttree( $overlap_fasta_string, $fasttree_cl , undef, $additional_fasttree_options);
+print "ML loglikelihood: $ft_loglikelihood \n";
     my $rerooted_gene_tree_newick;
     my $orthologger_obj = CXGN::Phylo::Orthologger->new(
         {
@@ -300,15 +323,14 @@ if ( $treefind_method eq 'ML' ) {
             'query_id_regex'   => $query_id_regex
         }
     );
-
+    print "Actual data: ML analysis. Orthologger object constructed.\n";
     $rerooted_gene_tree_newick = $orthologger_obj->get_gene_tree()->generate_newick();
 
-    print
-      "# Actual data rerooted $treefind_method gene tree newick:\n# $rerooted_gene_tree_newick\n";
-    print "output tree filename: $output_tree_filename \n";
-    open my $fh_tree, ">$output_tree_filename";
-    print $fh_tree
-      "# Actual data rerooted $treefind_method gene tree newick:\n $rerooted_gene_tree_newick\n";
+    print "Actual data; done finding rerooted ML gene tree.\n"
+      . "Gene tree written to $ML_output_tree_filename.\n";
+    open my $fh_tree, ">$ML_output_tree_filename";
+    print $fh_tree "# Actual data rerooted ML gene tree newick:\n "
+      . "$rerooted_gene_tree_newick\n";
     close $fh_tree;
 
     my $orthologger_outstring = $orthologger_obj->ortholog_result_string();
@@ -317,7 +339,7 @@ if ( $treefind_method eq 'ML' ) {
         [ \%idpair_orthocount_all, \%idpair_actual_orthocountML ] );
     $orthologger_obj->decircularize();
 }
-print STDERR "Actual data done.\n";
+print "Done with tree and ortholog finding for actual data.\n";
 
 # **************** Done with actual data. ******************************
 
@@ -354,7 +376,10 @@ if ( $treefind_method eq 'ML' ) {    # also construct/analyze ML trees for the b
     for my $i_bs ( 1 .. $n_ML_bootstrap ) {
         my $bs_overlap_fasta_string = $overlap_obj->bootstrap_overlap_fasta_string('');
         my ( $gene_tree_newick, $bs_ft_ll ) =
-          run_fasttree( $bs_overlap_fasta_string, $fasttree_cl );
+          run_fasttree( $bs_overlap_fasta_string, $fasttree_cl, undef, $additional_fasttree_options );
+
+
+#  print "show_lls: [$show_lls]\n";
         my $orthologger_obj = CXGN::Phylo::Orthologger->new(
             {
                 'gene_tree_newick' => $gene_tree_newick,
@@ -371,12 +396,15 @@ if ( $treefind_method eq 'ML' ) {    # also construct/analyze ML trees for the b
         #find_cycle($orthologger_obj);
         store_orthologger_out( $orthologger_outstring,
             [ \%idpair_orthocount_all, \%idpair_bs_orthocountML ] );
-
-        print STDERR "\r                          \r";
-        print STDERR "ML Bootstraps 1..$i_bs done.";
+	if($show_lls){
+	  print "\n";
+	}else{
+        print "\r                                                    \r";
+      }
+        printf("ML Bootstraps 1..%8i done. LL: %10.4f", $i_bs, $bs_ft_ll); # , $bs_ft_ll_x);
     }
 }
-print STDERR "\n";    # end of loop over bootstraps
+print "\n";    # end of loop over bootstraps
 
 # *************** Done with bootstraps ***********************************************
 
@@ -416,7 +444,7 @@ if ($analyze_mr_bayes)
 }    # ********************** end of Bayesian analysis block *********************
 
 # ********************* output **********************************
-print STDERR "output orthologs filename: [$ortholog_output_filename] \n";
+#print "Orthologs output filename: [$ortholog_output_filename] \n";
 my $ortholog_output_string = '';
 
 $n_bootstrap = max( $n_NJ_bootstrap, $n_ML_bootstrap );
@@ -501,9 +529,25 @@ sub run_quicktree {
 sub run_fasttree {
     my $overlap_fasta_string = shift;
     my $fasttree_cl          = shift;
+    my $intree = shift;
+    my $additional_options = shift;
+    if($intree){
+      open my $fh, ">tmp_intree";
+      print $fh $intree, "\n";
+      close $fh;
+      $fasttree_cl .= "-intree tmp_intree ";
+    }
+    if($additional_options){
+      $fasttree_cl .= " $additional_options ";  # e.g. -nome -mllen to just optimize branch lengths for given topo.
+    }
+
+#print stderr "fasttree cl: $fasttree_cl \n";
     my $fasttree_newick_out  = "ft_newick_default_output";
     my $fasttree_stderr_out  = "ft_stderr_default_output";
     run3( "$fasttree_cl", \$overlap_fasta_string, \$fasttree_newick_out, \$fasttree_stderr_out );
+
+ #   print stderr "$fasttree_stderr_out \n";
+
 
 # Gamma(20) LogLk = -5372.474 alpha = 1.562 rescaling lengths by 1.044   # parse ll out of ft stderr output.
     my $fasttree_loglikelihood = ( $fasttree_stderr_out =~
@@ -658,6 +702,7 @@ sub help_message {
       . " -reroot_method RR_METHOD                  Choices: midpoint, minvar, mindl, none. Tree rerooting. Default: mindl.\n"
       . " -speciestree_file SPECIESTREE_PATH        Species tree newick file. Default: hard-coded tree with 55 plant species.\n"
       . " -kimura                                   Enable kimura correction of distances for NJ. Default: not enabled.\n"
+
 #      . " -query_species QUERY_SPECIES              Output only orthologs of sequences from this species.\n"
 #      . " -query_regex QUERY_REGEX                  Output only orthologs of sequences matching this (perl) regular expression.\n"
       . " -help                                     Output this help message and exit.\n"
