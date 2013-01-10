@@ -1,6 +1,7 @@
 
 =head1 NAME
 
+
 CXGN::Phylo::File - a class to read different tree files.
 
 =head1 DESCRIPTION
