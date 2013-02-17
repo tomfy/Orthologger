@@ -7,6 +7,18 @@ my $do_the_plots  = shift || 1;
 my $enhanced      = 1;
 my $persist       = 1;
 
+open my $fh0, "<first_chunk.stdout";
+my $n_runs;
+my $n_temps;
+while(<$fh0>){
+  $n_temps = $1 if(/Setting number of chains to (\d+)/);
+  if(/Setting number of runs to (\d+)/){
+    $n_runs = $1;
+    last;
+  }
+}
+print "n_runs, n_temps: $n_runs, $n_temps \n";
+
 if ( defined $do_the_plots ) {
 
     open my $fh, "<$base_filename" . ".converge";
@@ -87,6 +99,8 @@ if ( defined $do_the_plots ) {
     $plot1->gnuplot_cmd(" set size $scale,$scale ");
 
     # splits, topology L1
+ #$plot1->gnuplot_set_xrange(1000,100000);
+   $plot1->gnuplot_cmd(" set xrange [1000:*] ");
     $plot1->gnuplot_cmd(" set yrange [0.002:1] ");
     $plot1->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
     $plot1->gnuplot_cmd(" set origin 0.0,$scale ");
@@ -128,7 +142,7 @@ if ( defined $do_the_plots ) {
         $pinvar_L1s );
 
     $plot1->gnuplot_cmd(' unset multiplot ');
-
+# exit;
     # histograms
 
     my $plot2 = Graphics::GnuplotIF->new( persist => $persist );
@@ -189,15 +203,16 @@ if ( defined $do_the_plots ) {
     $plot3->gnuplot_cmd(" unset multiplot ");
 }
 
+exit if($n_temps <= 1);
 ######################## temperature swapping acceptance rates: ##########################
 my $mc3swap_filename = $base_filename . ".mc3swap";
-my $n_run            = 3;
-my $n_temp           = 3;
+#my $n_run            = 3;
+#my $n_temp           = 3;
 
-my $n_cols_per_run = int( $n_temp * ( $n_temp - 1 ) / 2 );
+my $n_cols_per_run = int( $n_temps * ( $n_temps - 1 ) / 2 );
 my $col            = 2;
-my $w_wind         = $n_run * 300;
-my $w_plot         = 1 / $n_run;
+my $w_wind         = $n_runs * 300;
+my $w_plot         = 1 / $n_runs;
 
 my $plot4 = Graphics::GnuplotIF->new( persist => $persist, style => 'points' );
 $plot4->gnuplot_cmd(" set terminal x11 enhanced size $w_wind,360 ")
@@ -207,12 +222,12 @@ $plot4->gnuplot_cmd(" set multiplot ");
 $plot4->gnuplot_cmd(" set size $w_plot,1 ");
 my $origin_x = 0;
 
-for my $i_run ( 1 .. $n_run ) {
+for my $i_run ( 1 .. $n_runs ) {
     $plot4->gnuplot_cmd(" set origin $origin_x,0.0 ");
     my $plot_cmd       = "plot [][0.01:1] ";
     my $run_col_offset = 1 + $n_cols_per_run * $i_run;
-    for my $i_gap ( 1 .. $n_temp - 1 ) {
-        for my $i_lo_temp ( 1 .. $n_temp - $i_gap ) {
+    for my $i_gap ( 1 .. $n_temps - 1 ) {
+        for my $i_lo_temp ( 1 .. $n_temps - $i_gap ) {
             my $ptitle =
               "T" . ( $i_lo_temp - 1 ) . ":T" . ( $i_lo_temp - 1 + $i_gap );
             $plot_cmd .=
