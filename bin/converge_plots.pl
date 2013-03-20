@@ -5,7 +5,7 @@ use Graphics::GnuplotIF qw(GnuplotIF);
 my $base_filename = shift || 'famX';
 my $do_the_plots  = shift || 1;
 my $enhanced      = 1;
-my $persist       = 1;
+my $persist       = 0;
 
 open my $fh0, "<first_chunk.stdout";
 my $n_runs;
@@ -20,8 +20,9 @@ while(<$fh0>){
 print "n_runs, n_temps: $n_runs, $n_temps \n";
 
 if ( defined $do_the_plots ) {
-
-    open my $fh, "<$base_filename" . ".converge";
+my $converge_filename = "$base_filename" . ".converge";
+print "converge filename: $converge_filename \n";
+    open (my $fh, "<", $converge_filename) || die "couldn't open $converge_filename for reading.\n";
 
     my @lines = <$fh>;
     shift
@@ -89,10 +90,10 @@ if ( defined $do_the_plots ) {
 
     my $scale = 0.5;
     my $plot1 =
-      Graphics::GnuplotIF->new( persist => $persist, style => 'lines lw 2' )
-      ;    # , terminal => ' X11 enhanced ' );
-    $plot1->gnuplot_cmd(' set terminal x11 enhanced size 800,600')
-      if ($enhanced);
+      Graphics::GnuplotIF->new( persist => $persist, style => 'lines lw 2');
+ #   $plot1->gnuplot_cmd(' set terminal pdf ');
+ #   $plot1->gnuplot_cmd(' set output "converge.pdf" ');
+    $plot1->gnuplot_cmd(' set terminal x11 enhanced size 800,600') if ($enhanced);
     $plot1->gnuplot_cmd(' set log ');
 
     $plot1->gnuplot_cmd(' set multiplot ');
@@ -142,19 +143,21 @@ if ( defined $do_the_plots ) {
         $pinvar_L1s );
 
     $plot1->gnuplot_cmd(' unset multiplot ');
-# exit;
     # histograms
 
     my $plot2 = Graphics::GnuplotIF->new( persist => $persist );
-    $plot2->gnuplot_cmd(' set terminal x11 enhanced size 640,480 ')
-      if ($enhanced);
+   $plot2->gnuplot_cmd(' set terminal x11 enhanced size 640,480 ') if ($enhanced);
+#    $plot2->gnuplot_cmd(' set multiplot ');
     $plot2->gnuplot_cmd(' set style data histeps ');
     my $histogram_filename = $base_filename . ".topology_histograms";
     $plot2->gnuplot_cmd( ' plot [-0.5:15.5] "'
           . $histogram_filename
-          . '" using 2 t"run 1", "" using 3 t"run 2", "" using 4 t"run 3", "" using 5 t"total" '
+          . '" using 2 t"run 1", "" using 3 t"run 2", "" using 4 t"run 3", ' 
+			 . '"" using ($5/' . "$n_runs" . ') t"average" '
     );
+# $plot2->gnuplot_cmd(' unset multiplot ');
 
+# exit;
     my $plot3 = Graphics::GnuplotIF->new( persist => $persist );
     $plot3->gnuplot_cmd(' set terminal x11 enhanced size 800,600')
       if ($enhanced);
@@ -201,7 +204,7 @@ if ( defined $do_the_plots ) {
           . '" using 1:2 t"run 1", "" using 1:3 t"run 2", "" using 1:4 t"run 3", "" using 1:5 t"total" '
     );
     $plot3->gnuplot_cmd(" unset multiplot ");
-}
+#  }
 
 exit if($n_temps <= 1);
 ######################## temperature swapping acceptance rates: ##########################
@@ -244,3 +247,5 @@ for my $i_run ( 1 .. $n_runs ) {
     $origin_x += $w_plot;
 }    # loop over runs
 $plot4->gnuplot_cmd(" unset multiplot ");
+$plot4->gnuplot_pause(0);
+  }
