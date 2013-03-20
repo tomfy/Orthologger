@@ -43,7 +43,6 @@ use CXGN::Phylo::IdTaxonMap;
 
 my $seed_increment   = 1000;    # if seed is given on c.l. increment by this for each bootstrap.
 my $do_set_error     = 0;       # 0 speeds up parsing by skipping many calls to set_error.
-my $analyze_mr_bayes = 0;       # if true, look for MrBayes output to analyze.
 
 print "$0 ", join( " ", @ARGV ), "\n";
 
@@ -63,6 +62,8 @@ my $show_help                = 0;
 my $ortholog_output_filename = undef;
 my $additional_fasttree_options = '';
 my $show_lls = 0;
+my $analyze_mr_bayes = 0;       # if true, look for MrBayes output to analyze.
+
 GetOptions(
     'inputfile|alignment=s' => \$input_file,    # contains ids to be analyzed. ids in first column
     'bootstraps|n_bootstrap=s' =>
@@ -80,6 +81,7 @@ GetOptions(
     'output_filename=s'       => \$ortholog_output_filename,
 	   'ft_options=s' => \$additional_fasttree_options,
 'show_lls' => \$show_lls, # show log likelihood from each bootstrap on its own line.
+'mrbayes' => \$analyze_mr_bayes,
 );
 
 die help_message() . "\n" if ($show_help);
@@ -586,13 +588,14 @@ sub process_MB_out {
     my $alignment_nex_filename = shift;    # e.g. fam9877.nex
     my $burnin_frac = shift || 0.1;
 
-    my $mrb_obj = Mrbayes->new( { 'alignment_nex_filename' => $alignment_nex_filename } );
+    my $mrb_obj = CXGN::Phylo::Mrbayes->new( { 'alignment_nex_filename' => $alignment_nex_filename } );
     my $newick_count      = {};            # ref to hash of (newick(with ids): hit_count) pairs
                                            # check if MrBayes output files are present:
     my $MB_output_present = 1;
-    my $run_filename = $alignment_nex_filename . "run1.t";
+    my $run_filename = $alignment_nex_filename . ".run1.t";
     if ( !( -f $alignment_nex_filename and -f $run_filename ) ) {
-        warn "MrBayes output not available, no Bayesian analysis performed.\n";
+      
+        warn "MrBayes output files $alignment_nex_filename and $run_filename  not both available, no Bayesian analysis performed.\n";
         return $newick_count;
     }
 
