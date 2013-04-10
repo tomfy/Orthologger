@@ -27,7 +27,7 @@ use CXGN::Phylo::Mrbayes; # perl module encapsulating mrbayes bayesian phylogeny
 
 # defaults:
 my $input_file = undef;
-my $seed = undef;
+my $seed = srand();
 my $nongap_fraction = 0.8;
 my $chunk_size = 200;
 my $n_temperatures = 3;
@@ -41,6 +41,9 @@ my $append = 'yes';
 my $max_gens = 1000;
 my $min_chunk_size = 100; # mb doesn't allow anything less
 my $reproducible = 0; # if true will give identical results each time run, but
+my $use_mpi = undef;
+my $max_processors = undef; 
+my $mb_name = 'mb';
 # the results will be incorrect (if multiple chunks). So just use true for testing.
 GetOptions('input_file=s' => \$input_file,  # fasta alignment file
 	   'seed=i' => \$seed,
@@ -55,7 +58,10 @@ GetOptions('input_file=s' => \$input_file,  # fasta alignment file
 	   'ESS_min=i' => \$modelparam_min_ok_ESS,
 	  'append=s' => \$append, 
 	  'max_gens=i' => \$max_gens,
-	  'reproducible=i' => \$reproducible );
+	  'reproducible=i' => \$reproducible,
+	   'use_mpi=i' => \$use_mpi,
+	  'max_processors=i' => \$max_processors,
+	  'mb_name=s' => \$mb_name);
 
 if($chunk_size < $min_chunk_size){
 warn "Resetting chunk size form $chunk_size to $min_chunk_size (min allowed by MrBayes)\n";
@@ -72,6 +78,7 @@ print "burnin fraction: $burnin_fraction\n";
 print "converged chunks required: $converged_chunks_required\n";
 print "modelparam min OK ESS: $modelparam_min_ok_ESS\n";
 print "append: $append \n";
+print "max processors: $max_processors \n";
 # exit;
 
 die "Must specify name of input alignment file. Input file: [$input_file].\n" . "Usage: MB.pl --input_file <input_filename> [--seed <rng seed> --nongap_fraction <overlap fraction>]\n" unless($input_file and -f $input_file);
@@ -96,7 +103,7 @@ my $overlap_obj = CXGN::Phylo::Overlap->new($align_string, $nongap_fraction); # 
 my $swapseed = ($seed)? $seed + 1000 : undef;
 #my $n_temperatures = 4;
 my $n_swaps = ($n_temperatures > 2)? int ( ($n_temperatures-1) * $n_temperatures/2 / 2.1 ) : 1; # 1,2,3 T's -> 1, 4 T's ->2, 5 T's -> 4
-print "n_swaps: $n_swaps \n";
+print "n_swaps (number of swap attempts per generation): $n_swaps \n";
 #my $n_runs = 2;
 #my $temperature_gap = 0.3;   # temperature spacing of chains
 #my $chunk_size = 200;	   # steps between decisions whether to go on.
@@ -113,7 +120,7 @@ my $alignment_nex_filename = $mrb_outfile_basename . '.nex';
 open my $fh1, ">$alignment_nex_filename";
 my $overlap_nexus_string = $overlap_obj->overlap_nexus_string();
 
-print $overlap_nexus_string, "\n";
+#print $overlap_nexus_string, "\n";
 print $fh1 $overlap_nexus_string, "\n";
 close $fh1;
 
@@ -137,6 +144,10 @@ my $mrb_obj = CXGN::Phylo::Mrbayes->new(
 			    'append' => $append,
 			    'max_gens' => $max_gens,
 			    'reproducible' => $reproducible,
+			    'use_mpi' => $use_mpi,
+			    'max_processors' => $max_processors,
+			    'mb_name' => $mb_name
+			    
 #			    'temperature_factor' => 1.414, # I wanted to have T's exponentially spaced, but mb does not allow
 			   }
 			  );
