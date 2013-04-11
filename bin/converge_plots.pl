@@ -54,21 +54,23 @@ if ( defined $do_the_plots ) {
 
   my $splits_avg_stddevs = $col_data[1];
   my $splits_L1s = $col_data[2];
-  my $splits_max_diff = $col_data[3];
+  my $splits_maxL1s = $col_data[3];
+  my $splits_max_diff = $col_data[4];
 
-  my @TL_invESSs     = map( 1 / $_, @{ $col_data[4] } );
-  my @alpha_invESSs  = map( 1 / $_, @{ $col_data[5] } );
-  my @pinvar_invESSs = map( 1 / $_, @{ $col_data[6] } );
+my $k = 1;
+  my @TL_invESSs     = map( 1 / $_, @{ $col_data[4+$k] } );
+  my @alpha_invESSs  = map( 1 / $_, @{ $col_data[5+$k] } );
+  my @pinvar_invESSs = map( 1 / $_, @{ $col_data[6+$k] } );
 
-  my $LnL_KSDs    = $col_data[7];
-  my $TL_KSDs     = $col_data[8];
-  my $alpha_KSDs  = $col_data[9];
-  my $pinvar_KSDs = $col_data[10];
+  my $LnL_KSDs    = $col_data[7+$k];
+  my $TL_KSDs     = $col_data[8+$k];
+  my $alpha_KSDs  = $col_data[9+$k];
+  my $pinvar_KSDs = $col_data[10+$k];
 
-  my $LnL_L1s    = $col_data[11];
-  my $TL_L1s     = $col_data[12];
-  my $alpha_L1s  = $col_data[13];
-  my $pinvar_L1s = $col_data[14];
+  my $LnL_L1s    = $col_data[11+$k];
+  my $TL_L1s     = $col_data[12+$k];
+  my $alpha_L1s  = $col_data[13+$k];
+  my $pinvar_L1s = $col_data[14+$k];
 
   my $xtics_labels_string =
     " '' 10^2 0, '10^3' 1000 0, '10^4' 10000 0, "
@@ -113,9 +115,9 @@ if ( defined $do_the_plots ) {
   $plot1->gnuplot_cmd(" set yrange [0.002:1] ");
   $plot1->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
   $plot1->gnuplot_cmd(" set origin 0.0,$scale ");
-  $plot1->gnuplot_set_plot_titles( 'splits avg stddev', 'splits L1 distances', 'splits max diff' );
+  $plot1->gnuplot_set_plot_titles( 'splits avg stddev', 'splits L1 distances', 'splits maxL1 distances', 'splits max diff' );
   $plot1->gnuplot_plot_xy( $gens, #$topo_L1s, $topo_max_diff, 
-			   $splits_avg_stddevs, $splits_L1s, $splits_max_diff);
+			   $splits_avg_stddevs, $splits_L1s, $splits_maxL1s, $splits_max_diff);
 
 
   # inverse effective sample size
