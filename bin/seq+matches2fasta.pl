@@ -4,8 +4,6 @@ use strict;
 # read in blast output
 # for each id pair (i.e. id1 id2 )
 # get the corresponding sequences (fasta)
-# align with muscle
-# tree with FastTree
 
 my $blast_out_file = shift;	# id1 id2 .... eval (abc format)
 my $input_fasta_filename = shift;
