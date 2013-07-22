@@ -63,9 +63,11 @@ while (<$fh_in>) {
       print $fh "$fasta \n";
       close $fh;
       my $fasta_alignment  = 
-	`muscle -in $tmp_filename -maxiters $maxiters 2> $stderr_filename`;
-#    `mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename`; # mafft fastest
+#	`muscle -in $tmp_filename -maxiters $maxiters 2> $stderr_filename`;
+#    `mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename`; # mafft 
 #  `mafft --auto  --inputorder $tmp_filename 2> $stderr_filename`; # mafft slower, better (presumably)
+`mafft --maxiterate 1000 --localpair  --inputorder $tmp_filename 2> $stderr_filename`; # L-INS-i (best mafft)
+
       print "$fasta_alignment \n";
     }else{
       print "\n";
