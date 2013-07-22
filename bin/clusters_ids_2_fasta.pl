@@ -5,7 +5,7 @@ no lib '/home/tomfy/bin';
 no lib '/home/tomfy/Orthologger/bin';
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 use FindBin qw($Bin);
-use lib "$Bin/../lib"; 
+use lib "$Bin/../lib";
 use Getopt::Long;
 
 #use File::Slurp qw ( slurp );
@@ -103,8 +103,8 @@ for my $cluster_id (keys %selected_clusters){
 
 
 		my $output_fasta_file_name = "$cluster_id.fasta";
-	open my $fhout, ">$output_fasta_file_name";
-	die "couldnt open $fasta_filename \n" unless open my $fh, "<$fasta_filename";
+	open my $fhout, ">", "$output_fasta_file_name";
+	die "couldnt open $fasta_filename \n" unless open my $fh, "<", "$fasta_filename";
 	my $print_on = 0;
 	while(my $line = <$fh>){
 		if($line =~ /^>(\S+)/){ # id line, get id and decide whether to print this one.
