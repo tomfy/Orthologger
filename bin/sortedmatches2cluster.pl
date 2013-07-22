@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
 
-# gets up to $size_limit best matches read in from stdin (assumed to
+# gets up to $size_limit best matches (abc format) read in from stdin (assumed to
 # already be sorted with earlier lines being better matches (smaller e-value) )
-# and write out (to stdout) in cluster file format, i.e. family_name: id1 id2 (etc.)
+# and write out (to stdout) in cluster file format, i.e. family_name: id1 id2 id3 ...(etc.)
 #i.e. all on one line, family name is followed by colon, and then by whitespace-separated
 # sequence ids of sequences in family.
 
-my $size_limit = shift || 100;
+my $size_limit = shift || 1000;
 
 my %id_count = (); 
 my $line_count = 0;
