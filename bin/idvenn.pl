@@ -31,6 +31,8 @@ print join(", ", @only2), "\n\n";
 
 print "n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2, "\n"; 
 
+print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
+
 
 sub store_ids{
 	my $filename = shift;
