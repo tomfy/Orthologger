@@ -20,11 +20,11 @@ use strict;
 my %spname1_spname2 = (
 		       'Alyrata' => 'Arabidopsis_lyrata',
 		       'Athaliana' => 'Arabidopsis_thaliana',
-		       'Bdistachyon' => 'Brachypodium_distachyon',
+		       'Bdistachyon' => 'Brachypodium_distachyon', # grass
 		       'Brapa' => 'Brassica_rapa', # turnip
 		       'Cpapaya' => 'Carica_papaya', # papaya
 		       'Creinhardtii' => 'Chlamydomonas_reinhardtii', # unicellular green alga with flagella
-		       'Crubella' => 'Capsella_rubella',
+		       'Crubella' => 'Capsella_rubella', # arabidopsis relative
 		       'Csativus' => 'Cucumis_sativus', # cucumber
 		       'Csinensis' => 'Citrus_sinensis', # orange
 		       'Gmax' => 'Glycine_max', # soy
@@ -47,8 +47,13 @@ my %spname1_spname2 = (
 );
 
 my %species_sequences_hash = ();
-
-my @files = `ls *.fasta`;
+my $fastafile = shift;
+my @files;
+if(defined $fastafile){
+  @files = ($fastafile);
+}else{
+@files = `ls *.fasta`;
+}
 map(chomp, @files);
 # print "[", join("]\n[", @files), "]\n";
 #exit;
