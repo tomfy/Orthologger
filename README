@@ -16,7 +16,7 @@ This will create a directory Orthologger with various subdirectories and files.
 
 2) Install a few external programs:
    FastTree (used by id_2_fam_align_tree.pl, ortholog_support)
-   quicktree (used by ortholog_supportl.pl)
+   quicktree (used by ortholog_support.pl)
    MrBayes (used by MB.pl, not needed otherwise)
    Muscle (used by id_2_fam_align_tree.pl)
  The executables (FastTree, quicktree, mb, muscle) need to be on $PATH.
@@ -41,7 +41,7 @@ Takes as input:
 idfile        File with sequence ids (in first column),
 clusterfile   File with clusters (families), one line per family: family name followed by tab separated sequence ids.
 sequencefile  File with sequence data (fasta format) for all the sequences in the families of interest.
-ggfile        File to specify which species go with each sequence id. One species per line, species name in first column followed by whitespace-separated sequence ids. (If there is no such file it will attempt to figure out the species by looking at the sequence ids, using Orthologger/lib/CXGN/Phylo/IdTaxonMap.pm, which basically just uses a set of perl regular expressions to do this.)
+ggfile        File to specify which species goes with each sequence id. One species per line, species name in first column followed by whitespace-separated sequence ids. (If there is no such file it will attempt to figure out the species by looking at the sequence ids, using Orthologger/lib/CXGN/Phylo/IdTaxonMap.pm, which basically just uses a set of perl regular expressions to do this.)
 speciestreefile  Newick file defining phylogenetic tree for a set of species (should contain all the species in your families). Default is 52 plant species.
 
 You may want to edit the defaults for these files, which are defined near the top of the script.
