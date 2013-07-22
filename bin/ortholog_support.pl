@@ -271,7 +271,7 @@ my $overlap_length       = $overlap_obj->get_overlap_length();
 
 print "Overlap length: $overlap_length.\n";
 
-open my $fh_overlap, ">overlap.fasta";
+open my $fh_overlap, ">", "overlap.fasta";
 print $fh_overlap "$overlap_fasta_string \n";
 close $fh_overlap;
 
