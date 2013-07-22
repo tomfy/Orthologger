@@ -2,7 +2,7 @@
 use strict;
 use lib '/usr/share/perl/5.14.2/';
 use Graphics::GnuplotIF qw(GnuplotIF);
-my $base_filename = shift || 'famX';
+my $base_filename = shift;  # e.g. famX  if files famX.fasta famX.converge, etc.
 my $plots_to_do_bitpattern = shift;
 my $enhanced      = 1;
 my $persist       = 0;
@@ -309,6 +309,7 @@ if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp  and $n_temps > 1) {
     my $run_col_offset = 1 + $n_cols_per_run * $i_run;
     for my $i_gap ( 1 .. $n_temps - 1 ) {
       for my $i_lo_temp ( 1 .. $n_temps - $i_gap ) {
+	if(0  or  $i_lo_temp == 1){
 	my $ptitle =
 	  "T" . ( $i_lo_temp - 1 ) . ":T" . ( $i_lo_temp - 1 + $i_gap );
 	$plot_cmd .=
@@ -316,8 +317,9 @@ if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp  and $n_temps > 1) {
 	    . $col . "/" . '$'
               . ( $col + 1 ) . ') t"'
 		. $ptitle . '", ';
-	$col += 2;
 	$plot4->gnuplot_cmd($plot_cmd);
+      }
+	$col += 2;
       }
     }				# loop over T gaps
     $plot_cmd =~ s/,\s*$//;	# remove final comma

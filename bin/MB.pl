@@ -44,6 +44,7 @@ my $reproducible = 0; # if true will give identical results each time run, but
 my $use_mpi = undef;
 my $max_processors = undef; 
 my $mb_name = 'mb';
+my $max_ok_L1 = 0.1;
 # the results will be incorrect (if multiple chunks). So just use true for testing.
 GetOptions('input_file=s' => \$input_file,  # fasta alignment file
 	   'seed=i' => \$seed,
@@ -61,7 +62,8 @@ GetOptions('input_file=s' => \$input_file,  # fasta alignment file
 	  'reproducible=i' => \$reproducible,
 	   'use_mpi=i' => \$use_mpi,
 	  'max_processors=i' => \$max_processors,
-	  'mb_name=s' => \$mb_name);
+	  'mb_name=s' => \$mb_name,
+	  'max_ok_L1=f' => \$max_ok_L1);
 
 if($chunk_size < $min_chunk_size){
 warn "Resetting chunk size form $chunk_size to $min_chunk_size (min allowed by MrBayes)\n";
@@ -146,7 +148,11 @@ my $mrb_obj = CXGN::Phylo::Mrbayes->new(
 			    'reproducible' => $reproducible,
 			    'use_mpi' => $use_mpi,
 			    'max_processors' => $max_processors,
-			    'mb_name' => $mb_name
+			    'mb_name' => $mb_name,
+			            'modelparam_min_ok_ESS'     => 2000,
+        'modelparam_max_ok_KSD' => 0.2,
+        'max_ok_L1'             => $max_ok_L1,  #    0.01,
+
 			    
 #			    'temperature_factor' => 1.414, # I wanted to have T's exponentially spaced, but mb does not allow
 			   }
