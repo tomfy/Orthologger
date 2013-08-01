@@ -25,13 +25,20 @@ for my $id2 (keys %$ids2){
 }
 }
 
-print join(", ", @only1), "\n\n";
-print join(", ", @both), "\n\n";
-print join(", ", @only2), "\n\n";
+for(@only1){
+  print $_, "  1only \n";
+}
+for(@both){
+  print $_, "  both \n";
+}
+for(@only2){
+  print $_, "  2only \n";
+}
+print "\n";
 
-print "n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2, "\n"; 
+print "# n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2, "\n"; 
 
-print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
+#print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
 
 
 sub store_ids{
