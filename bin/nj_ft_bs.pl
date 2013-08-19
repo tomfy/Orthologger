@@ -76,7 +76,7 @@ my $min_overlap_length = 40;
 # my $min_taxa           = 4;
 my $nongap_fraction    = 0.8;
 my $state              = 'idline'; # other possible values: fasta
-my ( $qid, $fam_size, $taxa, $idline, $fasta, $do );
+my ( $qid, $fam_size, $taxa, $idline, $fasta);
 my $support_string =
   '-nosupport';		# set to '' to get branch support calculation.
 
@@ -92,7 +92,7 @@ while (<>) {
   if ( $state eq 'idline' ) {
     my @cols = split( " ", $_ );
     ( $qid, $fam_size, $taxa) = @cols[ 1, 4, 5];
-    print STDERR "$qid, $fam_size, [$do]\n";
+    print STDERR "$qid, $fam_size\n";
 
     # my @species = split(",", $taxa);
     # if(scalar @species < $min_taxa){ # need to have at least 4 taxa (Medtr + 3 monocots)
@@ -112,9 +112,8 @@ while (<>) {
     if (/^\s*$/) { # blank line after sequence -> process the sequence.
       chomp $idline;
       my $string_to_print = "$idline   ";
-      $do = ( $fasta ne '' );
       my $rng_seed = srand();
-      if ($do) {
+      if ($fasta ne '') {
 
 	#	print STDERR "[[[$fasta]]]\n";
 #	print STDERR "before overlap \n";
@@ -132,14 +131,20 @@ while (<>) {
 	if ( $overlap_length >= $min_overlap_length ) {
 	  ################## do actual data - NJ  ########################################
 	  if($do_nj){
+#print STDERR $overlap_fasta_string, "\n";
 	  my $nj_newick = run_quicktree($overlap_fasta_string);
+#print STDERR "after run_quicktree \n";
+#print STDERR "$nj_newick \n";
 	  my $taxonified_nj_newick =
 	    taxonify_newick( $nj_newick, $gg_hashref );
+#print STDERR "after taxonify_newick \n";
 	  my $rr_nj_newick =
 	    newick2rerootednewick( $taxonified_nj_newick,
 				   $reroot_method, $species_tree );
+#print STDERR "after newick2rerootednewick \n";
 	print "$string_to_print \n";
 	  print "NJ  $rr_nj_newick \n\n";
+#exit;
 	}
 	  ################## do actual data - ML  ########################################
 	  if($do_ml){
@@ -497,9 +502,12 @@ sub newick2rerootednewick
 
     # return newick expression
     my $taxonified_newick = shift;
+$taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick);
+#print STDERR "ZZZ: $taxonified_newick \n";
     my $reroot_method     = shift;
     my $species_tree      = shift;
     my $parser = CXGN::Phylo::Parse_newick->new( $taxonified_newick, 0 );
+  #  print STDERR "after constructing parser \n";
     my $tree   = $parser->parse( CXGN::Phylo::BasicTree->new() );
     $tree->impose_branch_length_minimum();
     $tree->show_newick_attribute("species");
@@ -537,3 +545,10 @@ sub newick2rerootednewick
     $tree->decircularize();    # so can be properly garbage collected!
     return $rerooted_tree_newick;
   }
+
+sub put_min_branchlengths_into_newick{
+  my $newick = shift;
+  my $min_bl = shift || 0.00001;
+$newick =~ s/:0[.]0+([,)])/:$min_bl$1/g;
+return $newick;
+}
