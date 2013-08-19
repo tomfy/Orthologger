@@ -4,8 +4,11 @@ use strict;
 my $nesting = shift || 'ltltlt';
 my $pclade = shift;
 my $xbadclade = shift;
+my $clades_required_string = shift;
 if(!defined $pclade){ $pclade = 2; }
 if(!defined $xbadclade){ $xbadclade = 3; }
+if(!defined $clades_required_string){ $clades_required_string = '111'; }
+my @clades_required = split('', $clades_required_string);
 my @the_types = ('NJ', 'ML', 'NJ_BS', 'ML_BS');
 my ($prev_id, $id) = (undef, '');
 my $type_acccount = {};
@@ -24,13 +27,17 @@ while (<>) {
     $type = shift @cols;
   }
 
-  my $all_clades_present = 1;
-  for (my $i = 0; $i < scalar @cols; $i += 3) {
-    if ($cols[$i] < 0) {
-      $all_clades_present = 0;
+# my @clades_required = (1,1,0);
+  my $required_clades_present = 1;
+  for (my $i = 0; 3*$i < scalar @cols; $i += 1) {
+    if ($clades_required[$i]  and  $cols[3*$i] < 0) {
+      $required_clades_present = 0;
       last;
     }
   }
+	if($required_clades_present){
+	#iprint ":::: ", $_;
+}
   my $nested;
   $nesting = 'ltltlt' if($nesting eq 'ltlt');
   if ($nesting eq 'ltltlt') {
@@ -78,7 +85,9 @@ while (<>) {
 	      );
   } elsif ($nesting eq 'dcdcdc') { # No nesting requirement.
     $nested = 1;
-  } else {			# ??? just use the default: ltltlt
+	}elsif($nesting eq 'ltdcdc'){  # No Selaginella clade nesting required
+	$nested = $cols[0] < $cols[3];
+} else {			# ??? just use the default: ltltlt
     warn "Nesting option: $nesting not implemented. Using ltltlt.";
     $nested = (
 	       ($cols[0] < $cols[3]) and
@@ -90,10 +99,11 @@ while (<>) {
 #  print "$pclade  pclade > 0: ", ($pclade > 0)? '1': '0', ".  n paralogs: $n_paralogs \n";
 # sleep(0.5);
   my $n_bad_species = $cols[3*$xbadclade - 1]; # disallowed species in the Selaginella clade.
-  my $OK = ($all_clades_present  and  $nested  and  ($n_paralogs == 0)  and  ($n_bad_species == 0));
-  $type_acccount->{$type}++ if($OK);
+  my $OK = ($required_clades_present  and  $nested  and  ($n_paralogs == 0)  and  ($n_bad_species == 0));
+# print "$nested  $n_paralogs  $n_bad_species \n";  
+$type_acccount->{$type}++ if($OK);
 # print "OK  acp nested nparalogs nbad: [$OK]  [$all_clades_present]  [$nested]  [$n_paralogs]  [$n_bad_species] \n";
-  # print "$id   " , $all_clades_present, "  ", $nested? 1 : 0, "  $n_paralogs  $n_bad_species  ", $OK? 'ACC' : 'REJ', "\n";
+  # print "$id   " , $required_clades_present, "  ", $nested? 1 : 0, "  $n_paralogs  $n_bad_species  ", $OK? 'ACC' : 'REJ', "\n";
   $prev_id = $id;
 }
 print result_summary_string($id, $type_acccount, \@the_types);
