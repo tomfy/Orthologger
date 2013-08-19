@@ -7,7 +7,7 @@ my $plots_to_do_bitpattern = shift;
 my $enhanced      = 1;
 my $persist       = 0;
 my $plot_mingen = 400;
-open my $fh0, "<first_chunk.stdout";
+open my $fh0, "<","first_chunk.stdout";
 my $n_runs;
 my $n_taxa;
 my $n_temps;
