@@ -67,7 +67,7 @@ my $do_nj = shift; $do_nj = 1 if(!defined $do_nj);
 my $do_ml = shift; $do_ml = 1 if(!defined $do_ml);
 my $n_bs                     = shift || 0; # number of bs replicates
 my $ml_bs              = shift || 0; # by default, do not do ML for bs
-print "[$gg_filename] [$do_nj] [$do_ml] [$n_bs] [$ml_bs] \n";
+# print "[$gg_filename] [$do_nj] [$do_ml] [$n_bs] [$ml_bs] \n";
 # my $n_taxa                   = shift || 21;
 my $species_tree_newick_file = shift || undef;
 my $reroot_method            = shift || 'mindl';
@@ -82,7 +82,7 @@ my $support_string =
 
 my $gg_hashref = store_gg_info($gg_filename);
 
-print STDERR "number of keys of gg_hash: ", scalar keys %$gg_hashref, "\n";
+#print STDERR "number of keys of gg_hash: ", scalar keys %$gg_hashref, "\n";
 
 my $species_tree = get_species_tree($species_tree_newick_file)
   ; # get species tree from file (or use default if file undef or doesn't exist);
@@ -92,7 +92,7 @@ while (<>) {
   if ( $state eq 'idline' ) {
     my @cols = split( " ", $_ );
     ( $qid, $fam_size, $taxa) = @cols[ 1, 4, 5];
-    print STDERR "$qid, $fam_size\n";
+ #   print STDERR "$qid, $fam_size\n";
 
     # my @species = split(",", $taxa);
     # if(scalar @species < $min_taxa){ # need to have at least 4 taxa (Medtr + 3 monocots)
@@ -125,15 +125,15 @@ while (<>) {
 	my $overlap_length = $overlap_obj->get_overlap_length();
 #	print STDERR  "after overlap. overlap length: $overlap_length.\n";
 
-	#print STDERR "[[[$overlap_fasta_string]]]\n";
+#	print STDERR "[[[$overlap_fasta_string]]]\n";
 	$string_to_print .= "$overlap_length ";
 #	print "$string_to_print \n";
 	if ( $overlap_length >= $min_overlap_length ) {
 	  ################## do actual data - NJ  ########################################
 	  if($do_nj){
-#print STDERR $overlap_fasta_string, "\n";
+#print STDERR $overlap_fasta_string;
 	  my $nj_newick = run_quicktree($overlap_fasta_string);
-#print STDERR "after run_quicktree \n";
+#print STDERR "after run_quicktree \n"; exit;
 #print STDERR "$nj_newick \n";
 	  my $taxonified_nj_newick =
 	    taxonify_newick( $nj_newick, $gg_hashref );
@@ -149,13 +149,13 @@ while (<>) {
 	  ################## do actual data - ML  ########################################
 	  if($do_ml){
 	#    print "$do_ml exiting\n"; exit;
-	  
+#	  print STDERR "do_ml: [$do_ml]. \n", $overlap_fasta_string, "\n";
 	  my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string ");
 #  'FastTree -wag -gamma -bionj -nosupport
-#print STDERR "ML newick: ", $ml_newick, "\n";
+# print STDERR "ML newick: ", $ml_newick, "\n"; #exit;
 	  my $taxonified_ml_newick =
 	    taxonify_newick( $ml_newick, $gg_hashref );
-             #       print STDERR "after taxonify_newick \n";
+             #       print STDERR  "after taxonify_newick \n";
 
 	  #    print STDERR "before ml newick2rerootednewick. taxonified newick: \n", $taxonified_ml_newick, "\n";
 
@@ -247,6 +247,7 @@ sub taxonify_newick {
   my $newick        = shift;
   my $seqid_species = shift;
 
+# print "newick: \n [$newick] \n";
   # my %seqid_species = ();
   # if (defined $gg_filename and -f $gg_filename) {
   #   open my $fh_gg, "<", "$gg_filename";
@@ -478,12 +479,27 @@ sub run_fasttree {
 
   my $fasttree_newick_out = "ft_newick_default_output";
   my $fasttree_stderr_out = "ft_stderr_default_output";
-  run3(
-       "$fasttree_cl",        \$overlap_fasta_string,
-       \$fasttree_newick_out, \$fasttree_stderr_out
-      );
+#  print STDERR "fasttree cl: ", $fasttree_cl, "\n";
+#  print "AAAAA: ft newickout, stderrout: $fasttree_newick_out, $fasttree_stderr_out \n";
+  if (0) { # doesn't seem to work now, did before. Why???
+    my $run3_return_value = run3(
+				 "$fasttree_cl",        \$overlap_fasta_string,
+				 \$fasttree_newick_out, \$fasttree_stderr_out
+				);
+    print STDERR "in run_fasttree, run3 return value: [", $run3_return_value, "]\n";
+  } else {			# do using a file
+    my $temp_file = "PID" . $$ . "_ft_in_tmpfile";
+    my $stderr_outfile  = "PID" . $$ . ".stderr";
+    open my $fh, ">", "$temp_file";
+    #  open my $fhstderr, ">", "$stderr_outfile";
+    print $fh $overlap_fasta_string, "\n"; close $fh;
+    $fasttree_newick_out = `$fasttree_cl $temp_file 2>> $stderr_outfile`;
+#    print STDERR "ABCD: ", substr($fasttree_newick_out, 0, 80), "\n"; 
+  }
 
-#print STDERR "FT OUT NEWICK: \n", $fasttree_newick_out, "\n\n";
+
+#print STDERR "FT OUT NEWICK: \n[ ", $fasttree_newick_out, " ]\n\n"; exit;
+#print STDERR "FT stderr out: \n", $fasttree_newick_out, "\n";
 #print STDERR "FT OUT stderr: \n", $fasttree_stderr_out, "\n\n";
 
 
@@ -503,11 +519,11 @@ sub newick2rerootednewick
     # return newick expression
     my $taxonified_newick = shift;
 $taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick);
-#print STDERR "ZZZ: $taxonified_newick \n";
+# print STDERR "ZZZ: $taxonified_newick \n";
     my $reroot_method     = shift;
     my $species_tree      = shift;
     my $parser = CXGN::Phylo::Parse_newick->new( $taxonified_newick, 0 );
-  #  print STDERR "after constructing parser \n";
+ #   print STDERR "after constructing parser \n";
     my $tree   = $parser->parse( CXGN::Phylo::BasicTree->new() );
     $tree->impose_branch_length_minimum();
     $tree->show_newick_attribute("species");
