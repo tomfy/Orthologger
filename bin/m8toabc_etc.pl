@@ -1,12 +1,18 @@
 #!/usr/bin/perl -w
 use strict;
+use Getopt::Long;
 
 # m8 -> abc
 # impose max e-value (i.e. keep only matches with e-value <= $max_eval)
 # keep only best solution for each id1-id2 pair
 
+my $max_eval = 1e-8; # default.
 
-my $max_eval = shift || 0.00000001; # 1e-8 default.
+# Process long cl options
+GetOptions(
+	   'max_eval=s' => \$max_eval
+);
+print STDERR "max_eval: $max_eval \n";
 
 my $old_idpair = 'xxxxxxx xxxxxxx' ;
 my $the_line = '';
