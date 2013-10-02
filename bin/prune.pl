@@ -30,7 +30,7 @@ my $default_species_tree_file_path = undef; #"$bindir/../species_tree_plant_52.n
 
 my $input_newicks_filename;
 my $gg_filename   = $default_gg_file_path;
-my $reroot_method = undef; # default is do not reroot ( mindl rerooting is default for fttree )
+my $reroot_method = undef; # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
 
 my $clade_specifiers = '7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1';
 
@@ -70,12 +70,32 @@ my $predefined_taxon_groups = {
 					     'Cucumis_sativus'      => 1 # cucumber
 					    },
 
+ '8dicots_incl_papaya' => {
+					     'Solanum_lycopersicum' => 1, # tomato
+					     'Solanum_tuberosum'    => 1, # potato
+					     'Vitis_vinifera'       => 1, # grape
+					     'Glycine_max'          => 1, # soy
+					     'Populus_trichocarpa'  => 1, # poplar
+					     'Ricinus_communis'     => 1, # castor
+					     'Cucumis_sativus'      => 1, # cucumber
+			   'Carica_papaya' => 1
+},
+
 			       '5brassicas' => {
 						Brassica_rapa           => 1, # turnip
 						Arabidopsis_thaliana    => 1,
 						Arabidopsis_lyrata      => 1,
 						Thellungiella_halophila => 1,
 						Capsella_rubella        => 1
+					       },
+
+   '5brassicas_plus_papaya' => {
+						Brassica_rapa           => 1, # turnip
+						Arabidopsis_thaliana    => 1,
+						Arabidopsis_lyrata      => 1,
+						Thellungiella_halophila => 1,
+						Capsella_rubella        => 1,
+				Carica_papaya => 1,
 					       }
 			      };
 
@@ -94,7 +114,8 @@ GetOptions(
 	   'speciestreefile=s'    => \$species_tree_newick_file, # to override built-in species tree with 52 species
 	   # (see sub reroot below to see this default species tree).
 	   'clade_specifiers=s'   => \$clade_specifiers,
-	   'disallowed_species=s' => \$disallowed_species,
+	   'disallowed_species=s' => \$disallowed_species, # either: name of predefined taxon group, or comma separated taxa names:
+# e.g. 'Arabidopsis_thaliana, Brassica_rapa'
 	   'maxnbs=i' => \$max_nbs,
 	  );
 
