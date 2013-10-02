@@ -12,7 +12,7 @@ my $max_eval = 1e-8; # default.
 GetOptions(
 	   'max_eval=s' => \$max_eval
 );
-print STDERR "max_eval: $max_eval \n";
+# print STDERR "max_eval: $max_eval \n";
 
 my $old_idpair = 'xxxxxxx xxxxxxx' ;
 my $the_line = '';
