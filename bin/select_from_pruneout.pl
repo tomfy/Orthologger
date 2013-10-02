@@ -27,7 +27,7 @@ while (<>) {
     $type = shift @cols;
   }
 
-# my @clades_required = (1,1,0);
+  # my @clades_required = (1,1,0);
   my $required_clades_present = 1;
   for (my $i = 0; 3*$i < scalar @cols; $i += 1) {
     if ($clades_required[$i]  and  $cols[3*$i] < 0) {
@@ -35,9 +35,9 @@ while (<>) {
       last;
     }
   }
-	if($required_clades_present){
+  if ($required_clades_present){
 	#iprint ":::: ", $_;
-}
+  }
   my $nested;
   $nesting = 'ltltlt' if($nesting eq 'ltlt');
   if ($nesting eq 'ltltlt') {
