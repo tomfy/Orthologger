@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-
+use Getopt::Long;
 # use Devel::Cycle;
 use IPC::Run3;
 
@@ -62,31 +62,55 @@ use CXGN::Phylo::Species_name_map;
 # --
 #
 # Id Medtr...
-my $gg_filename              = shift;
-my $do_nj = shift; $do_nj = 1 if(!defined $do_nj);
-my $do_ml = shift; $do_ml = 1 if(!defined $do_ml);
-my $n_bs                     = shift || 0; # number of bs replicates
-my $ml_bs              = shift || 0; # by default, do not do ML for bs
+my $gg_filename; # required  cl parameter 
+my $do_nj = 0;
+my $do_ml = 1;
+my $n_bs = 0; # number of bs replicates
+my $ml_bs = 0; # by default, do not do ML for bs
 # print "[$gg_filename] [$do_nj] [$do_ml] [$n_bs] [$ml_bs] \n";
 # my $n_taxa                   = shift || 21;
-my $species_tree_newick_file = shift || undef;
-my $reroot_method            = shift || 'mindl';
-
+my $species_tree_newick_file = undef;
+my $reroot_method            = 'mindl';
+my $nongap_fraction = 0.8;
 my $min_overlap_length = 40;
+my $nosupport = ''; # default is to do support
+GetOptions(
+    'gg_file=s'           => \$gg_filename,
+    'nj!'          => \$do_nj,
+    'ml!'      => \$do_ml,
+    'nosupport'          => \$nosupport,
+    'n_bs=i' => \$n_bs,
+    'ml_bs!' => \$ml_bs, # boolean to do ML bs or not (default: 0)
+	   'species_tree=s' => \$species_tree_newick_file,
+	   'reroot_method=s' => \$reroot_method, 
+	   'nongap_fraction=i' => \$nongap_fraction,
+	   'min_overlap_length=i' => \$min_overlap_length
+);
+if(!defined $gg_filename  or  ! -f $gg_filename){
+  die "No gene-genome association file specified. Exiting. \n";
+}
+print STDERR "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \n", 
+  "do_nj: $do_nj \n",
+  "do_ml: $do_ml \n", 
+  "branch support: ", $nosupport? '0' : '1', " \n",
+  "n_bs: $n_bs \n", "ml_bs: $ml_bs \n", 
+  "species_tree: ", (defined $species_tree_newick_file)? $species_tree_newick_file : 'undefined', " \n",
+  "reroot_method: $reroot_method \n",
+  "nongap_fraction: $nongap_fraction \n",
+  "min_overlap_length: $min_overlap_length \n";
+#my $min_overlap_length = 40;
 # my $min_taxa           = 4;
-my $nongap_fraction    = 0.8;
+#my $nongap_fraction    = 0.8;
 my $state              = 'idline'; # other possible values: fasta
 my ( $qid, $fam_size, $taxa, $idline, $fasta);
-my $support_string =
-  '-nosupport';		# set to '' to get branch support calculation.
-
+my $support_string = ($nosupport)? '-nosupport' : '';  # controls whether FastTree calculates local branch support numbers.
 my $gg_hashref = store_gg_info($gg_filename);
 
 #print STDERR "number of keys of gg_hash: ", scalar keys %$gg_hashref, "\n";
 
 my $species_tree = get_species_tree($species_tree_newick_file)
   ; # get species tree from file (or use default if file undef or doesn't exist);
-
+my $n_ml = 0;
 while (<>) {
 #  print STDERR "state: $state; line read: $_";
   if ( $state eq 'idline' ) {
@@ -150,23 +174,27 @@ while (<>) {
 	  if($do_ml){
 	#    print "$do_ml exiting\n"; exit;
 #	  print STDERR "do_ml: [$do_ml]. \n", $overlap_fasta_string, "\n";
+print STDERR "fasttree cl: FastTree -wag -gamma -bionj $support_string \n";
 	  my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string ");
+# exit;
 #  'FastTree -wag -gamma -bionj -nosupport
 # print STDERR "ML newick: ", $ml_newick, "\n"; #exit;
 	  my $taxonified_ml_newick =
 	    taxonify_newick( $ml_newick, $gg_hashref );
              #       print STDERR  "after taxonify_newick \n";
-
+#print "taxonified newick: $taxonified_ml_newick \n XXX \n";
 	  #    print STDERR "before ml newick2rerootednewick. taxonified newick: \n", $taxonified_ml_newick, "\n";
 
 	  my $rr_ml_newick =
 	    newick2rerootednewick( $taxonified_ml_newick,
 				   $reroot_method, $species_tree );
 #	      print STDERR "after ml newick2rerootednewick \n";
-
+# exit;
+$n_ml++;
 	print "$string_to_print \n";
-	  print "ML  $rr_ml_newick \n\n";
-	}
+	  print "ML  $rr_ml_newick \n\n"; # exit;
+}
+#exit;
 	  ######################## do bootstraps #########################################
 	  ###### NJ ########
 	  for ( my $i = 1 ; $i <= $n_bs ; $i++ ) {
@@ -175,7 +203,7 @@ while (<>) {
 	    my $nj_newick = run_quicktree($bs_overlap_fasta_string);
 	    my $taxonified_nj_newick =
 	      taxonify_newick( $nj_newick, $gg_hashref );
-	#      print STDERR "before nj newick2rerootednewick \n";
+	#      print STDERR "before nj newick2rerootednewick $taxonified_nj_newick   XXX\n";
 
 	    my $rr_nj_newick =
 	      newick2rerootednewick( $taxonified_nj_newick,
@@ -185,7 +213,7 @@ while (<>) {
 	print "$string_to_print \n";
 	    print "NJ_BS  $rr_nj_newick \n\n";
 	    ######### ML ########
-	    if ($ml_bs) {
+	    if ($do_ml and $ml_bs) {
 	      my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string");
 	      my $taxonified_ml_newick =
 		taxonify_newick( $ml_newick, $gg_hashref );
@@ -477,6 +505,7 @@ sub run_fasttree {
     $fasttree_cl .= " -intree tmp_intree ";
   }
 
+#print STDERR "fasttree cl: $fasttree_cl \n"; exit;
   my $fasttree_newick_out = "ft_newick_default_output";
   my $fasttree_stderr_out = "ft_stderr_default_output";
 #  print STDERR "fasttree cl: ", $fasttree_cl, "\n";
@@ -486,16 +515,16 @@ sub run_fasttree {
 				 "$fasttree_cl",        \$overlap_fasta_string,
 				 \$fasttree_newick_out, \$fasttree_stderr_out
 				);
-    print STDERR "in run_fasttree, run3 return value: [", $run3_return_value, "]\n";
+#    print STDERR "in run_fasttree, run3 return value: [", $run3_return_value, "]\n";
   } else {			# do using a file
     my $temp_file = "PID" . $$ . "_ft_in_tmpfile";
     my $stderr_outfile  = "PID" . $$ . ".stderr";
     open my $fh, ">", "$temp_file";
     #  open my $fhstderr, ">", "$stderr_outfile";
     print $fh $overlap_fasta_string, "\n"; close $fh;
-    $fasttree_newick_out = `$fasttree_cl $temp_file 2>> $stderr_outfile`;
-#    print STDERR "ABCD: ", substr($fasttree_newick_out, 0, 80), "\n"; 
-  }
+# print STDERR "$fasttree_cl  $temp_file \n"; #exit;
+$fasttree_newick_out = `$fasttree_cl $temp_file 2>> $stderr_outfile`;
+}
 
 
 #print STDERR "FT OUT NEWICK: \n[ ", $fasttree_newick_out, " ]\n\n"; exit;
@@ -518,16 +547,17 @@ sub newick2rerootednewick
 
     # return newick expression
     my $taxonified_newick = shift;
-$taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick);
+$taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick, 0.01);
 # print STDERR "ZZZ: $taxonified_newick \n";
     my $reroot_method     = shift;
     my $species_tree      = shift;
     my $parser = CXGN::Phylo::Parse_newick->new( $taxonified_newick, 0 );
  #   print STDERR "after constructing parser \n";
     my $tree   = $parser->parse( CXGN::Phylo::BasicTree->new() );
+    if(!defined $tree){ return 'warning: Couldnt parse taxonified tree in newick2rerootnewick.'; }
     $tree->impose_branch_length_minimum();
     $tree->show_newick_attribute("species");
-#print STDERR "AAAA:  ", $tree->generate_newick(), "\n";
+# print STDERR "AAAA:  ", $tree->generate_newick(), "\n";
     $tree->set_show_standard_species(0);
     $tree->get_root()->recursive_implicit_names();
     $tree->get_root()->recursive_implicit_species();
