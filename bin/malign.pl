@@ -1,8 +1,9 @@
 #!/usr/bin/perl -w
 use strict;
+use Getopt::Long;
 
 # read in a file with multiple families of sequences
-# The format is for each family:
+# The format ("fastas" format) is for each family:
 # 1) 1 line of info about family as whole
 # 2) fasta for all sequences in family
 # 3) one blank line
@@ -18,15 +19,40 @@ use strict;
 # MKELDLDETIYHPNEVVVQKCMTSKKSRRKGRKTQVAWDERCKNAESSPKNKRRTRKGMWNVSKNNDDDEFNALHKGKEKMIQTNVESNSSSFSEDEELRLALQNSLIFQYPLKFGEDTSKSLLEGTNSRHQFNIEEGIKENSFEYFHIPNNIRINTLNL*
 #
 # Id Medtr...
-my $input_filename = shift;
-my $maxiters = shift || 2; # 16;
+                                         
+
+my $input_filename;
+my $align_program = 'muscle';
+my $quality = 'best';
+open my $fh_out, '>&', STDOUT or die "$!";
+my $output_file = undef;
+my $maxiters;
+
+# Process long cl options
+GetOptions(
+    'input_filename=s'      => \$input_filename,
+    'align_program=s'      => \$align_program,  # 'muscle' or 'mafft'
+    'quality=s' => \$quality, # 'best' or 'quick'
+	   'output=s' => \$output_file # default is to write output to STDOUT
+);
+if(defined $output_file){
+  close $fh_out;
+  open $fh_out, ">", "$output_file" or die "$!";
+}
 # my $n_taxa = shift || 21;
 # my $min_taxa = 4;
+#print STDERR "[$align_program]  [$quality]\n";
+if( !defined $align_program ){ $align_program = 'muscle'; }
+if( !defined $quality ){ $quality = 'best'; }
+print STDERR "[$align_program]  [$quality]\n"; #exit;
+
 my $state = 'idline';		# other possible values: fasta
 my ($qid, $fam_size, $taxa, $idline, $fasta, $do);
 open my $fh_in, "<", "$input_filename";
 my $tmp_filename = $input_filename . "_tmp";
 my $stderr_filename = $input_filename . ".stderr";
+
+
 while (<$fh_in>) {
   if ($state eq 'idline') {
     my @cols = split(" ", $_);
@@ -56,21 +82,37 @@ while (<$fh_in>) {
   }
     if (/^\s*$/) {
       chomp $idline;
-      print "$idline  $do \n";
+      print $fh_out "$idline  $do \n";
       if($do){
-      open my $fh, ">", "$tmp_filename";
+      open my $fh_temp, ">", "$tmp_filename";
       $fasta =~ s/^\n//; # not global - just initial one if present.
-      print $fh "$fasta \n";
-      close $fh;
-      my $fasta_alignment  = 
-#	`muscle -in $tmp_filename -maxiters $maxiters 2> $stderr_filename`;
-#    `mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename`; # mafft 
-#  `mafft --auto  --inputorder $tmp_filename 2> $stderr_filename`; # mafft slower, better (presumably)
-`mafft --maxiterate 1000 --localpair  --inputorder $tmp_filename 2> $stderr_filename`; # L-INS-i (best mafft)
+      print $fh_temp "$fasta \n";
+      close $fh_temp;
 
-      print "$fasta_alignment \n";
+	my $alignment_cl;
+	if($quality ne 'best'  and  $quality  ne  'quick'){
+	  warn "Parameter quality set to $quality. Not implemented. Using default ('best') quality.";
+	}
+      if($align_program eq 'muscle'){
+	if($quality eq 'best'){
+	  $maxiters = 1000;
+	}else{  # ($quality eq 'quick'){
+	  $maxiters = 2;
+	}
+	$alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters 2> $stderr_filename";
+      }elsif($align_program eq 'mafft'){
+	if($quality eq 'best'){
+	  $alignment_cl = "mafft --maxiterate 1000 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)
+	}else{  # ($quality eq 'quick'){
+	  $alignment_cl = "mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename"; # mafft quick
+	}
+      }else{
+	warn "Parameter align_program set to $align_program. Not implemented. Using default: 'muscle'."
+      }
+      my $fasta_alignment = `$alignment_cl`; 
+      print $fh_out "$fasta_alignment \n";
     }else{
-      print "\n";
+      print $fh_out "\n";
     }
       $state = 'idline';
     }
