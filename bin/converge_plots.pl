@@ -34,6 +34,9 @@ while(my ($i, $bp) = each @bps){
   $$bp = 1 << $i;
 }
 my $default_plots_to_do_bitpattern = (1 << scalar @bps) - 1;
+if($n_taxa > 10){
+  $default_plots_to_do_bitpattern = $default_plots_to_do_bitpattern ^ 4; # turn off the topo histogram unless tree is small
+}
 $plots_to_do_bitpattern = $default_plots_to_do_bitpattern if(!defined $plots_to_do_bitpattern);
 print "plots to do bit pattern: $plots_to_do_bitpattern \n";
 
@@ -43,7 +46,7 @@ print "plots to do bit pattern: $plots_to_do_bitpattern \n";
 # my $params_histograms_bp = 1 << 3;
 # my $mc3swap_vs_gen_bp = 1 << 4;
 # my $lnl_vs_gen_bp = 1 << 5;
-my ($plot1, $plot2, $plot2a, $plot3, $plot4);
+my ($plot0, $plot1, $plot2, $plot2a, $plot3, $plot4);
 if ( $plots_to_do_bitpattern & $conv_vs_gen_bp ) {
   my $converge_filename = "$base_filename" . ".converge";
   print "converge filename: $converge_filename \n";
@@ -78,11 +81,17 @@ if ( $plots_to_do_bitpattern & $conv_vs_gen_bp ) {
   #  my $topo_max_diff = $col_data[2];
 
   my $splits_avg_stddevs = $col_data[1];
-  my $splits_L1s = $col_data[2];
-  my $splits_maxL1s = $col_data[3];
-  my $splits_max_diff = $col_data[4];
+my ($splt_min_L1, $splt_q1_L1, $splt_median_L1, $splt_q3_L1, $splt_max_L1, $splt_avg_intercluster_L1) = @col_data[2..7];
+my ($splt_min_mbd, $splt_q1_mbd, $splt_median_mbd, $splt_q3_mbd, $splt_max_mbd, $split_avg_intercluster_mbd) = @col_data[8..13];
+my ($n_bad_split_lo, $n_bad_split_med, $n_bad_split_hi) = @col_data[20..22]; # different bad split thresholds
+my ($splt_min_nbb, $splt_q1_nbb, $splt_median_nbb, $splt_q3_nbb, $splt_max_nbb, $split_avg_intercluster_nbb) = @col_data[23..28];
+#  my $splits_avg_L1s = $col_data[2];
+#  my $splits_interclstr_L1s = $col_data[3];
+#  my $splits_q3_L1s = $col_data[4];
+# my $splits_max_range = $col_data[5];
+# my $splits_rms_range = $col_data[6];
 
-  my $k = 1;
+  my $k = 26;
   my @TL_invESSs     = map( 1 / $_, @{ $col_data[4+$k] } );
   my @alpha_invESSs  = map( 1 / $_, @{ $col_data[5+$k] } );
   my @pinvar_invESSs = map( 1 / $_, @{ $col_data[6+$k] } );
@@ -120,8 +129,57 @@ if ( $plots_to_do_bitpattern & $conv_vs_gen_bp ) {
 	. " '' 0.02 1, '' 0.03 1, '' 0.04 1, '' 0.05 1, '' 0.06 1, '' 0.07 1, '' 0.08 1, '' 0.09 1, "
 	  . " '' 0.2 1, '' 0.3 1, '' 0.4 1, '' 0.5 1, '' 0.6 1, '' 0.7 1, '' 0.8 1, '' 0.9 1 ";
 
+my $scale = 0.5;
+  if(1){
+#Splits
+$plot0 = # various convergence diagnostic quantities as function of generations
+    Graphics::GnuplotIF->new( persist => $persist, style => 'lines lw 2');
+  #   $plot1->gnuplot_cmd(' set terminal pdf ');
+  #   $plot1->gnuplot_cmd(' set output "converge.pdf" ');
+  $plot0->gnuplot_cmd(' set terminal x11 enhanced size 800,600') if ($enhanced);
 
-  my $scale = 0.5;
+ $plot0->gnuplot_cmd(' set multiplot ');
+  $plot0->gnuplot_cmd(" set size $scale,$scale ");
+  $plot0->gnuplot_cmd(' set log ');
+
+ # upper two plots
+  $plot0->gnuplot_cmd(" set xrange [$plot_mingen:*] ");
+  $plot0->gnuplot_cmd(" set yrange [0.005:1] ");
+  $plot0->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
+ $plot0->gnuplot_cmd(" set origin 0.0, $scale ");
+  $plot0->gnuplot_set_plot_titles( 'min L1', 'q1 L1', 'median L1', 'q3 L1', 'max L1', 'ic L1', 'x');
+  $plot0->gnuplot_plot_xy( $gens, @col_data[2..8] ); #$topo_L1s, $topo_max_diff, 
+
+
+  $plot0->gnuplot_cmd(" set xrange [$plot_mingen:*] ");
+  $plot0->gnuplot_cmd(" set yrange [0.005:1] ");
+  $plot0->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
+ $plot0->gnuplot_cmd(" set origin $scale, $scale ");
+  $plot0->gnuplot_set_plot_titles( 'min L2', 'q1 L2', 'median L2', 'q3 L2', 'max L2', 'ic L2', 'L2 -(M-1)' );
+  $plot0->gnuplot_plot_xy( $gens, #$splits_avg_stddevs, 
+			    @col_data[9..15] );
+
+# lower two plots
+  $plot0->gnuplot_cmd(" set xrange [$plot_mingen:*] ");
+  $plot0->gnuplot_cmd(" set yrange [0.005:1] ");
+  $plot0->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
+  $plot0->gnuplot_cmd(" set origin 0.0, 0.0 ");
+  $plot0->gnuplot_set_plot_titles( 'min Linf', 'q1 Linf', 'median Linf', 'q3 Linf', 'max Linf', 'ic Linf', 'Linf -(M-1)' );
+  $plot0->gnuplot_plot_xy( $gens, @col_data[16..22]); #$n_bad_split_lo, $n_bad_split_med, $n_bad_split_hi);
+
+
+  $plot0->gnuplot_cmd(" set xrange [$plot_mingen:*] ");
+  $plot0->gnuplot_cmd(" set yrange [0.5:*] ");
+  $plot0->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
+  $plot0->gnuplot_cmd(" set origin $scale, 0.0 ");
+  $plot0->gnuplot_set_plot_titles( 'min nbb', 'q1 nbbd', 'median nbbd', 'q3 nbbd', 'max nbbd', 'ic nbbd', 'nbbd -(M-1)');
+  $plot0->gnuplot_plot_xy( $gens, @col_data[23..29]); 
+
+ $plot0->gnuplot_cmd(' unset multiplot ');
+
+}
+
+  $scale = 0.5;
   $plot1 = # various convergence diagnostic quantities as function of generations
     Graphics::GnuplotIF->new( persist => $persist, style => 'lines lw 2');
   #   $plot1->gnuplot_cmd(' set terminal pdf ');
@@ -129,20 +187,29 @@ if ( $plots_to_do_bitpattern & $conv_vs_gen_bp ) {
   $plot1->gnuplot_cmd(' set terminal x11 enhanced size 800,600') if ($enhanced);
   $plot1->gnuplot_cmd(' set log ');
 
+ 
+
+
+
+
   $plot1->gnuplot_cmd(' set multiplot ');
   $plot1->gnuplot_cmd(" set size $scale,$scale ");
 
   # upper two plots
   # splits, topology L1
   #$plot1->gnuplot_set_xrange(1000,100000);
-  # $plot1->gnuplot_set_title("topological convergence");
+#  $plot1->gnuplot_set_title("Splits");
   $plot1->gnuplot_cmd(" set xrange [$plot_mingen:*] ");
-  $plot1->gnuplot_cmd(" set yrange [0.003:1] ");
+  $plot1->gnuplot_cmd(" set yrange [0.005:1] ");
   $plot1->gnuplot_cmd(" set xtics ( $no_xtics_labels_string ) ");
   $plot1->gnuplot_cmd(" set origin 0.0,$scale ");
-  $plot1->gnuplot_set_plot_titles( 'splits avg stddev', 'splits L1 distances', 'splits maxL1 distances', 'splits max diff' );
+  $plot1->gnuplot_set_plot_titles( 'min L1', 'q1 L1', 'median L1', 'q3 L1', 'max L1', 'ic L1',
+			'min mbd', 'q1 mbd', 'median mbd', 'q3 mbd', 'max mbd', 'ic mbd' );
   $plot1->gnuplot_plot_xy( $gens, #$topo_L1s, $topo_max_diff, 
-			   $splits_avg_stddevs, $splits_L1s, $splits_maxL1s, $splits_max_diff);
+# $splits_avg_stddevs,  
+$splt_min_L1, $splt_q1_L1, $splt_median_L1, $splt_q3_L1, $splt_max_L1, $splt_avg_intercluster_L1,
+$splt_min_mbd, $splt_q1_mbd, $splt_median_mbd, $splt_q3_mbd, $splt_max_mbd, $split_avg_intercluster_mbd);
+	#		   $splits_avg_stddevs, $splits_avg_L1s, $splits_interclstr_L1s, $splits_q3_L1s, $splits_max_range, $splits_rms_range);
 
 
   # inverse effective sample size
@@ -192,7 +259,7 @@ if ( $plots_to_do_bitpattern & $conv_vs_gen_bp ) {
 
 my $histogram_filename;
 my $histo_command;
-my $splits_xmax;
+my $splits_xmax = int(3*($n_taxa - 3)) + 0.5;
 if ( $plots_to_do_bitpattern & $topo_histograms_bp) {
   # topology histograms
   $plot2 = Graphics::GnuplotIF->new( persist => $persist );
@@ -200,7 +267,7 @@ if ( $plots_to_do_bitpattern & $topo_histograms_bp) {
   #    $plot2->gnuplot_cmd(' set multiplot ');
   $plot2->gnuplot_cmd(' set style data histeps ');
   $histogram_filename = $base_filename . ".topology_histograms";
-  $splits_xmax = int(3*($n_taxa - 3)) + 0.5;
+ 
   $histo_command = " plot [-0.5:$splits_xmax] " . ' "' . $histogram_filename . '" using 2 ' . 't"run 1", ';
   for my $i_run (2..$n_runs) {
     $histo_command .= ' "" ' . ' using ' . ($i_run+1) . ' t"run ' . $i_run .'", ';
@@ -215,6 +282,8 @@ if ( $plots_to_do_bitpattern & $topo_histograms_bp) {
 
 if ( $plots_to_do_bitpattern & $splits_histograms_bp) {
 
+print "n runs: $n_runs \n";
+
   # splits histograms
   $plot2a = Graphics::GnuplotIF->new( persist => $persist );
   $plot2a->gnuplot_cmd(' set terminal x11 enhanced size 640,480 ') if ($enhanced);
@@ -226,12 +295,12 @@ if ( $plots_to_do_bitpattern & $splits_histograms_bp) {
     $histo_command .= ' "" ' . ' using ' . ($i_run+1) . ' t"run ' . $i_run .'", ';
   }
   $histo_command .= ' "" using ($' . ($n_runs+2) . "/$n_runs" . ') t"average" ';
+print $histo_command, "\n";
   $plot2a->gnuplot_cmd( $histo_command );
 
-  $plots_to_do_bitpattern ^= $splits_histograms_bp;
+  $plots_to_do_bitpattern ^= $splits_histograms_bp; # 
   $plot2a->gnuplot_pause(0) if(! $plots_to_do_bitpattern);
 }
-
 
 if ( $plots_to_do_bitpattern & $params_histograms_bp) {
   # histograms for LnL, TL, alpha, pinvar
@@ -282,7 +351,9 @@ if ( $plots_to_do_bitpattern & $params_histograms_bp) {
 
 
 
-if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp  and $n_temps > 1) {
+if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp){
+$plots_to_do_bitpattern ^= $mc3swap_vs_gen_bp;
+if($n_temps > 1) {
 
   ######################## temperature swapping acceptance rates: ##########################
   my $mc3swap_filename = $base_filename . ".mc3swap";
@@ -305,11 +376,11 @@ if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp  and $n_temps > 1) {
     $plot4->gnuplot_cmd(" set origin $origin_x,0.0 ");
     my $plot_width = $w_plot + (($i_run==1)? $ylabel_space : 0);
     $plot4->gnuplot_cmd(" set size $plot_width,1 ");
-    my $plot_cmd       = "plot [][0.01:1] ";
+    my $plot_cmd       = "plot [][0.001:1] ";
     my $run_col_offset = 1 + $n_cols_per_run * $i_run;
     for my $i_gap ( 1 .. $n_temps - 1 ) {
       for my $i_lo_temp ( 1 .. $n_temps - $i_gap ) {
-	if(0  or  $i_lo_temp == 1){
+	if(1  or  $i_lo_temp == 1){
 	my $ptitle =
 	  "T" . ( $i_lo_temp - 1 ) . ":T" . ( $i_lo_temp - 1 + $i_gap );
 	$plot_cmd .=
@@ -330,8 +401,9 @@ if ( $plots_to_do_bitpattern & $mc3swap_vs_gen_bp  and $n_temps > 1) {
   $plot4->gnuplot_cmd(" unset multiplot ");
 
 
- $plots_to_do_bitpattern ^= $mc3swap_vs_gen_bp;
+# $plots_to_do_bitpattern ^= $mc3swap_vs_gen_bp;
   $plot4->gnuplot_pause(0) if(! $plots_to_do_bitpattern);
+}
 }
 #print "plots to do bitpattern: $plots_to_do_bitpattern \n";
 ##############################################
@@ -365,8 +437,11 @@ $the_plot->gnuplot_cmd(' set key bottom right ');
 $the_plot->gnuplot_cmd(' set ylabel "ln(likelihood)" ');
 $the_plot->gnuplot_cmd(' set xlabel "generations" ');
 # $the_plot->gnuplot_cmd(' set style data lines ');
+    my $n_ll_plots = int(scalar @runlnls / 4 + 0.5);
+my $n_runs_in_plot = int(scalar @runlnls / $n_ll_plots);
+$n_runs_in_plot++ if($n_ll_plots * $n_runs_in_plot);
     push @lnl_plots, $the_plot;
-    for (1..4) {
+    for (1..$n_runs_in_plot) {
       last if(scalar @runlnls <= 0);
       my $rlnls = shift @runlnls;
       push @four_runs_lnls, $rlnls;

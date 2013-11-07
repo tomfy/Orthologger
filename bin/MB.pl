@@ -38,14 +38,15 @@ my $burnin_fraction = 0.1;
 my $converged_chunks_required = 10;
 my $modelparam_min_ok_ESS = 200;
 my $append = 'yes';
-my $max_gens = 1000;
+my $max_gens = 1000000;
 my $min_chunk_size = 100; # mb doesn't allow anything less
-my $reproducible = 0; # if true will give identical results each time run, but
 my $use_mpi = undef;
 my $max_processors = undef; 
 my $mb_name = 'mb';
 my $max_ok_L1 = 0.1;
-# the results will be incorrect (if multiple chunks). So just use true for testing.
+
+my $reproducible = 0; # if true will give identical results each time run, BUT
+# the results will be INCORRECT (if multiple chunks). So use reproducible=true ONLY for testing.
 GetOptions('input_file=s' => \$input_file,  # fasta alignment file
 	   'seed=i' => \$seed,
 	   'nongap_fraction=f' => \$nongap_fraction,
