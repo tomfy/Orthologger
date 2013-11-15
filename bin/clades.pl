@@ -27,14 +27,20 @@ use CXGN::Phylo::CladeSpecifier;
 my $default_gg_file_path           = undef;
 my $default_species_tree_file_path = undef;
 
+# Usage example:
+# clades.pl -input x.newicks              (will use defaults)
+# clades.pl -input x.newicks -clade_spec '4monocots,3'   (using default for disallowed species)
+# clades.pl -input x.newicks -clade_spec (Brachypodium_distachyon,Oryza_sativa),1  -disallowed 5brassicas
+# clades.pl -input x.newicks -clade_spec (Brachypodium_distachyon,Oryza_sativa),1  -disallowed Brassica_rapa,Arabidopsis_thaliana
+#
 # Defaults:
 my $input_newicks_filename;
 my $gg_filename   = $default_gg_file_path;
 my $reroot_method = undef;                     # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
 
-my $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1';
-
-# This would mean we will look for a clade with 6 out of 7 dicots, for one with 3 monocots, and for one with Selaginella
+my $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1'; # default clade specifiers.
+# This would mean we will look for a clade with 7 out of 8 dicots, for one with 6 out of 7 dicots, 
+# for one with 3 monocots, and for one with Selaginella
 
 my $predefined_taxon_groups =
   {    # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
@@ -96,21 +102,23 @@ my $species_tree_newick_file = $default_species_tree_file_path;    # if undefine
 # Process long cl options
 GetOptions(
     'input_newicks=s' => \$input_newicks_filename,
-    'ggfile=s'        => \$gg_filename,                            # defines species-sequence association.
-         # gg file has 1 line per species: species name followed by whitespace-separated sequence ids.
-    'reroot=s' => \$reroot_method,    # selects rerooting method. options: none, midpoint, minvar, mindl.
-    'speciestreefile=s'  => \$species_tree_newick_file,    # to override built-in species tree with 52 species
-                                                           # (see sub reroot below to see this default species tree).
+  
     'clade_specifiers=s' => \$clade_specifiers,
     'disallowed_species=s' =>
       \$disallowed_species,    # either: name of predefined taxon group, or comma separated taxa names:
-
     # e.g. 'Arabidopsis_thaliana, Brassica_rapa'
     'maxnbs=i' => \$max_nbs,
+# The following 3 options typically will not be used because the gene-genome association and tree rooting has already
+# been done at an earlier stage. One can however choose to reroot the trees in a different way at this point.
+  'ggfile=s'        => \$gg_filename,   # defines species-sequence association. Optional if these are already in newick expressions.
+         # gg file has 1 line per species: species name followed by whitespace-separated sequence ids.
+    'reroot=s' => \$reroot_method,    # selects rerooting method. options: none, midpoint, minvar, mindl. 
+    'speciestreefile=s'  => \$species_tree_newick_file,    # to override built-in species tree with 52 species
+                                                           # (see sub reroot below to see this default species tree).
 );
 
 if ( defined $species_tree_newick_file and !-f $species_tree_newick_file ) {
-    die "$species_tree_newick_file is not a regular file. Will use default species tree.\n";
+    die "$species_tree_newick_file is not a regular file. Exiting\n";
     $species_tree_newick_file = undef;
 }
 my $species_tree_obj   = get_species_tree($species_tree_newick_file);
@@ -131,7 +139,9 @@ my @clade_spec_objs = ();
 for (@clade_specs) {
     push @clade_spec_objs, CXGN::Phylo::CladeSpecifier->new( $_, $predefined_taxon_groups );
 }
-while ( my ( $i, $cso ) = each @clade_spec_objs ) {
+# while ( my ( $i, $cso ) = each @clade_spec_objs ) {
+  for(my $i=0; $i < scalar @clade_spec_objs; $i++ ){
+my $cso = $clade_spec_objs[$i];
     print "# Clade ", $i + 1, " specs: \n", "# ", $cso->as_string(), "#\n";
 }
 print "# Disallowed species: ", join( ", ", @disallowed_species ), "\n#\n";
