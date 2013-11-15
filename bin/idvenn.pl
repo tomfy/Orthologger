@@ -44,10 +44,10 @@ print "# n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2
 sub store_ids{
 	my $filename = shift;
 	my %ids = ();
-	open my $fh, "<", "$filename";
+	open my $fh, "<", "$filename" or die "couldnt open file $filename \n";;
 	while(<$fh>){
-		next if(/^\s*#/);
-		$ids{$1}++ if(/^\s*(\S+)/);
+		next if(/^\s*#/); # skip commented lines
+		$ids{$1}++ if(/^\s*(\S+)/); # store the id
 	}
 	return \%ids;
 }
