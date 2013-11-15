@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use Getopt::Long;
-
+print "# select_from_cladesout.pl  ", join(" ", @ARGV), "\n";
 my $nesting_string = ''; #
 my $max_paralogs_string = '';
 my $max_disallowed_string = '';
