@@ -3,6 +3,11 @@ use strict;
 
 my @files = @ARGV;
 
+# arguments are 2 or more filenames, of files with ids in first col.
+# outputs list of ids, with string (e.g. 1 0 1 1 ) indicating which files it was present in,
+# i.e. which venn diagram region it belongs in.
+# and number of ids in each of these regions.
+
 print "Input files: ", join(", ", @files), "\n";
 my %id_count = ();
 my @file_id_hashes = ();
