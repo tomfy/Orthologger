@@ -1,14 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
-
+use Getopt::Long;
 # take a pair cladesout files as input.
 # define some criteria for categories, such as
 # 'D<M<S, no M paralogs, no Brassicas in S'
 # and require consensus of both input files for an id to
 # be put in the category
 
-my $in_file_1 = shift;		# e.g. based on muscle alignments
-my $in_file_2 = shift;		# e.g. based on mafft alignments
+
 
 # Note: in the following array, elements 1 and 2 should specify subsets of elem. 0, and elem. 3 should specify 
 # the intersection of 1 and 2. 
@@ -27,11 +26,20 @@ my @select_option_strings = ( # 7 of 8 dicots
     			     " -nest '2<3' -maxpara '3:0' -maxdisallowed '3:0' ", # D<M, , No paralogs in M, No Brassicas in M
     			     " -nest '2<3,3<4' -maxpara '3:0' -maxdisallowed '4:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
     			    );
+my $in_file_1 = undef;		# e.g. based on muscle alignments
+my $in_file_2 = undef;		# e.g. based on mafft alignments
+my $min_sum_acc_bs = 70; # default minimum number of accepted bootstraps (sum of analyses 1 and 2)
+my $min_each_acc_bs = 0; # default min number of accepted bootstraps (must be >= this in both analysis 1 and 2)
 
-my $min_sum_acc_bs = shift;
-$min_sum_acc_bs = 70 if (!defined $min_sum_acc_bs);  # sum of accepted ma and mu bs replicates must be at least this.
-my $min_each_acc_bs = shift;
-$min_each_acc_bs = 0 if (!defined $min_each_acc_bs);
+GetOptions(
+    'file1=s' => \$in_file_1,
+  'file2=s' => \$in_file_2,
+    'min_sum_acc_bs=i' => \$min_sum_acc_bs,
+    'min_both_acc_bs=i' => \$min_each_acc_bs,
+);
+die "input file 1, ($in_file_1), undefined or no such file.\n" if(!defined $in_file_1  or ! -f $in_file_1);
+die "input file 2, ($in_file_2), undefined or no such file.\n" if(!defined $in_file_2  or ! -f $in_file_2);
+print "# Input files: $in_file_1, $in_file_2 \n";
 print "# both n_accepted bootstraps >= $min_each_acc_bs; sum n_accepted bootstraps >= $min_sum_acc_bs \n";
 my %id_either = (); # ids which are OK in at least one of the input cladesout files
 my @Ns = ();
@@ -77,9 +85,9 @@ my $sel_opt_str = $select_option_strings[$ii];
     }
   }
   push @Ns, $count_acc;
-print "# Region $ii;   ", $select_option_strings[$ii], "\n";
-  print "# Nacc: $count_acc  $sel_opt_str  $min_each_acc_bs  $min_sum_acc_bs \n";
-  print "# N1, N2, Nunion, Nintersection: $N1  $N2 ", $N1 + $N2 - $N1and2, "  $N1and2 \n\n";
+  print "# Region $ii;   ", $select_option_strings[$ii], "\n";
+  print "# Nfile1, Nfile2, Nunion, Nintersection: $N1  $N2 ", $N1 + $N2 - $N1and2, "  $N1and2 (No requirement on bootstraps)\n";
+  print "# Nintersection and satisfying bootstrap requirements: $count_acc  $sel_opt_str  $min_each_acc_bs  $min_sum_acc_bs \n\n";
   push @id_hashes, \%cons_id_hash;
 
 }
