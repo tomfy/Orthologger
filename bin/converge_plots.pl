@@ -19,7 +19,7 @@ while (<$fh0>) {
     $n_runs = $1;
     $got_nruns = 1;
   }
-  if (/Number of taxa = (\d+)/) {
+  if (/Defining new matrix with\s+(\d+)\s+taxa/) {
     $n_taxa = $1;
     $got_ntaxa = 1;
   }
@@ -130,7 +130,7 @@ my ($splt_min_nbb, $splt_q1_nbb, $splt_median_nbb, $splt_q3_nbb, $splt_max_nbb, 
 	  . " '' 0.2 1, '' 0.3 1, '' 0.4 1, '' 0.5 1, '' 0.6 1, '' 0.7 1, '' 0.8 1, '' 0.9 1 ";
 
 my $scale = 0.5;
-  if(1){
+  if(0){
 #Splits
 $plot0 = # various convergence diagnostic quantities as function of generations
     Graphics::GnuplotIF->new( persist => $persist, style => 'lines lw 2');

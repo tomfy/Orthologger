@@ -7,7 +7,7 @@ use CXGN::Phylo::CladeSpecifier;
 # for each id pair (i.e. id1 id2 )
 # get the corresponding sequences (fasta)
 # usage example:
-#  seq+matches2fasta.pl -gg ../21species.gg  -abc_file Mv21_10000.abc -input ../new21species-pep.fasta
+#  seq+matches2fasta.pl -gg ../21species.gg  -abc_file Mv21_10000.abc -fasta_in ../new21species-pep.fasta
 # output (fasta sequences for each family) would be file:  Mv21_fam_1000.fastas
 
 my $predefined_taxon_groups =
@@ -19,6 +19,7 @@ my $predefined_taxon_groups =
         'Pinus_taeda'                => 1,
     },
     '8monocots' => {
+
         'Phoenix_dactylifera'     => 1,    # date palm
         'Setaria_italica'         => 1,    # foxtail millet
         'Triticum_aestivum'       => 1,    # wheat
@@ -60,13 +61,21 @@ my $predefined_taxon_groups =
         Thellungiella_halophila => 1,
         Capsella_rubella        => 1
     },
+  '6negatives' =>  {
+        Brassica_rapa           => 1,      # turnip
+        Arabidopsis_thaliana    => 1,
+        Arabidopsis_lyrata      => 1,
+        Thellungiella_halophila => 1,
+        Capsella_rubella        => 1,
+		  Beta_vulgaris => 1,      # beet
+    },
   };
-my $taxon_requirements_string = '7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1';
+my $taxon_requirements_string = '7dicots,6 : 4monocots,3'; # : Selaginella_moellendorffii,1';
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
 my $input_fasta_filename      = undef;                                                    # fasta for all sequences
 my $max_eval                  = 1e-8;                                                     # default.
-my $max_family_size           = 200;                                                      # ????
+my $max_family_size           = 10000;   # default is just a big number, to let families be just whatever is in abc file.
 
 # Process long cl options
 GetOptions(
@@ -87,7 +96,7 @@ for (@tax_reqs) {
       print $the_CS->as_string(), "\n";
  push @tax_req_objs, $the_CS;
 }
-my $min_n_dicots = 0;
+my $min_n_dicots = 6;
 
 ########
 
@@ -121,14 +130,14 @@ while ( my $line = <$fh_blast> ) {
         $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
         my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
 my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
-my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and $selaginella_present);
-print " [$old_OK]  [$taxon_requirement_satisfied] \n";
+my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present);
+#print " [$old_OK]  [$taxon_requirement_satisfied] \n";
 
         # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
         if ( defined $previous_id1 ) {
             print $fh "$fam_string_head";
             print $fh "$fam_string_fasta"
-              if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and $selaginella_present );
+              if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present );
             print $fh "\n";
         }
 
@@ -162,20 +171,20 @@ print " [$old_OK]  [$taxon_requirement_satisfied] \n";
     else {
         warn "Id $id2 not found in $input_fasta_filename.\n";
     }
-}
+  } # loop over lines of blast output (abc)
 my @taxa = sort keys %taxon_count;
 my $cs_taxa = join( ",", @taxa );
 $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
 my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
 my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
-my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and $selaginella_present);
-print " [$old_OK]  [$taxon_requirement_satisfied] \n";
+my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present);
+#print " [$old_OK]  [$taxon_requirement_satisfied] \n";
 
 
   # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
   if ( defined $previous_id1 ) {
     print $fh "$fam_string_head";
-    print $fh "$fam_string_fasta" if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and $selaginella_present );
+    print $fh "$fam_string_fasta" if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present );
     print $fh "\n";
   }
 
@@ -270,10 +279,10 @@ sub check_taxon_requirements {
   my $n_satisfied        = 0;
   for my $tax_req (@$taxon_requirements) {
     for my $taxon (@$taxa) {
-      if ($tax_req->store($taxon)){
+      if ($tax_req->store($taxon)){ # store the taxon and return 1 if requirements have been met.
 
 	$n_satisfied++;
-	print "taxon, n_satisfied: $taxon,  $n_satisfied \n";
+	# print "taxon, n_satisfied: $taxon,  $n_satisfied \n";
 	last;
       }
     }
