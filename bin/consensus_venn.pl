@@ -13,27 +13,49 @@ use Getopt::Long;
 # the intersection of 1 and 2. 
 my @select_option_strings = ( # 7 of 8 dicots
 			     " -nest '1<3' -maxdisallowed '3:0' ", # outer: D(7/8) < M(3/4), No Brassicas in M
-
 			     " -nest '1<3,3<4' -maxdisallowed '4:0' ", # D<M<S, No Brassicas in S
 			     " -nest '1<3' -maxpara '3:0' -maxdisallowed '3:0' ", # D<M, , No paralogs in M, No Brassicas in M
 			     " -nest '1<3,3<4' -maxpara '3:0' -maxdisallowed '4:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
 			    );
 
-    @select_option_strings = ( # 6 of 7 dicots
-    			     " -nest '2<3' -maxdisallowed '3:0' ", # outer: D(6/7) < M(3/4), No Brassicas in M
+ #      @select_option_strings = ( # 6 of 7 dicots
+ #      			     " -nest '2<3' -maxdisallowed '3:0' ", # outer: D(6/7) < M(3/4), No Brassicas in M
+ #      			     " -nest '2<3,3<4' -maxdisallowed '4:0' ", # D<M<S, No Brassicas in S
+ #      			     " -nest '2<3' -maxpara '3:0' -maxdisallowed '3:0' ", # D<M, , No paralogs in M, No Brassicas in M
+ #      			     " -nest '2<3,3<4' -maxpara '3:0' -maxdisallowed '4:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
+ #      			    );
 
-    			     " -nest '2<3,3<4' -maxdisallowed '4:0' ", # D<M<S, No Brassicas in S
-    			     " -nest '2<3' -maxpara '3:0' -maxdisallowed '3:0' ", # D<M, , No paralogs in M, No Brassicas in M
-    			     " -nest '2<3,3<4' -maxpara '3:0' -maxdisallowed '4:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
-    			    );
+ # @select_option_strings = ( # 7 of 8 dicots D7/8 < M1/4
+ # 			     " -nest '1<3' -maxdisallowed '5:0' ", # outer: D(7/8) < M(3/4), No Brassicas in M(3<4)
+ # 			     " -nest '1<3,5<6' -maxdisallowed '6:0' ", # D<M<S, No Brassicas in S
+ # 			     " -nest '1<3' -maxpara '5:0' -maxdisallowed '5:0' ", # D<M, , No paralogs in M, No Brassicas in M
+ # 			     " -nest '1<3,5<6' -maxpara '5:0' -maxdisallowed '6:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
+ # 			    );
+
+ # @select_option_strings = ( # 7 of 8 dicots D7/8 < M2/4
+ #  			     " -nest '1<4' -maxdisallowed '5:0' ", # outer: D(7/8) < M(3/4), No Brassicas in M(3<4)
+ #  			     " -nest '1<4,5<6' -maxdisallowed '6:0' ", # D<M<S, No Brassicas in S
+ #  			     " -nest '1<4' -maxpara '5:0' -maxdisallowed '5:0' ", # D<M, , No paralogs in M, No Brassicas in M
+ #  			     " -nest '1<4,5<6' -maxpara '5:0' -maxdisallowed '6:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
+ #  			    );
+
+  # @select_option_strings = ( # 7 of 8 dicots D7/8 < M3/4
+  # 			     " -nest '1<5' -maxdisallowed '5:0' ", # outer: D(7/8) < M(3/4), No Brassicas in M(3<4)
+  # 			     " -nest '1<5,5<6' -maxdisallowed '6:0' ", # D<M<S, No Brassicas in S
+  # 			     " -nest '1<5' -maxpara '5:0' -maxdisallowed '5:0' ", # D<M, , No paralogs in M, No Brassicas in M
+  # 			     " -nest '1<5,5<6' -maxpara '5:0' -maxdisallowed '6:0' " # innermost region: D<M<S, no paralogs in M, no Brassicas in S
+  # 			    );
+
+
+ 
 my $in_file_1 = undef;		# e.g. based on muscle alignments
 my $in_file_2 = undef;		# e.g. based on mafft alignments
-my $min_sum_acc_bs = 70; # default minimum number of accepted bootstraps (sum of analyses 1 and 2)
+my $min_sum_acc_bs = 0; # default minimum number of accepted bootstraps (sum of analyses 1 and 2)
 my $min_each_acc_bs = 0; # default min number of accepted bootstraps (must be >= this in both analysis 1 and 2)
 
 GetOptions(
     'file1=s' => \$in_file_1,
-  'file2=s' => \$in_file_2,
+    'file2=s' => \$in_file_2,
     'min_sum_acc_bs=i' => \$min_sum_acc_bs,
     'min_both_acc_bs=i' => \$min_each_acc_bs,
 );
@@ -45,17 +67,23 @@ my %id_either = (); # ids which are OK in at least one of the input cladesout fi
 my @Ns = ();
 my @id_hashes = ();
 for(my $ii=0; $ii < scalar @select_option_strings; $ii++){
+ 
 my $sel_opt_str = $select_option_strings[$ii];
+# print $sel_opt_str, "\n";
   my %cons_id_hash = ();
   my ($N1, $N2, $N1and2) = (0, 0, 0);
   my $count_acc = 0;
   my %id_accinfo_1 = ();
   # print "$sel_opt_str \n";
   my $cl1 = " select_from_cladesout.pl $sel_opt_str < $in_file_1 "; # | grep -P '^\s*(\S+\s+){2}1' ";
+#print "$cl1 \n";
   for ( split("\n", `$cl1`) ) {
-    next if(/^\s*#/);
+#    print "sfc output line: $_ \n";
+    next if(/^\s*#/  or  /^\s*$/);
     /^\s*(\S+)\s+(.*)/;
+#print "1: $1    2: $2 \n";
     my $acc_info_1 = [split(" ", $2)];
+#    print "acc_info_1:  ", join(";", @$acc_info_1), " \n";
     $id_accinfo_1{$1} = $acc_info_1;
     if ($acc_info_1->[1] == 1) {
       $N1++;
@@ -65,12 +93,15 @@ my $sel_opt_str = $select_option_strings[$ii];
   }
   my $cl2 = " select_from_cladesout.pl $sel_opt_str < $in_file_2 "; # | grep -P '^\s*(\S+\s+){2}1' ";
   for ( split("\n", `$cl2`) ) {
-  next if(/^\s*#/);
+#    print "$_\n";
+  next if(/^\s*#/  or  /^\s*$/);
+#    print "$_ \n";
     /^\s*(\S+)\s+(.*)/;
     my $id2 = $1;
+#  print "file2, id: $1,  info: $2 \n";
     my $acc_info_1 = (exists $id_accinfo_1{$id2})?  $id_accinfo_1{$id2}: [0, 0, 0, 0];
     my $acc_info_2 = [split(" ", $2)]; # $2;
-    #print "$id2  ", $acc_info_1->[1], "  ", $acc_info_2->[1], "\n";
+#    print "$id2  ", $acc_info_1->[1], "  ", $acc_info_2->[1], "\n"; exit;
     if ($acc_info_2->[1] == 1) {
       $N2++;
       $id_either{$id2}++;
