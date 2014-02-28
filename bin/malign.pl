@@ -80,7 +80,7 @@ while (<$fh_in>) {
 #    print "fasta: $fasta \n";
 #exit;
   }
-    if (/^\s*$/) {
+    if (/^\s*$/) { # only whitespace
       chomp $idline;
       print $fh_out "$idline  $do \n";
       if($do){
