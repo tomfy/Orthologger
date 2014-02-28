@@ -3,7 +3,7 @@ use strict;
 
 my $file1 = shift;
 my $file2 = shift;
-
+my $verbose = shift || undef;
 my $ids1 = store_ids($file1);
 my $ids2 = store_ids($file2);
 
@@ -24,7 +24,7 @@ for my $id2 (keys %$ids2){
 	push @only2, $id2;
 }
 }
-
+if($verbose){
 for(@only1){
   print $_, "  1only \n";
 }
@@ -35,6 +35,7 @@ for(@only2){
   print $_, "  2only \n";
 }
 print "\n";
+}
 
 print "# n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2, "\n"; 
 
