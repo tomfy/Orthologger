@@ -43,7 +43,9 @@ my %spname1_spname2 = (
 		       'Thalophila' => 'Thellungiella_halophila', # salt-tolerant relative of arabidopsis
 		       'Vcarteri' => 'Volvox_carteri', # green alga; forms spherical colonies.
 		       'Vvinifera' => 'Vitis_vinifera', # grape
-		       'Zmays' => 'Zea_mays' # maize
+		       'Zmays' => 'Zea_mays', # maize
+		       'Beet' => 'Beta_vulgaris', # sugar beet.
+		       'Amborella' => 'Amborella_trichopoda' # basal angiosperm.
 );
 
 my %species_sequences_hash = ();
