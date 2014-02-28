@@ -39,6 +39,8 @@ my $gg_filename   = $default_gg_file_path;
 my $reroot_method = undef;                     # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
 
 my $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1'; # default clade specifiers.
+
+# $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,1 : 4monocots,2 : 4monocots,3 : Selaginella_moellendorffii,1';
 # This would mean we will look for a clade with 7 out of 8 dicots, for one with 6 out of 7 dicots, 
 # for one with 3 monocots, and for one with Selaginella
 
@@ -92,10 +94,18 @@ my $predefined_taxon_groups =
         Thellungiella_halophila => 1,
         Capsella_rubella        => 1
     },
+   '6negatives' =>  {
+        Brassica_rapa           => 1,      # turnip
+        Arabidopsis_thaliana    => 1,
+        Arabidopsis_lyrata      => 1,
+        Thellungiella_halophila => 1,
+        Capsella_rubella        => 1,
+	Beta_vulgaris => 1,
+    },
   };
 
 # For each clade, count the number of these species present: (
-my $disallowed_species       = '5brassicas';
+my $disallowed_species       = '6negatives'; # '5brassicas';
 my $max_nbs                  = 1000000;                            # big number - do all bs replicates by default.
 my $species_tree_newick_file = $default_species_tree_file_path;    # if undefined or
 
@@ -145,10 +155,11 @@ my $cso = $clade_spec_objs[$i];
     print "# Clade ", $i + 1, " specs: \n", "# ", $cso->as_string(), "#\n";
 }
 print "# Disallowed species: ", join( ", ", @disallowed_species ), "\n#\n";
-print "# For each clade 3 number are given: \n",
+print "# For each clade 4 numbers are given: \n",
   "#   query-root distance; \n", 
   "#   N query-species seqs in clade; \n",
-  "#   N disallowed species in clade. \n";
+  "#   N disallowed species in clade; \n",
+  "#   N leaves in clade. \n";
 
 ##########################################################################################
 
@@ -215,12 +226,12 @@ while (<$fh_in>) {
                     $tree = reroot( $tree, $reroot_method, $species_tree_obj );
                 }
 
-                ############################# FINDING SPECIFIED CLADES  ####################################
+                ############################# FINDING SPECIFIED CLADES  ###################################
                 my $cladeinfo = $tree->find_clades( $sequence_id, \@clade_spec_objs, \@disallowed_species );
                 printf( "%15s %10s  ", $sequence_id, $type );
                 for (@clade_spec_objs) {
                     my $info = $cladeinfo->{$_};
-                    printf( "   %3i %3i %3i", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species} );
+                    printf( "   %3i %3i %3i %3i", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
                 }
                 print "\n";
 
