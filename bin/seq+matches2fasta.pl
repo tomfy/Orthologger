@@ -74,8 +74,9 @@ my $taxon_requirements_string = '7dicots,6 : 4monocots,3'; # : Selaginella_moell
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
 my $input_fasta_filename      = undef;                                                    # fasta for all sequences
-my $max_eval                  = 1e-8;                                                     # default.
+my $max_eval                  = 100;                                                     # default is big - 
 my $max_family_size           = 10000;   # default is just a big number, to let families be just whatever is in abc file.
+my $output_filename = undef;
 
 # Process long cl options
 GetOptions(
@@ -84,9 +85,10 @@ GetOptions(
     'fasta_infile=s'      => \$input_fasta_filename,
     'max_eval=s'          => \$max_eval,
     'max_family_size=i'   => \$max_family_size,
-    'taxon_requirement=s' => \$taxon_requirements_string
+    'taxon_requirement=s' => \$taxon_requirements_string,
+    'output_filename=s' => \$output_filename,
 );
-
+print STDERR "OUTPUT FILENAME: $output_filename \n";
 my @tax_reqs = split( ":", $taxon_requirements_string );
 
 my @tax_req_objs = ();
@@ -106,14 +108,12 @@ my $gene_genome     = store_gene_genome_association_info($gg_filename);
 open my $fh_blast, "<", "$abc_file";
 my $previous_id1    = undef;
 my $previous_id2    = undef;
-my $output_filename = $abc_file;
-
-# print STDERR $abc_file, "\n";
-$output_filename =~ s/[.](m8|abc)$//;
-$output_filename =~ s/_blastout1?$//;
-$output_filename .= "_fam.fastas";
-
-# print STDERR "$output_filename \n";
+if(!defined $output_filename){
+$output_filename = $abc_file;
+$output_filename =~ s/[.](m8|abc)$/.fastas/;
+#$output_filename .= "_fam.fastas";
+}
+print STDERR "output filename:  $output_filename \n";
 #exit;
 open my $fh, ">", "$output_filename";
 my ( $fam_size, $fam_string_head, $fam_string_fasta ) = ( 0, '', '' );

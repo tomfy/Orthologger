@@ -13,7 +13,7 @@ my $max_eval = 1e-12;		# default.
 my $max_fam_size = 140;
 my $ggfilename = undef;
 my $m8_filename = undef;
-my $abc_filename = undef;
+my $abc_filename = '';
 my $first_of_species_factor = 1; # has no effect if no ggfile.
 # by setting this to some large number (e.g. 1e20) will keep the best match
 # from each species, if it is within this factor of the e-value threshold
@@ -36,12 +36,12 @@ print STDERR "# input file: $m8_filename \n", "# output file: $abc_filename \n",
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
 open my $fh_m8_in, "<", "$m8_filename";
 
-if (!defined $abc_filename) {
+if (!defined $abc_filename or $abc_filename eq '') {
   $abc_filename = $m8_filename;
   $abc_filename =~ s/[._]m8//;	# remove final .m8 (or _m8) if present
   $abc_filename .= '_fams.abc';
 }
-
+print STDOUT "$abc_filename\n";
 my %id_species = ();
 if (defined $ggfilename  and  -f $ggfilename) { # read in id-species info
   open my $fhgg, "<", "$ggfilename";
