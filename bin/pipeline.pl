@@ -40,8 +40,6 @@ $abc_filename =~ s/\s+$//;
 print STDERR "[$abc_filename]\n";
 
 my $abc_part_filenames = `split_abc.pl $abc_filename $n_pieces`;
-# print "{{ $abc_part_filenames }}";
-# $abc_part_filenames =~ s/\s+$//;
 my @abc_parts = split(" ", $abc_part_filenames);
 
 print "[" ,join("][", @abc_parts), "]\n";
@@ -57,34 +55,23 @@ for my $the_abc_part (@abc_parts) {
   push @fastas_filenames, $output_fastas_filename
 }
 
-# for my $a_fastas_filename (@fastas_filenames) {
-#   my $malign_out_filename = $a_fastas_filename;
-#   $malign_out_filename =~ s/fastas$/alfastas/;
-#   my $malign_stdout = `malign.pl  -input $a_fastas_filename  -align muscle  -quality quick  -output $malign_out_filename`;
-# }
+# fork processes to do alignment, tree finding.
 my $n_alignments_to_do = scalar @fastas_filenames;
 for my $a_fastas_filename (@fastas_filenames) {
   my $malign_out_filename = $a_fastas_filename;
   $malign_out_filename =~ s/fastas$/alfastas/;
   my $pid = fork(); # returns 0 to child process, pid of child to parent process.
-#  print "fork ret val: [$pid] \n";
-  #  die "Couldnt fork.\n" unless ($pid);
-  if ($pid == 0) {		# child process
-#    print "In child process. Fork return value: $pid Pid: $$ \n";
-#    print "part $malign_out_filename, pid: $pid \n";
+  if ($pid == 0) {  # child process
     my $malign_stdout = `malign.pl  -input $a_fastas_filename  -align muscle  -quality quick  -output $malign_out_filename`;
-print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
-my $output_newick_filename = $malign_out_filename;
-$output_newick_filename =~ s/alfastas$/newicks/;
+    print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
+    my $output_newick_filename = $malign_out_filename;
+    $output_newick_filename =~ s/alfastas$/newicks/;
     my $nj_ft_bs_stdout = `nj_ft_bs.pl -gg $ggfilename -input $malign_out_filename -output $output_newick_filename`;
     exit(0);
-  } else { # parent process, fork return value is pid of child process:
- #   print "In parent process; child pid: $pid \n";
   }
 }
 my $children_done = 0;
 while (wait() != -1) {
   $children_done++; print "Number of alignments finished: $children_done out of $n_alignments_to_do. \n";
 }
-;
 print "Done waiting \n";
