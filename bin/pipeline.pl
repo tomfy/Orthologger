@@ -74,6 +74,9 @@ for my $a_fastas_filename (@fastas_filenames) {
 #    print "part $malign_out_filename, pid: $pid \n";
     my $malign_stdout = `malign.pl  -input $a_fastas_filename  -align muscle  -quality quick  -output $malign_out_filename`;
 print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
+my $output_newick_filename = $malign_out_filename;
+$output_newick_filename =~ s/alfastas$/newicks/;
+    my $nj_ft_bs_stdout = `nj_ft_bs.pl -gg $ggfilename -input $malign_out_filename -output $output_newick_filename`;
     exit(0);
   } else { # parent process, fork return value is pid of child process:
  #   print "In parent process; child pid: $pid \n";
