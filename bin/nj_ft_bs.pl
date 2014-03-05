@@ -67,32 +67,45 @@ my $do_nj = 0;
 my $do_ml = 1;
 my $n_bs = 0; # number of bs replicates
 my $ml_bs = 0; # by default, do not do ML for bs
+my $input_alignment_file = undef;
+my $output_newick_file = undef;
 # print "[$gg_filename] [$do_nj] [$do_ml] [$n_bs] [$ml_bs] \n";
 # my $n_taxa                   = shift || 21;
 my $species_tree_newick_file = undef;
 my $reroot_method            = 'mindl';
 my $nongap_fraction = 0.8;
 my $min_overlap_length = 40;
-my $nosupport = ''; # default is to do support
+my $support = 1; # default is to do support
 GetOptions(
     'gg_file=s'           => \$gg_filename,
     'nj!'          => \$do_nj, # exclamation point means can use  -nj  and  -nonj
     'ml!'      => \$do_ml,
-    'nosupport'          => \$nosupport, # switch to nosupport!  option?
+    'support!'          => \$support, # -nosupport to turn off outputting of local branch support numbers.
     'n_bs=i' => \$n_bs,
     'ml_bs!' => \$ml_bs, # boolean to do ML bs or not (default: 0)
 	   'species_tree=s' => \$species_tree_newick_file,
 	   'reroot_method=s' => \$reroot_method, 
 	   'nongap_fraction=i' => \$nongap_fraction,
-	   'min_overlap_length=i' => \$min_overlap_length
+	   'min_overlap_length=i' => \$min_overlap_length,
+	   'input_alignment_file=s' => \$input_alignment_file,
+	   'output_newick_file=s' => \$output_newick_file,
 );
 if(!defined $gg_filename  or  ! -f $gg_filename){
   die "No gene-genome association file specified. Exiting. \n";
 }
+my $fh_in = \*STDIN;
+if(defined $input_alignment_file){
+    open $fh_in, "<", "$input_alignment_file" or die "File [$input_alignment_file] could not be opened for reading.\n";
+  }
+my $fh_out = \*STDOUT;
+if(defined $output_newick_file){
+    open $fh_out, ">", "$output_newick_file" or die "File [$output_newick_file] could not be opened for writing.\n";
+  }
+
 print STDERR "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \n", 
   "do_nj: $do_nj \n",
   "do_ml: $do_ml \n", 
-  "branch support: ", $nosupport? '0' : '1', " \n",
+  "branch support: ", $support? '1' : '0', " \n",
   "n_bs: $n_bs \n", "ml_bs: $ml_bs \n", 
   "species_tree: ", (defined $species_tree_newick_file)? $species_tree_newick_file : 'undefined', " \n",
   "reroot_method: $reroot_method \n",
@@ -103,7 +116,7 @@ print STDERR "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \
 #my $nongap_fraction    = 0.8;
 my $state              = 'idline'; # other possible values: fasta
 my ( $qid, $fam_size, $taxa, $idline, $fasta);
-my $support_string = ($nosupport)? '-nosupport' : '';  # controls whether FastTree calculates local branch support numbers.
+my $support_string = ($support)? '' : '-nosupport';  # controls whether FastTree calculates local branch support numbers.
 my $gg_hashref = store_gg_info($gg_filename);
 
 #print STDERR "number of keys of gg_hash: ", scalar keys %$gg_hashref, "\n";
@@ -111,7 +124,7 @@ my $gg_hashref = store_gg_info($gg_filename);
 my $species_tree = get_species_tree($species_tree_newick_file)
   ; # get species tree from file (or use default if file undef or doesn't exist);
 my $n_ml = 0;
-while (<>) {
+while (<$fh_in>) {
 #  print STDERR "state: $state; line read: $_";
   if ( $state eq 'idline' ) {
     my @cols = split( " ", $_ );
@@ -152,7 +165,7 @@ while (<>) {
 #	print STDERR "[[[$overlap_fasta_string]]]\n";
 	$string_to_print .= "$overlap_length ";
 #	print "$string_to_print \n";
-	if ( $overlap_length >= $min_overlap_length ) {
+	if ( $overlap_length >= $min_overlap_length ) { # sufficient overlap
 	  ################## do actual data - NJ  ########################################
 	  if($do_nj){
 #print STDERR $overlap_fasta_string;
@@ -166,8 +179,8 @@ while (<>) {
 	    newick2rerootednewick( $taxonified_nj_newick,
 				   $reroot_method, $species_tree );
 #print STDERR "after newick2rerootednewick \n";
-	print "$string_to_print \n";
-	  print "NJ  $rr_nj_newick \n\n";
+	print $fh_out "$string_to_print \n";
+	  print $fh_out "NJ  $rr_nj_newick \n\n";
 #exit;
 	}
 	  ################## do actual data - ML  ########################################
@@ -191,8 +204,8 @@ print STDERR "fasttree cl: FastTree -wag -gamma -bionj $support_string \n";
 #	      print STDERR "after ml newick2rerootednewick \n";
 # exit;
 $n_ml++;
-	print "$string_to_print \n";
-	  print "ML  $rr_ml_newick \n\n"; # exit;
+	print $fh_out "$string_to_print \n";
+	  print $fh_out "ML  $rr_ml_newick \n\n"; # exit;
 }
 #exit;
 	  ######################## do bootstraps #########################################
@@ -210,8 +223,8 @@ $n_ml++;
 				     $reroot_method, $species_tree );
 #	      print STDERR "after nj newick2rerootednewick \n";
 
-	print "$string_to_print \n";
-	    print "NJ_BS  $rr_nj_newick \n\n";
+	print $fh_out "$string_to_print \n";
+	    print $fh_out "NJ_BS  $rr_nj_newick \n\n";
 	    ######### ML ########
 	    if ($do_ml and $ml_bs) {
 	      my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string");
@@ -222,17 +235,17 @@ $n_ml++;
 				       $reroot_method, $species_tree );
 #	      print STDERR "after ml newick2rerootednewick \n";
 
-	print "$string_to_print \n";
-	      print "ML_BS  $rr_ml_newick \n\n";
+	print $fh_out "$string_to_print \n";
+	      print $fh_out "ML_BS  $rr_ml_newick \n\n";
 	    }
 	  }			# loop over bootstraps
 	}			# overlap >= minlength
 	else {
-	  print "\n";
+	  print $fh_out "\n";
 	}	# this query has no alignment, just print a blank line
-      }		# if ($do) i.e. there is an alignment for this query
+      }	# if ($do) i.e. there is an alignment for this query
       else {	# 
-	print "$string_to_print\n\n";
+	print $fh_out "$string_to_print\n\n";
       }
       $state = 'idline';
     } else {			# not an empty line - append to $fasta
