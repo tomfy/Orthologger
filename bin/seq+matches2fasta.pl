@@ -135,10 +135,11 @@ my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_
 
         # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
         if ( defined $previous_id1 ) {
+	  if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
             print $fh "$fam_string_head";
-            print $fh "$fam_string_fasta"
-              if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present );
+            print $fh "$fam_string_fasta";
             print $fh "\n";
+	  }
         }
 
         # $fam_string_head .= "fam_size: $fam_size " . join(",", @taxa) . "\n";
