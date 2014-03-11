@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use Getopt::Long;
+use Cwd;
 
 my $max_eval = 1e-12;		# default.
 my $max_fam_size = 140;
@@ -55,14 +56,24 @@ for my $the_abc_part (@abc_parts) {
   push @fastas_filenames, $output_fastas_filename
 }
 
+#  exit;
+
 # fork processes to do alignment, tree finding.
-my $n_alignments_to_do = scalar @fastas_filenames;
+my @alignment_programs = ('muscle', 'mafft');
+
+for my $align_program (@alignment_programs){
+  mkdir $align_program or die "Couldnt make directory $align_program.\n"; # make a directory to put alignments, etc. in.
+  chdir $align_program or die "Couldnt change directory to $align_program.\n";
+my $n_alignment_files_to_do = scalar @fastas_filenames;
+
 for my $a_fastas_filename (@fastas_filenames) {
   my $malign_out_filename = $a_fastas_filename;
   $malign_out_filename =~ s/fastas$/alfastas/;
   my $pid = fork(); # returns 0 to child process, pid of child to parent process.
   if ($pid == 0) {  # child process
-    my $malign_stdout = `malign.pl  -input $a_fastas_filename  -align muscle  -quality quick  -output $malign_out_filename`;
+    $a_fastas_filename = '../' . $a_fastas_filename;
+    $ggfilename = '../' . $ggfilename;
+    my $malign_stdout = `malign.pl  -input $a_fastas_filename  -align $align_program  -quality quick  -output $malign_out_filename`;
     print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
     my $output_newick_filename = $malign_out_filename;
     $output_newick_filename =~ s/alfastas$/newicks/;
@@ -72,6 +83,13 @@ for my $a_fastas_filename (@fastas_filenames) {
 }
 my $children_done = 0;
 while (wait() != -1) {
-  $children_done++; print "Number of alignments finished: $children_done out of $n_alignments_to_do. \n";
+  $children_done++; print "Number of files finished aligning with $align_program: $children_done out of $n_alignment_files_to_do. \n";
 }
-print "Done waiting \n";
+print "Done with aligning (with $align_program) and tree finding. \n";
+my @files = split(" ", `ls *tmpfile`); # cleanup - delete temp files.
+  for(@files){ unlink $_; }
+
+print "cwd: ", getcwd, "\n";
+  chdir '../' || die "chdir ../ failed \n";
+print "cwd: ", getcwd, "\n";
+}
