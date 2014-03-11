@@ -76,6 +76,7 @@ my $reroot_method            = 'mindl';
 my $nongap_fraction = 0.8;
 my $min_overlap_length = 40;
 my $support = 1; # default is to do support
+my $additional_ft_options = '';
 GetOptions(
     'gg_file=s'           => \$gg_filename,
     'nj!'          => \$do_nj, # exclamation point means can use  -nj  and  -nonj
@@ -89,6 +90,7 @@ GetOptions(
 	   'min_overlap_length=i' => \$min_overlap_length,
 	   'input_alignment_file=s' => \$input_alignment_file,
 	   'output_newick_file=s' => \$output_newick_file,
+	   'ft_options=s' => \$additional_ft_options,
 );
 if(!defined $gg_filename  or  ! -f $gg_filename){
   die "No gene-genome association file specified. Exiting. \n";
@@ -188,7 +190,7 @@ while (<$fh_in>) {
 	#    print "$do_ml exiting\n"; exit;
 #	  print STDERR "do_ml: [$do_ml]. \n", $overlap_fasta_string, "\n";
 print STDERR "fasttree cl: FastTree -wag -gamma -bionj $support_string \n";
-	  my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string ");
+	  my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string $additional_ft_options ");
 # exit;
 #  'FastTree -wag -gamma -bionj -nosupport
 # print STDERR "ML newick: ", $ml_newick, "\n"; #exit;
@@ -227,7 +229,7 @@ $n_ml++;
 	    print $fh_out "NJ_BS  $rr_nj_newick \n\n";
 	    ######### ML ########
 	    if ($do_ml and $ml_bs) {
-	      my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string");
+	      my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string $additional_ft_options ");
 	      my $taxonified_ml_newick =
 		taxonify_newick( $ml_newick, $gg_hashref );
 	      my $rr_ml_newick =
