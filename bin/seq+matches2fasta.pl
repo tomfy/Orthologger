@@ -10,6 +10,24 @@ use CXGN::Phylo::CladeSpecifier;
 #  seq+matches2fasta.pl -gg ../21species.gg  -abc_file Mv21_10000.abc -fasta_in ../new21species-pep.fasta
 # output (fasta sequences for each family) would be file:  Mv21_fam_1000.fastas
 
+# my %species_count = (
+# 		     # Medicago
+# 		     'Medicago_truncatula' => 0,
+# 		     # 4 monocots
+# 		     'Zea_mays' => 0, 'Brachypodium_distachyon' => 0, 'Oryza_sativa' => 0, 'Sorghum_bicolor' => 0,
+# 		     # 8 positive dicots
+# 		     'Solanum_lycopersicum' => 0, 'Solanum_tuberosum' => 0, 'Vitis_vinifera' => 0, 'Glycine_max' => 0,
+# 		     'Populus_trichocarpa' => 0, 'Ricinus_communis' => 0, 'Cucumis_sativus' => 0, 'Carica_papaya' => 0,
+# 		     # 6 negative dicots
+# 		     'Arabidopsis_thaliana' => 0, 'Arabidopsis_lyrata' => 0, 'Brassica_rapa' => 0, 'Capsella_rubella' => 0,
+# 		     'Thellungiella_halophila' => 0, 'Beta_vulgaris' => 0,
+# 		     # Selaginella
+# 		     'Selaginella_moellendorffii' => 0, 
+# 		     # 3 other
+# 		     'Amborella_trichopoda' => 0, 'Chlamydomonas_reinhardtii' => 0, 'Physcomitrella_patens' => 0,
+# 		    );
+#print "KNOWN SPECIES: ", join(", ", sort keys %species_count), "\n";
+
 my $predefined_taxon_groups =
   {    # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
     '4nonangiosperms' => {
@@ -70,7 +88,8 @@ my $predefined_taxon_groups =
 		  Beta_vulgaris => 1,      # beet
     },
   };
-my $taxon_requirements_string = '7dicots,6 : 4monocots,3'; # : Selaginella_moellendorffii,1';
+my $default_taxon_requirements_string = '7dicots,6; 4monocots,3'; # ; Selaginella_moellendorffii,1';
+my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
 my $input_fasta_filename      = undef;                                                    # fasta for all sequences
@@ -88,18 +107,22 @@ GetOptions(
     'taxon_requirement=s' => \$taxon_requirements_string,
     'output_filename=s' => \$output_filename,
 );
+my $using_default_taxon_requirements = $taxon_requirements_string eq $default_taxon_requirements_string;
+
 print STDERR "OUTPUT FILENAME: $output_filename \n";
 my @tax_reqs = split( ":", $taxon_requirements_string );
 
 my @tax_req_objs = ();
 for (@tax_reqs) {
-   
+#   print "in loop over tax_reqs, $_ \n";
       my $the_CS = CXGN::Phylo::CladeSpecifier->new( $_, $predefined_taxon_groups );
       print $the_CS->as_string(), "\n";
  push @tax_req_objs, $the_CS;
 }
+my $min_n_monocots = 3;
 my $min_n_dicots = 6;
 
+# exit;
 ########
 
 my $id_sequence_all = store_fasta_sequences($input_fasta_filename);
@@ -108,12 +131,11 @@ my $gene_genome     = store_gene_genome_association_info($gg_filename);
 open my $fh_blast, "<", "$abc_file";
 my $previous_id1    = undef;
 my $previous_id2    = undef;
-if(!defined $output_filename){
-$output_filename = $abc_file;
+if(!defined $output_filename){ # if no output filename specified on CL, make a file name
+$output_filename = $abc_file; # from $abc_file by replacing .abc with .fastas
 $output_filename =~ s/[.](m8|abc)$/.fastas/;
-#$output_filename .= "_fam.fastas";
 }
-print STDERR "output filename:  $output_filename \n";
+#print STDERR "output filename:  $output_filename \n";
 #exit;
 open my $fh, ">", "$output_filename";
 my ( $fam_size, $fam_string_head, $fam_string_fasta ) = ( 0, '', '' );
@@ -127,15 +149,20 @@ while ( my $line = <$fh_blast> ) {
     if ( ( !defined $previous_id1 ) or ( $id1 ne $previous_id1 ) ) {
         my @taxa = sort keys %taxon_count;
         my $cs_taxa = join( ",", @taxa );
+#	count_species(\@taxa, \%species_count);
         $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
         my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
-my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
-my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present);
-#print " [$old_OK]  [$taxon_requirement_satisfied] \n";
+	my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= $min_n_monocots); #  and !$selaginella_present);
+
+	my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
+
+	if ($using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)) {
+	  warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
+	}
 
         # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
         if ( defined $previous_id1 ) {
-	  if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
+	  if ($taxon_requirement_satisfied){ # $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
             print $fh "$fam_string_head";
             print $fh "$fam_string_fasta";
             print $fh "\n";
@@ -177,16 +204,22 @@ my @taxa = sort keys %taxon_count;
 my $cs_taxa = join( ",", @taxa );
 $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
 my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
+my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= $min_n_monocots); #  and !$selaginella_present);
+
 my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
-my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present);
-#print " [$old_OK]  [$taxon_requirement_satisfied] \n";
+	if($using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)){
+warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
+}
+#print " [$old_OK]  [$taxon_requirement_satisfied]  $n_dicots $n_monocots \n";
 
 
   # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
   if ( defined $previous_id1 ) {
+    if ($taxon_requirement_satisfied){ #  $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
     print $fh "$fam_string_head";
-    print $fh "$fam_string_fasta" if ( $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present );
+    print $fh "$fam_string_fasta";
     print $fh "\n";
+  }
   }
 
 # my $output_fasta_filename = "$cluster_id.fasta";
@@ -252,17 +285,19 @@ sub store_gene_genome_association_info {
     return \%gene_genome;
 }
 
-sub check_taxon_list {        # check list of taxa to see how many monocot species are
-                              # present, and whether selaginella is present.
+sub check_taxon_list {        # check list of taxa to see
+  # how many of the specified monocot species are present,
+  # how many of the specified dicot species are present,
+  # and whether selaginella is present.
     my $taxa = shift;
 
-    my $monocot_count = 0;    # we want to have 3 of these monocots:
+    my $monocot_count = 0;    # counts how many of these 4 monocot species are present:
     $monocot_count += 1 if ( $taxa =~ /Oryza_sativa/ );
     $monocot_count += 1 if ( $taxa =~ /Sorghum_bicolor/ );
     $monocot_count += 1 if ( $taxa =~ /Brachypodium_distachyon/ );
     $monocot_count += 1 if ( $taxa =~ /Zea_mays/ );
 
-    my $dicot_count = 0;      # we want 6 of these 7 dicots:
+    my $dicot_count = 0;      # counts how many of these 7 dicot species are present:
     $dicot_count += 1 if ( $taxa =~ /Populus_trichocarpa/ );
     $dicot_count += 1 if ( $taxa =~ /Ricinus_communis/ );
     $dicot_count += 1 if ( $taxa =~ /Solanum_lycopersicum/ );
@@ -270,7 +305,8 @@ sub check_taxon_list {        # check list of taxa to see how many monocot speci
     $dicot_count += 1 if ( $taxa =~ /Vitis_vinifera/ );
     $dicot_count += 1 if ( $taxa =~ /Glycine_max/ );
     $dicot_count += 1 if ( $taxa =~ /Cucumis_sativus/ );
-
+    
+# print "taxon list string: $taxa; m,d counts: $monocot_count, $dicot_count \n";
     return ( $dicot_count, $monocot_count, $taxa =~ (/Selaginella/) ? 1 : 0 );
 }
 
@@ -278,15 +314,33 @@ sub check_taxon_requirements {
   my $taxon_requirements = shift; # this is an arrayref of CladeSpecifier objects
   my $taxa               = shift; # array ref
   my $n_satisfied        = 0;
-  for my $tax_req (@$taxon_requirements) {
+  for my $tax_req (@$taxon_requirements) { # $tax_req is a CladeSpecifier obj.
+    $tax_req->reset();
     for my $taxon (@$taxa) {
       if ($tax_req->store($taxon)){ # store the taxon and return 1 if requirements have been met.
-
 	$n_satisfied++;
-	# print "taxon, n_satisfied: $taxon,  $n_satisfied \n";
 	last;
       }
     }
+    $tax_req->reset();
   }
   return $n_satisfied == scalar @$taxon_requirements; # true if all the given requirements are satisfied.
 }
+
+# sub count_species{
+#   my $taxa = shift; # array ref
+#   my $species_count = shift; # hashref
+#   for(@$taxa){
+#     if(exists $species_count->{$_}){
+#       $species_count->{$_}++;
+#     }else{
+#       print STDERR "Species  [$_]  unknown.\n";
+#     }
+#   }
+#   my @specs = sort keys %$species_count;
+#   for(@specs){
+# printf("%4i ", $species_count->{$_});
+# }printf("\n");
+#   for(@specs){ $species_count->{$_} = 0; }
+# return 1;
+# }
