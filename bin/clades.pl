@@ -108,7 +108,9 @@ my $predefined_taxon_groups =
 my $disallowed_species       = '6negatives'; # '5brassicas';
 my $max_nbs                  = 1000000;                            # big number - do all bs replicates by default.
 my $species_tree_newick_file = $default_species_tree_file_path;    # if undefined or
-
+my $id_to_pick = undef;
+my $type_to_pick = 'ALL'; # other possibilities: 'NJ', 'ML'
+my $species_to_show = undef; # for each clade, output the ids of this species in the clade.
 # Process long cl options
 GetOptions(
     'input_newicks=s' => \$input_newicks_filename,
@@ -125,6 +127,9 @@ GetOptions(
     'reroot=s' => \$reroot_method,    # selects rerooting method. options: none, midpoint, minvar, mindl. 
     'speciestreefile=s'  => \$species_tree_newick_file,    # to override built-in species tree with 52 species
                                                            # (see sub reroot below to see this default species tree).
+    'id_to_pick=s' => \$id_to_pick, 
+	   'type=s' => \$type_to_pick,
+	   'species_to_show=s' => \$species_to_show,
 );
 
 if ( defined $species_tree_newick_file and !-f $species_tree_newick_file ) {
@@ -171,15 +176,18 @@ open my $fh_in, "<", "$input_newicks_filename"
 my $seqid_species = store_gg_info($gg_filename);
 my $BS_count      = 0;
 while (<$fh_in>) {
-    if (/^Id\s+(\S+)/) {
-        my $sequence_id = $1;
+    if (/^Id\s+(\S+)\s+(\S+)/) {
+        my $sequence_id = $1;  
+	next if(defined $id_to_pick and ($sequence_id ne $id_to_pick));
+#	print "$nj_ml  $2 \n";
+#	
         my $next_line   = <$fh_in>;
         my $type        = undef;
 
         #print STDERR "NEXT LINE: [", $next_line, "]\n";
         if ( $next_line =~ /^((\S+)\s+)?\s*\(/ ) {    # newick string on this line
             my $the_input_newick;
-            if ( $next_line =~ /^\s*\(/ ) {
+            if ( $next_line =~ /^\s*\(/ ) { # newick string on this line, without 'NJ', 'ML' etc. (it is ML)
                 $the_input_newick = $next_line;
                 $type             = 'ML';
 
@@ -187,6 +195,8 @@ while (<$fh_in>) {
             }
             elsif ( $next_line =~ /^\s*(\S+)\s+(\(.*)$/ ) {
                 $type = $1;
+#		print "type to pick, type:  $type_to_pick  $type \n";
+		next if($type_to_pick ne 'ALL' and $type ne $type_to_pick);
                 if ( $type eq 'NJ_BS' ) {
                     $BS_count++;
                 }
@@ -231,7 +241,17 @@ while (<$fh_in>) {
                 printf( "%15s %10s  ", $sequence_id, $type );
                 for (@clade_spec_objs) {
                     my $info = $cladeinfo->{$_};
+		    if(defined $species_to_show){
+		      print "\n";
+		       printf( "   %3i %3i %3i %3i     ", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
+ my @clade_leaves =  @{$info->{leaves}};
+		    #   print join("\n", map($_->get_name(), @clade_leaves)), "\n";
+		       my @selected_leaves = grep($_->get_species() eq $species_to_show, @clade_leaves);
+		       printf("%s \n", join("; ", map($_->get_name(), @selected_leaves)));
+		    }else{
                     printf( "   %3i %3i %3i %3i", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
+		  }
+
                 }
                 print "\n";
 
