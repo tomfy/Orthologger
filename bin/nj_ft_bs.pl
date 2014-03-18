@@ -10,11 +10,10 @@ use File::Basename 'dirname';
 use Cwd 'abs_path';
 my ( $bindir, $libdir );
 
-BEGIN {
+BEGIN {  # this has to go in Begin block so happens at compile time
   $bindir =
-    dirname( abs_path(__FILE__) )
-      ;	    # this has to go in Begin block so happens at compile time
-  $libdir = $bindir . '/../lib';
+    dirname( abs_path(__FILE__) ) ;  # the directory containing this script (i.e. Orthologger/bin )
+  $libdir = $bindir . '/../lib'; 
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
