@@ -1,6 +1,22 @@
 #!/usr/bin/perl -w
 use strict;
 use Getopt::Long;
+# use CXGN::Phylo::CladeSpecifier;
+
+no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+
+use File::Basename 'dirname';
+use Cwd 'abs_path';
+my ( $bindir, $libdir );
+
+BEGIN {  # this has to go in Begin block so happens at compile time
+  $bindir =
+    dirname( abs_path(__FILE__) ) ;  # the directory containing this script (i.e. Orthologger/bin )
+  $libdir = $bindir . '/../lib'; 
+  $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
+}
+use lib $libdir;
+
 use CXGN::Phylo::CladeSpecifier;
 
 # read in blast output
