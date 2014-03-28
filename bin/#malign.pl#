@@ -24,7 +24,7 @@ my $input_filename;
 my $align_program = 'muscle';
 my $quality = 'best';
 open my $fh_out, '>&', STDOUT or die "$!";
-my $output_file = undef;
+my $output_file = undef;fas
 my $maxiters;
 
 # Process long cl options
@@ -51,7 +51,7 @@ print STDERR "[$align_program] [$input_filename] [$quality]\n"; #exit;
 
 my $state = 'idline';		# other possible values: fasta
 my ($qid, $fam_size, $taxa, $idline, $fasta, $do);
-open my $fh_in, "<", "$input_filename" or die "Couldnt open $input_filename for reading.\n";
+open my $fh_in, "<", "$input_filename";
 my $tmp_filename = $input_filename . "_tmp";
 my $stderr_filename = $input_filename . ".stderr";
 my $count_alignments_done = 0;

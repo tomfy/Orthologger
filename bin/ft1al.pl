@@ -2,7 +2,7 @@
 use strict;
 use Getopt::Long;
 # use Devel::Cycle;
-use IPC::Run3;
+#use IPC::Run3;
 
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 
@@ -10,10 +10,11 @@ use File::Basename 'dirname';
 use Cwd 'abs_path';
 my ( $bindir, $libdir );
 
-BEGIN {  # this has to go in Begin block so happens at compile time
+BEGIN {
   $bindir =
-    dirname( abs_path(__FILE__) ) ;  # the directory containing this script (i.e. Orthologger/bin )
-  $libdir = $bindir . '/../lib'; 
+    dirname( abs_path(__FILE__) )
+      ;	    # this has to go in Begin block so happens at compile time
+  $libdir = $bindir . '/../lib';
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
@@ -61,52 +62,37 @@ use CXGN::Phylo::Species_name_map;
 # --
 #
 # Id Medtr...
-my $gg_filename; # required  cl parameter 
+my $gg_filename;		# required  cl parameter 
 my $do_nj = 0;
 my $do_ml = 1;
-my $n_bs = 0; # number of bs replicates
-my $ml_bs = 0; # by default, do not do ML for bs
-my $input_alignment_file = undef;
-my $output_newick_file = undef;
+my $n_bs = 0;			# number of bs replicates
+my $ml_bs = 0;			# by default, do not do ML for bs
 # print "[$gg_filename] [$do_nj] [$do_ml] [$n_bs] [$ml_bs] \n";
 # my $n_taxa                   = shift || 21;
 my $species_tree_newick_file = undef;
 my $reroot_method            = 'mindl';
 my $nongap_fraction = 0.8;
 my $min_overlap_length = 40;
-my $support = 1; # default is to do support
-my $additional_ft_options = '';
+my $nosupport = '';		# default is to do support
 GetOptions(
-    'gg_file=s'           => \$gg_filename,
-    'nj!'          => \$do_nj, # exclamation point means can use  -nj  and  -nonj
-    'ml!'      => \$do_ml,
-    'support!'          => \$support, # -nosupport to turn off outputting of local branch support numbers.
-    'n_bs=i' => \$n_bs,
-    'ml_bs!' => \$ml_bs, # boolean to do ML bs or not (default: 0)
+	   'gg_file=s'           => \$gg_filename,
+	   'nj!'          => \$do_nj, # excalmation point means can use  -nj  and  -nonj
+	   'ml!'      => \$do_ml,
+	   'nosupport'          => \$nosupport, # switch to nosupport!  option?
+	   'n_bs=i' => \$n_bs,
+	   'ml_bs!' => \$ml_bs, # boolean to do ML bs or not (default: 0)
 	   'species_tree=s' => \$species_tree_newick_file,
 	   'reroot_method=s' => \$reroot_method, 
 	   'nongap_fraction=i' => \$nongap_fraction,
-	   'min_overlap_length=i' => \$min_overlap_length,
-	   'input_alignment_file=s' => \$input_alignment_file,
-	   'output_newick_file=s' => \$output_newick_file,
-	   'ft_options=s' => \$additional_ft_options,
-);
-if(!defined $gg_filename  or  ! -f $gg_filename){
+	   'min_overlap_length=i' => \$min_overlap_length
+	  );
+if (!defined $gg_filename  or  ! -f $gg_filename) {
   die "No gene-genome association file specified. Exiting. \n";
 }
-my $fh_in = \*STDIN;
-if(defined $input_alignment_file){
-    open $fh_in, "<", "$input_alignment_file" or die "File [$input_alignment_file] could not be opened for reading.\n";
-  }
-my $fh_out = \*STDOUT;
-if(defined $output_newick_file){
-    open $fh_out, ">", "$output_newick_file" or die "File [$output_newick_file] could not be opened for writing.\n";
-  }
-
 print STDERR "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \n", 
   "do_nj: $do_nj \n",
   "do_ml: $do_ml \n", 
-  "branch support: ", $support? '1' : '0', " \n",
+  "branch support: ", $nosupport? '0' : '1', " \n",
   "n_bs: $n_bs \n", "ml_bs: $ml_bs \n", 
   "species_tree: ", (defined $species_tree_newick_file)? $species_tree_newick_file : 'undefined', " \n",
   "reroot_method: $reroot_method \n",
@@ -117,7 +103,7 @@ print STDERR "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \
 #my $nongap_fraction    = 0.8;
 my $state              = 'idline'; # other possible values: fasta
 my ( $qid, $fam_size, $taxa, $idline, $fasta);
-my $support_string = ($support)? '' : '-nosupport';  # controls whether FastTree calculates local branch support numbers.
+my $support_string = ($nosupport)? '-nosupport' : ''; # controls whether FastTree calculates local branch support numbers.
 my $gg_hashref = store_gg_info($gg_filename);
 
 #print STDERR "number of keys of gg_hash: ", scalar keys %$gg_hashref, "\n";
@@ -125,12 +111,14 @@ my $gg_hashref = store_gg_info($gg_filename);
 my $species_tree = get_species_tree($species_tree_newick_file)
   ; # get species tree from file (or use default if file undef or doesn't exist);
 my $n_ml = 0;
-while (<$fh_in>) {
-#  print STDERR "state: $state; line read: $_";
+$idline = '(alignment has no id line)';
+while (<>) {
+  #  print STDERR "state: $state; line read: $_";
+  $state = 'fasta' if(/^>/);
   if ( $state eq 'idline' ) {
     my @cols = split( " ", $_ );
     ( $qid, $fam_size, $taxa) = @cols[ 1, 4, 5];
- #   print STDERR "$qid, $fam_size\n";
+    #   print STDERR "$qid, $fam_size\n";
 
     # my @species = split(",", $taxa);
     # if(scalar @species < $min_taxa){ # need to have at least 4 taxa (Medtr + 3 monocots)
@@ -144,115 +132,115 @@ while (<$fh_in>) {
     $idline = $_;
     $state  = 'fasta';
     $fasta  = '';
-  } elsif ( $state eq 'fasta' ) {
+  } elsif ( $state eq 'fasta' and /\S/) {
+    # not an empty line - append to $fasta
+    $fasta .= $_;
+  }
+}
 
-    #    $fasta .= $_;
-    if (/^\s*$/) { # blank line after sequence -> process the sequence.
-      chomp $idline;
-      my $string_to_print = "$idline   ";
-      my $rng_seed = srand();
-      if ($fasta ne '') {
 
-	#	print STDERR "[[[$fasta]]]\n";
-#	print STDERR "before overlap \n";
-	my $overlap_obj =
-	  CXGN::Phylo::Overlap->new( $fasta, $nongap_fraction,
-				     $rng_seed );
-	my $overlap_fasta_string =
-	  $overlap_obj->overlap_fasta_string('');
-	my $overlap_length = $overlap_obj->get_overlap_length();
-#	print STDERR  "after overlap. overlap length: $overlap_length.\n";
+if (/^\s*$/) {	  # blank line after sequence -> process the sequence.
+  chomp $idline;
+  my $string_to_print = "$idline   ";
+  my $rng_seed = srand();
+  if ($fasta ne '') {
 
-#	print STDERR "[[[$overlap_fasta_string]]]\n";
-	$string_to_print .= "$overlap_length ";
-#	print "$string_to_print \n";
-	if ( $overlap_length >= $min_overlap_length ) { # sufficient overlap
-	  ################## do actual data - NJ  ########################################
-	  if($do_nj){
-#print STDERR $overlap_fasta_string;
-	  my $nj_newick = run_quicktree($overlap_fasta_string);
-#print STDERR "after run_quicktree \n"; exit;
-#print STDERR "$nj_newick \n";
-	  my $taxonified_nj_newick =
-	    taxonify_newick( $nj_newick, $gg_hashref );
-#print STDERR "after taxonify_newick \n";
-	  my $rr_nj_newick =
-	    newick2rerootednewick( $taxonified_nj_newick,
-				   $reroot_method, $species_tree );
-#print STDERR "after newick2rerootednewick \n";
-	print $fh_out "$string_to_print \n";
-	  print $fh_out "NJ  $rr_nj_newick \n\n";
-#exit;
-	}
-	  ################## do actual data - ML  ########################################
-	  if($do_ml){
+    #	print STDERR "[[[$fasta]]]\n";
+    #	print STDERR "before overlap \n";
+    my $overlap_obj =
+      CXGN::Phylo::Overlap->new( $fasta, $nongap_fraction,
+				 $rng_seed );
+    my $overlap_fasta_string =
+      $overlap_obj->overlap_fasta_string('');
+    my $overlap_length = $overlap_obj->get_overlap_length();
+    #	print STDERR  "after overlap. overlap length: $overlap_length.\n";
+
+    #	print STDERR "[[[$overlap_fasta_string]]]\n";
+    $string_to_print .= "$overlap_length ";
+    #	print "$string_to_print \n";
+    if ( $overlap_length >= $min_overlap_length ) {
+      ################## do actual data - NJ  ########################################
+      if ($do_nj) {
+	#print STDERR $overlap_fasta_string;
+	my $nj_newick = run_quicktree($overlap_fasta_string);
+	#print STDERR "after run_quicktree \n"; exit;
+	#print STDERR "$nj_newick \n";
+	my $taxonified_nj_newick =
+	  taxonify_newick( $nj_newick, $gg_hashref );
+	#print STDERR "after taxonify_newick \n";
+	my $rr_nj_newick =
+	  newick2rerootednewick( $taxonified_nj_newick,
+				 $reroot_method, $species_tree );
+	#print STDERR "after newick2rerootednewick \n";
+	print "$string_to_print \n";
+	print "NJ  $rr_nj_newick \n\n";
+	#exit;
+      }
+      ################## do actual data - ML  ########################################
+      if ($do_ml) {
 	#    print "$do_ml exiting\n"; exit;
-#	  print STDERR "do_ml: [$do_ml]. \n", $overlap_fasta_string, "\n";
-# print STDERR "fasttree cl: FastTree -wag -gamma -bionj $support_string \n";
-	  my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string $additional_ft_options ");
-# exit;
-#  'FastTree -wag -gamma -bionj -nosupport
-# print STDERR "ML newick: ", $ml_newick, "\n"; #exit;
+	#	  print STDERR "do_ml: [$do_ml]. \n", $overlap_fasta_string, "\n";
+	print STDERR "fasttree cl: FastTree -wag -gamma -bionj $support_string \n";
+	my ($ml_newick, $ml_stderr) = run_fasttree($overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string ");
+	# exit;
+	#  'FastTree -wag -gamma -bionj -nosupport
+	# print STDERR "ML newick: ", $ml_newick, "\n"; #exit;
+	my $taxonified_ml_newick =
+	  taxonify_newick( $ml_newick, $gg_hashref );
+	#       print STDERR  "after taxonify_newick \n";
+	#print "taxonified newick: $taxonified_ml_newick \n XXX \n";
+	#    print STDERR "before ml newick2rerootednewick. taxonified newick: \n", $taxonified_ml_newick, "\n";
+
+	my $rr_ml_newick =
+	  newick2rerootednewick( $taxonified_ml_newick,
+				 $reroot_method, $species_tree );
+	#	      print STDERR "after ml newick2rerootednewick \n";
+	# exit;
+	$n_ml++;
+	print "$string_to_print \n";
+	print "ML  $rr_ml_newick \n\n"; # exit;
+      }
+      #exit;
+      ######################## do bootstraps #########################################
+      ###### NJ ########
+      for ( my $i = 1 ; $i <= $n_bs ; $i++ ) {
+	my $bs_overlap_fasta_string =
+	  $overlap_obj->bootstrap_overlap_fasta_string('');
+	my $nj_newick = run_quicktree($bs_overlap_fasta_string);
+	my $taxonified_nj_newick =
+	  taxonify_newick( $nj_newick, $gg_hashref );
+	#      print STDERR "before nj newick2rerootednewick $taxonified_nj_newick   XXX\n";
+
+	my $rr_nj_newick =
+	  newick2rerootednewick( $taxonified_nj_newick,
+				 $reroot_method, $species_tree );
+	#	      print STDERR "after nj newick2rerootednewick \n";
+
+	print "$string_to_print \n";
+	print "NJ_BS  $rr_nj_newick \n\n";
+	######### ML ########
+	if ($do_ml and $ml_bs) {
+	  my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string");
 	  my $taxonified_ml_newick =
 	    taxonify_newick( $ml_newick, $gg_hashref );
-             #       print STDERR  "after taxonify_newick \n";
-#print "taxonified newick: $taxonified_ml_newick \n XXX \n";
-	  #    print STDERR "before ml newick2rerootednewick. taxonified newick: \n", $taxonified_ml_newick, "\n";
-
 	  my $rr_ml_newick =
 	    newick2rerootednewick( $taxonified_ml_newick,
 				   $reroot_method, $species_tree );
-#	      print STDERR "after ml newick2rerootednewick \n";
-# exit;
-$n_ml++;
-	print $fh_out "$string_to_print \n";
-	  print $fh_out "ML  $rr_ml_newick \n\n"; # exit;
-}
-#exit;
-	  ######################## do bootstraps #########################################
-	  ###### NJ ########
-	  for ( my $i = 1 ; $i <= $n_bs ; $i++ ) {
-	    my $bs_overlap_fasta_string =
-	      $overlap_obj->bootstrap_overlap_fasta_string('');
-	    my $nj_newick = run_quicktree($bs_overlap_fasta_string);
-	    my $taxonified_nj_newick =
-	      taxonify_newick( $nj_newick, $gg_hashref );
-	#      print STDERR "before nj newick2rerootednewick $taxonified_nj_newick   XXX\n";
+	  #	      print STDERR "after ml newick2rerootednewick \n";
 
-	    my $rr_nj_newick =
-	      newick2rerootednewick( $taxonified_nj_newick,
-				     $reroot_method, $species_tree );
-#	      print STDERR "after nj newick2rerootednewick \n";
-
-	print $fh_out "$string_to_print \n";
-	    print $fh_out "NJ_BS  $rr_nj_newick \n\n";
-	    ######### ML ########
-	    if ($do_ml and $ml_bs) {
-	      my ($ml_newick, $ml_stderr) = run_fasttree($bs_overlap_fasta_string, "FastTree -wag -gamma -bionj $support_string $additional_ft_options ");
-	      my $taxonified_ml_newick =
-		taxonify_newick( $ml_newick, $gg_hashref );
-	      my $rr_ml_newick =
-		newick2rerootednewick( $taxonified_ml_newick,
-				       $reroot_method, $species_tree );
-#	      print STDERR "after ml newick2rerootednewick \n";
-
-	print $fh_out "$string_to_print \n";
-	      print $fh_out "ML_BS  $rr_ml_newick \n\n";
-	    }
-	  }			# loop over bootstraps
-	}			# overlap >= minlength
-	else {
-	  print $fh_out "\n";
-	}	# this query has no alignment, just print a blank line
-      }	# if ($do) i.e. there is an alignment for this query
-      else {	# 
-	print $fh_out "$string_to_print\n\n";
-      }
-      $state = 'idline';
-    } else {			# not an empty line - append to $fasta
-      $fasta .= $_;
-    }
+	  print "$string_to_print \n";
+	  print "ML_BS  $rr_ml_newick \n\n";
+	}
+      }				# loop over bootstraps
+    }				# overlap >= minlength
+    else {
+      print "\n";
+    }		# this query has no alignment, just print a blank line
+  }		# if ($do) i.e. there is an alignment for this query
+  else {	# 
+    print "$string_to_print\n\n";
   }
+  $state = 'idline';
 }
 
 
@@ -266,10 +254,7 @@ sub get_species_tree {
     $species_tree_newick = $species_tree_file->get_tree_string();
   } else {
     $species_tree_newick =
-'( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, beet[species=Beta_vulgaris]:1):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thellungiella_h[species=Thellungiella_halophila]:0.01, Thellungiella_s[species=Thellungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
-
-
-      # '( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thellungiella_h[species=Thellungiella_halophila]:0.01, Thellungiella_s[species=Thellungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
+      '( chlamydomonas[species=Chlamydomonas_reinhardtii]:1, ( physcomitrella[species=Physcomitrella_patens]:1, ( selaginella[species=Selaginella_moellendorffii]:1, ( loblolly_pine[species=Pinus_taeda]:1, ( amborella[species=Amborella_trichopoda]:1, ( ( date_palm[species=Phoenix_dactylifera]:1, ( ( foxtail_millet[species=Setaria_italica]:1, ( sorghum[species=Sorghum_bicolor]:1, maize[species=Zea_mays]:1 ):1 ):1, ( rice[species=Oryza_sativa]:1, ( brachypodium[species=Brachypodium_distachyon]:1, ( wheat[species=Triticum_aestivum]:1, barley[species=Hordeum_vulgare]:1 ):1 ):1 ):1 ):1 ):1, ( columbine[species=Aquilegia_coerulea]:1, ( ( ( ( ( ( ( ( ( ( tomato[species=Solanum_lycopersicum]:1, potato[species=Solanum_tuberosum]:1 ):1, eggplant[species=Solanum_melongena]:1 ):1, pepper[species=Capsicum_annuum]:1 ):1, tobacco[species=Nicotiana_tabacum]:1 ):1, petunia[species=Petunia]:1 ):1, sweet_potato[species=Ipomoea_batatas]:1 ):1, ( arabica_coffee[species=Coffea_arabica]:1, robusta_coffee[species=Coffea_canephora]:1 ):1 ):1, snapdragon[species=Antirrhinum]:1 ):1, ( ( sunflower[species=Helianthus_annuus]:1, lettuce[species=Lactuca_sativa]:1 ):1, carrot[species=Daucus_carota]:1 ):1 ):1, ( grape[species=Vitis_vinifera]:1, ( ( eucalyptus[species=Eucalyptus_grandis]:1, ( ( orange[species=Citrus_sinensis]:1, clementine[species=Citrus_clementina]:1 ):1, ( ( cacao[species=Theobroma_cacao]:1, cotton[species=Gossypium_raimondii]:1 ):1, ( papaya[species=Carica_papaya]:1, ( (turnip[species=Brassica_rapa]:1, (salt_cress[species=Thellungiella_parvula]:1, (Thellungiella_h[species=Thellungiella_halophila]:0.01, Thellungiella_s[species=Thellungiella_salsuginea]:0.01):1 ):1):1,(red_shepherds_purse[species=Capsella_rubella]:1, ( arabidopsis_thaliana[species=Arabidopsis_thaliana]:1, arabidopsis_lyrata[species=Arabidopsis_lyrata]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1, ( ( ( peanut[species=Arachis_hypogaea]:1, ( ( soy[species=Glycine_max]:1, pigeon_pea[species=Cajanus_cajan]:1 ):1, ( medicago[species=Medicago_truncatula]:1, lotus[species=Lotus_japonicus]:1 ):1 ):1 ):1, ( hemp[species=Cannabis_sativa]:1, ( ( ( apple[species=Malus_domestica]:1, peach[species=Prunus_persica]:1 ):1, woodland_strawberry[species=Fragaria_vesca]:1 ):1, cucumber[species=Cucumis_sativus]:1 ):1 ):1 ):1, ( ( castorbean[species=Ricinus_communis]:1, cassava[species=Manihot_esculenta]:1 ):1, ( poplar[species=Populus_trichocarpa]:1, flax[species=Linum_usitatissimum]:1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 ):1 )';
 
     # "(Selaginella[species=Selaginella]:1,(((sorghum[species=Sorghum_bicolor]:1,maize[species=Zea_mays]:1):1,(rice[species=Oryza_sativa]:1,brachypodium[species=Brachypodium_distachyon]:1):1):1,(tomato[species=Solanum_lycopersicum]:1,(grape[species=Vitis_vinifera]:1,((papaya[species=Carica_papaya]:1,arabidopsis[species=Arabidopsis_thaliana]:1):1,((soy[species=Glycine_max]:1,medicago[species=Medicago_truncatula]:1):1,(castorbean[species=Ricinus_communis]:1,Poplar[species=Populus_trichocarpa]:1):1):1):1):1):1):1)";
   }
@@ -292,7 +277,7 @@ sub taxonify_newick {
   my $newick        = shift;
   my $seqid_species = shift;
 
-# print "newick: \n [$newick] \n";
+  # print "newick: \n [$newick] \n";
   # my %seqid_species = ();
   # if (defined $gg_filename and -f $gg_filename) {
   #   open my $fh_gg, "<", "$gg_filename";
@@ -522,31 +507,31 @@ sub run_fasttree {
     $fasttree_cl .= " -intree tmp_intree ";
   }
 
-#print STDERR "fasttree cl: $fasttree_cl \n"; exit;
+  #print STDERR "fasttree cl: $fasttree_cl \n"; exit;
   my $fasttree_newick_out = "ft_newick_default_output";
   my $fasttree_stderr_out = "ft_stderr_default_output";
-#  print STDERR "fasttree cl: ", $fasttree_cl, "\n";
-#  print "AAAAA: ft newickout, stderrout: $fasttree_newick_out, $fasttree_stderr_out \n";
-  if (0) { # doesn't seem to work now, did before. Why???
+  #  print STDERR "fasttree cl: ", $fasttree_cl, "\n";
+  #  print "AAAAA: ft newickout, stderrout: $fasttree_newick_out, $fasttree_stderr_out \n";
+  if (0) {		# doesn't seem to work now, did before. Why???
     my $run3_return_value = run3(
 				 "$fasttree_cl",        \$overlap_fasta_string,
 				 \$fasttree_newick_out, \$fasttree_stderr_out
 				);
-#    print STDERR "in run_fasttree, run3 return value: [", $run3_return_value, "]\n";
+    #    print STDERR "in run_fasttree, run3 return value: [", $run3_return_value, "]\n";
   } else {			# do using a file
     my $temp_file = "PID" . $$ . "_ft_in_tmpfile";
     my $stderr_outfile  = "PID" . $$ . ".stderr";
     open my $fh, ">", "$temp_file";
     #  open my $fhstderr, ">", "$stderr_outfile";
     print $fh $overlap_fasta_string, "\n"; close $fh;
-# print STDERR "$fasttree_cl  $temp_file \n"; #exit;
-$fasttree_newick_out = `$fasttree_cl $temp_file 2>> $stderr_outfile`;
-}
+    # print STDERR "$fasttree_cl  $temp_file \n"; #exit;
+    $fasttree_newick_out = `$fasttree_cl $temp_file 2>> $stderr_outfile`;
+  }
 
 
-#print STDERR "FT OUT NEWICK: \n[ ", $fasttree_newick_out, " ]\n\n"; exit;
-#print STDERR "FT stderr out: \n", $fasttree_newick_out, "\n";
-#print STDERR "FT OUT stderr: \n", $fasttree_stderr_out, "\n\n";
+  #print STDERR "FT OUT NEWICK: \n[ ", $fasttree_newick_out, " ]\n\n"; exit;
+  #print STDERR "FT stderr out: \n", $fasttree_newick_out, "\n";
+  #print STDERR "FT OUT stderr: \n", $fasttree_stderr_out, "\n\n";
 
 
   # Gamma(20) LogLk = -5372.474 alpha = 1.562 rescaling lengths by 1.044   # parse ll out of ft stderr output.
@@ -564,17 +549,19 @@ sub newick2rerootednewick
 
     # return newick expression
     my $taxonified_newick = shift;
-$taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick, 0.01);
-# print STDERR "ZZZ: $taxonified_newick \n";
+    $taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick, 0.01);
+    # print STDERR "ZZZ: $taxonified_newick \n";
     my $reroot_method     = shift;
     my $species_tree      = shift;
     my $parser = CXGN::Phylo::Parse_newick->new( $taxonified_newick, 0 );
- #   print STDERR "after constructing parser \n";
+    #   print STDERR "after constructing parser \n";
     my $tree   = $parser->parse( CXGN::Phylo::BasicTree->new() );
-    if(!defined $tree){ return 'warning: Couldnt parse taxonified tree in newick2rerootnewick.'; }
+    if (!defined $tree) {
+      return 'warning: Couldnt parse taxonified tree in newick2rerootnewick.';
+    }
     $tree->impose_branch_length_minimum();
     $tree->show_newick_attribute("species");
-# print STDERR "AAAA:  ", $tree->generate_newick(), "\n";
+    # print STDERR "AAAA:  ", $tree->generate_newick(), "\n";
     $tree->set_show_standard_species(0);
     $tree->get_root()->recursive_implicit_names();
     $tree->get_root()->recursive_implicit_species();
@@ -600,8 +587,8 @@ $taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick, 0.01)
     # binarify every non-binary node. At present doesn't attempt to choose in a smart way
     # among the various possible resolutions
     $tree->make_binary( $tree->get_root() ); # urec requires binary tree.
-#print STDERR "Before reroot.\n";
-#print STDERR "newick: \n", $tree->generate_newick(), "\n\n";
+    #print STDERR "Before reroot.\n";
+    #print STDERR "newick: \n", $tree->generate_newick(), "\n\n";
     $tree = reroot( $tree, $reroot_method, $species_tree );
     my $rerooted_tree_newick = $tree->generate_newick();
 
@@ -612,6 +599,6 @@ $taxonified_newick = put_min_branchlengths_into_newick($taxonified_newick, 0.01)
 sub put_min_branchlengths_into_newick{
   my $newick = shift;
   my $min_bl = shift || 0.00001;
-$newick =~ s/:0[.]0+([,)])/:$min_bl$1/g;
-return $newick;
+  $newick =~ s/:0[.]0+([,)])/:$min_bl$1/g;
+  return $newick;
 }

@@ -1,0 +1,16 @@
+# query sequences fasta filename, species_name:
+query_fasta_filename     Mtruncatula_2013may-pep.fasta   Medicago_truncatula
+
+# other fasta filenames, species_names:
+fasta_filename     Gmax-pep.fasta    Glycine_max
+fasta_filename     Athaliana-pep.fasta    Arabidopsis_thaliana
+fasta_filename     Osativa-pep.fasta    Oryza_sativa
+fasta_filename     Slycopersicum-pep.fasta     Solanum_lycopersicum
+
+# blast control parameters 
+max_matches    2000    # keep no more than this number of matches for each query sequence
+blast_max_e_value    1e-8    # keep matches with e-value <= this
+
+# family parameters:
+family_size_limit   140
+family_max_e_value  1e-12

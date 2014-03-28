@@ -103,13 +103,20 @@ my $predefined_taxon_groups =
         Capsella_rubella        => 1,
 		  Beta_vulgaris => 1,      # beet
     },
+   'few' => {
+	     'Oryza_sativa' => 1,
+	     'Arabidopsis_thaliana' => 1,
+	     'Glycine_max' => 1,
+	     'Solanum_lycopersicum' => 1,
+	     'Selaginella_moellendorffii' => 1,
+},
   };
 my $default_taxon_requirements_string = '7dicots,6; 4monocots,3'; # ; Selaginella_moellendorffii,1';
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
 my $input_fasta_filename      = undef;                                                    # fasta for all sequences
-my $max_eval                  = 100;                                                     # default is big - 
+ my $max_eval                  = 100;                                                     # default is big - 
 my $max_family_size           = 10000;   # default is just a big number, to let families be just whatever is in abc file.
 my $output_filename = undef;
 
@@ -126,6 +133,7 @@ GetOptions(
 my $using_default_taxon_requirements = $taxon_requirements_string eq $default_taxon_requirements_string;
 
 print STDERR "OUTPUT FILENAME: $output_filename \n";
+
 my @tax_reqs = split( ":", $taxon_requirements_string );
 
 my @tax_req_objs = ();
@@ -138,7 +146,6 @@ for (@tax_reqs) {
 my $min_n_monocots = 3;
 my $min_n_dicots = 6;
 
-# exit;
 ########
 
 my $id_sequence_all = store_fasta_sequences($input_fasta_filename);
@@ -153,7 +160,7 @@ $output_filename =~ s/[.](m8|abc)$/.fastas/;
 }
 #print STDERR "output filename:  $output_filename \n";
 #exit;
-open my $fh, ">", "$output_filename";
+open my $fh, ">", "$output_filename" or die "Failed to open $output_filename for writing.\n";
 my ( $fam_size, $fam_string_head, $fam_string_fasta ) = ( 0, '', '' );
 my %taxon_count = ();
 while ( my $line = <$fh_blast> ) {
@@ -176,9 +183,10 @@ while ( my $line = <$fh_blast> ) {
 	  warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
 	}
 
-        # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
+     #   print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present]. [$old_OK] [$taxon_requirement_satisfied] \n";
         if ( defined $previous_id1 ) {
 	  if ($taxon_requirement_satisfied){ # $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
+	    # print "YYY. $fam_string_head, $fam_string_fasta \n";
             print $fh "$fam_string_head";
             print $fh "$fam_string_fasta";
             print $fh "\n";
@@ -222,6 +230,7 @@ $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
 my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
 my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= $min_n_monocots); #  and !$selaginella_present);
 
+#use new requirement, but check against old, and warn if they differ.
 my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
 	if($using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)){
 warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
@@ -259,7 +268,7 @@ sub store_fasta_sequences {
     my $fasta_filename = shift;
     my %id_sequence    = ();
 
-    open my $fh, "<", "$fasta_filename";
+    open my $fh, "<", "$fasta_filename" or die "In store_fasta_sequences. Couldnt open $fasta_filename for reading.\n";
     my ( $id, $sequence ) = ( undef, '' );
     while ( my $line = <$fh> ) {
         if ( $line =~ /^>(\S+)/ ) {
