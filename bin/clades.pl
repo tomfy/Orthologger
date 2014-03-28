@@ -10,8 +10,8 @@ use Cwd 'abs_path';
 my ( $bindir, $libdir );
 
 BEGIN {
-    $bindir = dirname( abs_path(__FILE__) );    # this has to go in Begin block so happens at compile time
-    $libdir = $bindir . '/../lib';
+  $bindir = dirname( abs_path(__FILE__) ); # this has to go in Begin block so happens at compile time
+  $libdir = $bindir . '/../lib';
 }
 use lib $libdir;
 
@@ -36,7 +36,7 @@ my $default_species_tree_file_path = undef;
 # Defaults:
 my $input_newicks_filename;
 my $gg_filename   = $default_gg_file_path;
-my $reroot_method = undef;                     # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
+my $reroot_method = undef; # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
 
 my $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1'; # default clade specifiers.
 
@@ -45,105 +45,104 @@ my $clade_specifiers = '8dicots_incl_papaya,7 : 7dicots,6 : 4monocots,3 : Selagi
 # for one with 3 monocots, and for one with Selaginella
 
 my $predefined_taxon_groups =
-  {    # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
-    '4nonangiosperms' => {
-        'Chlamydomonas_reinhardtii'  => 1,
-        'Physcomitrella_patens'      => 1,
-        'Selaginella_moellendorffii' => 1,
-        'Pinus_taeda'                => 1,
-    },
-    '8monocots' => {
-        'Phoenix_dactylifera'     => 1,    # date palm
-        'Setaria_italica'         => 1,    # foxtail millet
-        'Triticum_aestivum'       => 1,    # wheat
-        'Hordeam_vulgare'         => 1,    # barley
-        'Zea_mays'                => 1,    # maize
-        'Brachypodium_distachyon' => 1,
-        'Sorghum_bicolor'         => 1,
-        'Oryza_sativa'            => 1     # rice
-    },
-    '4monocots' => {
-        'Zea_mays'                => 1,    # maize
-        'Brachypodium_distachyon' => 1,
-        'Sorghum_bicolor'         => 1,
-        'Oryza_sativa'            => 1     # rice
-    },
-    '7dicots' => {
-        'Solanum_lycopersicum' => 1,       # tomato
-        'Solanum_tuberosum'    => 1,       # potato
-        'Vitis_vinifera'       => 1,       # grape
-        'Glycine_max'          => 1,       # soy
-        'Populus_trichocarpa'  => 1,       # poplar
-        'Ricinus_communis'     => 1,       # castor
-        'Cucumis_sativus'      => 1        # cucumber
-    },
-    '8dicots_incl_papaya' => {
-        'Solanum_lycopersicum' => 1,       # tomato
-        'Solanum_tuberosum'    => 1,       # potato
-        'Vitis_vinifera'       => 1,       # grape
-        'Glycine_max'          => 1,       # soy
-        'Populus_trichocarpa'  => 1,       # poplar
-        'Ricinus_communis'     => 1,       # castor
-        'Cucumis_sativus'      => 1,       # cucumber
-        'Carica_papaya'        => 1        # papaya
-    },
-    '5brassicas' => {
-        Brassica_rapa           => 1,      # turnip
-        Arabidopsis_thaliana    => 1,
-        Arabidopsis_lyrata      => 1,
-        Thellungiella_halophila => 1,
-        Capsella_rubella        => 1
-    },
+  { # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
+   '4nonangiosperms' => {
+			 'Chlamydomonas_reinhardtii'  => 1,
+			 'Physcomitrella_patens'      => 1,
+			 'Selaginella_moellendorffii' => 1,
+			 'Pinus_taeda'                => 1,
+			},
+   '8monocots' => {
+		   'Phoenix_dactylifera'     => 1, # date palm
+		   'Setaria_italica'         => 1, # foxtail millet
+		   'Triticum_aestivum'       => 1, # wheat
+		   'Hordeam_vulgare'         => 1, # barley
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
+   '4monocots' => {
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
+   '7dicots' => {
+		 'Solanum_lycopersicum' => 1, # tomato
+		 'Solanum_tuberosum'    => 1, # potato
+		 'Vitis_vinifera'       => 1, # grape
+		 'Glycine_max'          => 1, # soy
+		 'Populus_trichocarpa'  => 1, # poplar
+		 'Ricinus_communis'     => 1, # castor
+		 'Cucumis_sativus'      => 1  # cucumber
+		},
+   '8dicots_incl_papaya' => {
+			     'Solanum_lycopersicum' => 1, # tomato
+			     'Solanum_tuberosum'    => 1, # potato
+			     'Vitis_vinifera'       => 1, # grape
+			     'Glycine_max'          => 1, # soy
+			     'Populus_trichocarpa'  => 1, # poplar
+			     'Ricinus_communis'     => 1, # castor
+			     'Cucumis_sativus'      => 1, # cucumber
+			     'Carica_papaya'        => 1  # papaya
+			    },
+   '5brassicas' => {
+		    Brassica_rapa           => 1, # turnip
+		    Arabidopsis_thaliana    => 1,
+		    Arabidopsis_lyrata      => 1,
+		    Thellungiella_halophila => 1,
+		    Capsella_rubella        => 1
+		   },
    '6negatives' =>  {
-        Brassica_rapa           => 1,      # turnip
-        Arabidopsis_thaliana    => 1,
-        Arabidopsis_lyrata      => 1,
-        Thellungiella_halophila => 1,
-        Capsella_rubella        => 1,
-	Beta_vulgaris => 1,
-    },
+		     Brassica_rapa           => 1, # turnip
+		     Arabidopsis_thaliana    => 1,
+		     Arabidopsis_lyrata      => 1,
+		     Thellungiella_halophila => 1,
+		     Capsella_rubella        => 1,
+		     Beta_vulgaris => 1,
+		    },
   };
 
 # For each clade, count the number of these species present: (
 my $disallowed_species       = '6negatives'; # '5brassicas';
-my $max_nbs                  = 1000000;                            # big number - do all bs replicates by default.
-my $species_tree_newick_file = $default_species_tree_file_path;    # if undefined or
-my $id_to_pick = undef;
-my $type_to_pick = 'ALL'; # other possibilities: 'NJ', 'ML'
+my $max_nbs                  = 1000000;	# big number - do all bs replicates by default.
+my $species_tree_newick_file = $default_species_tree_file_path;	# if undefined or
+my $id_to_show = undef;
+my $type_to_show = 'ALL';	# other possibilities: 'NJ', 'ML'
 my $species_to_show = undef; # for each clade, output the ids of this species in the clade.
 # Process long cl options
 GetOptions(
-    'input_newicks=s' => \$input_newicks_filename,
+	   'input_newicks=s' => \$input_newicks_filename,
   
-    'clade_specifiers=s' => \$clade_specifiers,
-    'disallowed_species=s' =>
-      \$disallowed_species,    # either: name of predefined taxon group, or comma separated taxa names:
-    # e.g. 'Arabidopsis_thaliana, Brassica_rapa'
-    'maxnbs=i' => \$max_nbs,
-# The following 3 options typically will not be used because the gene-genome association and tree rooting has already
-# been done at an earlier stage. One can however choose to reroot the trees in a different way at this point.
-  'ggfile=s'        => \$gg_filename,   # defines species-sequence association. Optional if these are already in newick expressions.
-         # gg file has 1 line per species: species name followed by whitespace-separated sequence ids.
-    'reroot=s' => \$reroot_method,    # selects rerooting method. options: none, midpoint, minvar, mindl. 
-    'speciestreefile=s'  => \$species_tree_newick_file,    # to override built-in species tree with 52 species
-                                                           # (see sub reroot below to see this default species tree).
-    'id_to_pick=s' => \$id_to_pick, 
-	   'type=s' => \$type_to_pick,
+	   'clade_specifiers=s' => \$clade_specifiers,
+	   'disallowed_species=s' =>
+	   \$disallowed_species, # either: name of predefined taxon group, or comma separated taxa names:
+	   # e.g. 'Arabidopsis_thaliana, Brassica_rapa'
+	   'maxnbs=i' => \$max_nbs,
+	   # The following 3 options typically will not be used because the gene-genome association and tree rooting has already
+	   # been done at an earlier stage. One can however choose to reroot the trees in a different way at this point.
+	   'ggfile=s'        => \$gg_filename, # defines species-sequence association. Optional if these are already in newick expressions.
+	   # gg file has 1 line per species: species name followed by whitespace-separated sequence ids.
+	   'reroot=s' => \$reroot_method, # selects rerooting method. options: none, midpoint, minvar, mindl. 
+	   'speciestreefile=s'  => \$species_tree_newick_file, # to override built-in species tree with 52 species
+	   # (see sub reroot below to see this default species tree).
+	   'id_to_show=s' => \$id_to_show, 
+	   'type=s' => \$type_to_show,
 	   'species_to_show=s' => \$species_to_show,
-);
+	  );
 
 if ( defined $species_tree_newick_file and !-f $species_tree_newick_file ) {
-    die "$species_tree_newick_file is not a regular file. Exiting\n";
-    $species_tree_newick_file = undef;
+  die "$species_tree_newick_file is not a regular file. Exiting\n";
+  $species_tree_newick_file = undef;
 }
 my $species_tree_obj   = get_species_tree($species_tree_newick_file);
 my @disallowed_species = ();
 if ( exists $predefined_taxon_groups->{$disallowed_species} ) {
-    @disallowed_species =
-      keys %{ $predefined_taxon_groups->{$disallowed_species} };
-}
-else {
-    @disallowed_species = split( /\s*,\s*/, $disallowed_species );
+  @disallowed_species =
+    keys %{ $predefined_taxon_groups->{$disallowed_species} };
+} else {
+  @disallowed_species = split( /\s*,\s*/, $disallowed_species );
 }
 ###################### print clade specifiers, disallowed species. ######################
 print "# $clade_specifiers \n#\n";
@@ -152,12 +151,12 @@ my @clade_specs = split( ":", $clade_specifiers );
 
 my @clade_spec_objs = ();
 for (@clade_specs) {
-    push @clade_spec_objs, CXGN::Phylo::CladeSpecifier->new( $_, $predefined_taxon_groups );
+  push @clade_spec_objs, CXGN::Phylo::CladeSpecifier->new( $_, $predefined_taxon_groups );
 }
 # while ( my ( $i, $cso ) = each @clade_spec_objs ) {
-  for(my $i=0; $i < scalar @clade_spec_objs; $i++ ){
-my $cso = $clade_spec_objs[$i];
-    print "# Clade ", $i + 1, " specs: \n", "# ", $cso->as_string(), "#\n";
+for (my $i=0; $i < scalar @clade_spec_objs; $i++ ) {
+  my $cso = $clade_spec_objs[$i];
+  print "# Clade ", $i + 1, " specs: \n", "# ", $cso->as_string(), "#\n";
 }
 print "# Disallowed species: ", join( ", ", @disallowed_species ), "\n#\n";
 print "# For each clade 4 numbers are given: \n",
@@ -169,18 +168,16 @@ print "# For each clade 4 numbers are given: \n",
 ##########################################################################################
 
 if ( !defined $input_newicks_filename or !-f $input_newicks_filename ) {
-    die "No input newicks file specified, or file [$input_newicks_filename] does not exist.";
+  die "No input newicks file specified, or file [$input_newicks_filename] does not exist.";
 }
 open my $fh_in, "<", "$input_newicks_filename"
   || die "Couldnt open $input_newicks_filename for reading.\n";
 my $seqid_species = store_gg_info($gg_filename);
 my $BS_count      = 0;
 while (<$fh_in>) {
-    if (/^Id\s+(\S+)\s+(\S+)/) {
+  if (/^Id\s+(\S+)\s+(\S+)/) {
         my $sequence_id = $1;  
-	next if(defined $id_to_pick and ($sequence_id ne $id_to_pick));
-#	print "$nj_ml  $2 \n";
-#	
+	next if(defined $id_to_show and ($sequence_id ne $id_to_show));	
         my $next_line   = <$fh_in>;
         my $type        = undef;
 
@@ -190,13 +187,10 @@ while (<$fh_in>) {
             if ( $next_line =~ /^\s*\(/ ) { # newick string on this line, without 'NJ', 'ML' etc. (it is ML)
                 $the_input_newick = $next_line;
                 $type             = 'ML';
-
-                #	print STDERR "A: \n", "$next_line \n";
             }
             elsif ( $next_line =~ /^\s*(\S+)\s+(\(.*)$/ ) {
                 $type = $1;
-#		print "type to pick, type:  $type_to_pick  $type \n";
-		next if($type_to_pick ne 'ALL' and $type ne $type_to_pick);
+		next if($type_to_show ne 'ALL' and $type ne $type_to_show);
                 if ( $type eq 'NJ_BS' ) {
                     $BS_count++;
                 }
@@ -204,8 +198,6 @@ while (<$fh_in>) {
                     $BS_count = 0;
                 }
                 $the_input_newick = $2;
-
-                #	print STDERR "B: $1  \n", "B: $the_input_newick \n";
                 $the_input_newick =~ s/;?\s*$//;    # remove final ; and whitespace if present
             }
 
@@ -238,30 +230,26 @@ while (<$fh_in>) {
 
                 ############################# FINDING SPECIFIED CLADES  ###################################
                 my $cladeinfo = $tree->find_clades( $sequence_id, \@clade_spec_objs, \@disallowed_species );
-                printf( "%15s %10s  ", $sequence_id, $type );
+		my $spcr = (scalar @clade_spec_objs > 1  and defined $species_to_show )? "\n" : " ";
+		printf( "%1s %5s $spcr", $sequence_id, $type );
                 for (@clade_spec_objs) {
-                    my $info = $cladeinfo->{$_};
-		    if(defined $species_to_show){
-		      print "\n";
-		       printf( "   %3i %3i %3i %3i     ", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
- my @clade_leaves =  @{$info->{leaves}};
-		    #   print join("\n", map($_->get_name(), @clade_leaves)), "\n";
-		       my @selected_leaves = grep($_->get_species() eq $species_to_show, @clade_leaves);
-		       printf("%s \n", join("; ", map($_->get_name(), @selected_leaves)));
-		    }else{
-                    printf( "   %3i %3i %3i %3i", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
+		  my $info = $cladeinfo->{$_};
+		  if (defined $species_to_show) { # 
+		    printf( "  %2i %2i %2i %3i  ", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
+		    my @selected_leaves = grep($_->get_species() eq $species_to_show,  @{$info->{leaves}});
+		    print " ", (scalar @selected_leaves > 0)? 
+		      join("  ", map($_->get_name(), @selected_leaves)) : #  print the ids 
+			"Species $species_to_show not present in this clade." , "$spcr"; #  no ids to print - 
+		  } else {
+		    printf( "%2i %2i %2i %3i  ", $info->{nodes_up}, $info->{n_same}, $info->{n_disallowed_species}, $info->{n_leaves} );
 		  }
-
                 }
                 print "\n";
 
                 $tree->impose_branch_length_minimum(1);
-                $tree->decircularize();    # done with tree - decircularize so can be garbage collected.
-            }
-        }
-        elsif ( $next_line =~ /^\s*$/ ) {
-
-            #      print STDERR "{{{]]]\n";
+                $tree->decircularize();	# done with tree - decircularize so can be garbage collected.
+	      }
+	  } elsif ( $next_line =~ /^\s*$/ ) {
             # line has only whitespace. do nothing
         }
         else {
