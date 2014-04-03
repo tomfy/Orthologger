@@ -124,6 +124,7 @@ my $gg_hashref = store_gg_info($gg_filename);
 
 my $species_tree = get_species_tree($species_tree_newick_file)
   ; # get species tree from file (or use default if file undef or doesn't exist);
+print STDERR "Species tree to be used in rooting trees: [$species_tree]\n";
 my $n_ml = 0;
 while (<$fh_in>) {
 #  print STDERR "state: $state; line read: $_";
