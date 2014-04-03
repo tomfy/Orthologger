@@ -100,7 +100,10 @@ my $fasta_files = '';
 for my $filename (keys %$file_taxon) {
   $fasta_files .= "$filename ";
 }
-system "cat $fasta_files | clean_fasta_idlines.pl > $all_species_fasta_filename ";
+
+my $asff = $all_species_fasta_filename . "_x";
+system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
+system "remove_short_seqs.pl < $asff > $all_species_fasta_filename";
 system "formatdb -p T -i $all_species_fasta_filename ";
 print STDERR "blast db created for $all_species_fasta_filename.\n";
 print $fh_progress "blast db created for $all_species_fasta_filename.\n";
@@ -195,11 +198,11 @@ my @newicks_filenames = ();
     if ($pid == 0) {  # child process
       $a_fastas_filename = '../' . $a_fastas_filename;
       $gg_filename = '../' . $gg_filename;
-      my $malign_cl = "malign.pl  -input $a_fastas_filename  -align $align_program  -quality quick  -output $malign_out_filename ";
-      print STDERR $malign_cl, "\n";
+      my $malign_cl = "malign.pl  -input $a_fastas_filename  -align $align_program  -quality $alignment_quality  -output $malign_out_filename ";
+      print STDERR "malign command line: [$malign_cl] \n";
       my $malign_stdout = `$malign_cl`;
       print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
-     
+
       my $nj_ft_bs_stdout = `nj_ft_bs.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename`;
       exit(0);
     }
@@ -208,9 +211,6 @@ my @newicks_filenames = ();
   while (wait() != -1) {
     $children_done++; print "Number of files finished aligning with $align_program: $children_done out of $n_alignment_files_to_do. \n";
   }
- 
-
-
 
   my @files = split(" ", `ls *tmpfile`); # cleanup - delete temp files.
   for (@files) {
@@ -220,6 +220,7 @@ my @newicks_filenames = ();
   print "cwd: ", getcwd, "\n";
   chdir '../' or die "chdir ../ failed \n";
   print "cwd: ", getcwd, "\n";
+
  print $fh_progress "Done with aligning with $align_program and constructing trees. \n";
   print $fh_progress "alfastas files: \n" , join("\n", @alfastas_filenames), "\n";
 print $fh_progress "newick files: \n", join("\n", @newicks_filenames), "\n";
@@ -250,7 +251,7 @@ sub get_params_from_control_file{
       } elsif (/\S/) {		# not all whitespace
 	warn "B unexpected line in control_file: $_";
       }
-    } elsif (/^\s*(\S+)\s+(\S+)/) {
+    } elsif (/^\s*(\S+)\s+(\S+)/) { # if param value is not present in file (blank) nothing i sstored
    #  print "param and val: $1 $2 \n";
       $param_name_val{$1} = $2; 
     } elsif (/\S/) {
