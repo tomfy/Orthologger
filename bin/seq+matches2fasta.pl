@@ -132,8 +132,8 @@ GetOptions(
 );
 my $using_default_taxon_requirements = $taxon_requirements_string eq $default_taxon_requirements_string;
 
-print STDERR "OUTPUT FILENAME: $output_filename \n";
-
+print STDERR "seq+matches2fasta.pl OUTPUT FILENAME: $output_filename \n";
+print STDERR "seq+matches2fasta.pl taxon requirements: $taxon_requirements_string \n";
 my @tax_reqs = split( ":", $taxon_requirements_string );
 
 my @tax_req_objs = ();

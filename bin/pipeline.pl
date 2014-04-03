@@ -109,8 +109,10 @@ print STDERR "blast db created for $all_species_fasta_filename.\n";
 print $fh_progress "blast db created for $all_species_fasta_filename.\n";
 
 # ********* split query fasta **************
-
-my $fasta_part_filenames = split_fasta($param_name_val->{query_fasta_filename}, $param_name_val->{n_parts});
+my $qfasta_filename = $param_name_val->{query_fasta_filename};
+my $qfasta_filename_noshortseqs = $qfasta_filename . "_nss";
+system "remove_short_seqs.pl < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
+my $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_parts});
 
 # ********** run blast *********************
 my @blast_out_m8_filenames = ();
