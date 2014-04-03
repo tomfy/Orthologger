@@ -112,6 +112,7 @@ while (<$fh_in>) {
 	} else {
 	  warn "Parameter align_program set to $align_program. Not implemented. Using default: 'muscle'."
 	}
+	print STDERR "Alignment command line: [$alignment_cl] \n";
 	my $fasta_alignment = `$alignment_cl`; 
 	$count_alignments_done++;
 	print $fh_out "$fasta_alignment \n";
