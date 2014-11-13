@@ -22,7 +22,7 @@ use Getopt::Long;
 my $start_time_seconds = time();
 my $input_filename;
 my $align_program = 'muscle';
-my $quality = 'best';
+my $quality = 'medium';
 open my $fh_out, '>&', STDOUT or die "$!";
 my $output_file = undef;
 my $maxiters;
@@ -41,12 +41,6 @@ if (defined $output_file) {
 # my $n_taxa = shift || 21;
 # my $min_taxa = 4;
 #print STDERR "[$align_program]  [$quality]\n";
-if ( !defined $align_program ) {
-  $align_program = 'muscle';
-}
-if ( !defined $quality ) {
-  $quality = 'best';
-}
 print STDERR "[$align_program] [$input_filename] [$quality]\n"; #exit;
 
 my $state = 'idline';		# other possible values: fasta
@@ -93,20 +87,24 @@ while (<$fh_in>) {
 	close $fh_temp;
 
 	my $alignment_cl;
-	if ($quality ne 'best'  and  $quality  ne  'quick') {
-	  warn "Parameter quality set to $quality. Not implemented. Using default ('best') quality.";
+	if ($quality ne 'best'  and  $quality  ne  'quick' and $quality ne 'medium') {
+	  warn "Parameter quality set to $quality. Not implemented. Using default ('medium') quality.";
 	}
 	if ($align_program eq 'muscle') {
 	  if ($quality eq 'best') {
-	    $maxiters = 1000;
+	    $maxiters = 100;
+	}elsif($quality eq 'medium'){
+	$maxiters = 24;
 	  } else {		# ($quality eq 'quick'){
 	    $maxiters = 2;
 	  }
-	  $alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters 2> $stderr_filename";
+	  $alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters -maxhours 2.0  2> $stderr_filename";
 	} elsif ($align_program eq 'mafft') {
 	  if ($quality eq 'best') {
-	    $alignment_cl = "mafft --maxiterate 1000 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)
-	  } else {		# ($quality eq 'quick'){
+	    $alignment_cl = "mafft --maxiterate 50 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)
+} elsif ($quality eq 'medium'){
+$alignment_cl = "mafft --auto $tmp_filename 2> $stderr_filename";  
+} else {		# ($quality eq 'quick'){
 	    $alignment_cl = "mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename"; # mafft quick
 	  }
 	} else {
