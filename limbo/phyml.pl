@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 
-use lib '/home/tomfy/MHarrisonProject/lib';
+use lib '/home/tomfy/Orthologger/lib';
 use Phyml;
 
 use Getopt::Std;
@@ -28,6 +28,8 @@ my $alpha = (defined $opt_a)? $opt_a : undef;
 my $n_rate_classes = (defined $opt_c)? $opt_c : undef;
 my $p_invariant = (defined $opt_v)? $opt_v : undef;
 my $subst_model = (defined $opt_m)? $opt_m : undef;
+
+print "p_invariant: [$p_invariant] \n";
 
 my $phyml_obj = Phyml->new({
 			    'dna_or_protein' => $dna_or_protein,
