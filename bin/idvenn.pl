@@ -3,6 +3,7 @@ use strict;
 
 my $file1 = shift;
 my $file2 = shift;
+# my $col = shift || 0;
 my $verbose = shift || undef;
 my $ids1 = store_ids($file1);
 my $ids2 = store_ids($file2);
@@ -37,7 +38,8 @@ for(@only2){
 print "\n";
 }
 
-print "# n 1, both, 2: ", scalar @only1, "  ", scalar @both, "  ", scalar @only2, "\n"; 
+my ($n1, $nboth, $n2) = (scalar @only1, scalar @both, scalar @only2);
+print "# n 1, both, 2, union:  $n1   $nboth   $n2      ", $n1+$n2+$nboth, "\n"; 
 
 #print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
 

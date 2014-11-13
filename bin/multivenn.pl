@@ -11,18 +11,25 @@ my @files = @ARGV;
 print "Input files: ", join(", ", @files), "\n";
 my %id_count = ();
 my @file_id_hashes = ();
-for my $the_file (@files){
+for my $the_file (@files){ # for each input file, store id:count key:value pairs
 	my $file_id_hash = {};
 	open my $fh, "<", "$the_file";
 	while(<$fh>){
+	  next if(/^\s*#/);
 		if(/^\s*(\S+)\s/){
-			$file_id_hash->{$1}++;
-			$id_count{$1}++;
+			$file_id_hash->{$1}++; # stores ids in the file; one hash for each file
+			$id_count{$1}++; # stores ids and counts (summed over all files).
 		}
 	}
 	push @file_id_hashes, $file_id_hash;
 }
-my %vennregion_count = ();
+my %vennregion_count = (
+			'0 0 0 0 ' => 0, '0 0 0 1 ' => 0, '0 0 1 0 ' => 0, '0 0 1 1 ' => 0,
+			'0 1 0 0 ' => 0, '0 1 0 1 ' => 0, '0 1 1 0 ' => 0, '0 1 1 1 ' => 0,
+			'1 0 0 0 ' => 0, '1 0 0 1 ' => 0, '1 0 1 0 ' => 0, '1 0 1 1 ' => 0,
+			'1 1 0 0 ' => 0, '1 1 0 1 ' => 0, '1 1 1 0 ' => 0, '1 1 1 1 ' => 0,
+);
+
 for my $id (keys %id_count){
 	my $count = $id_count{$id};
 	my $id_category_string = '';
