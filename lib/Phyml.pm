@@ -43,10 +43,13 @@ sub new {
 		$self->{$_} = $arg_href->{$_};
 	}
 
-	if(defined $self->{fasta_file}){
+	if(defined $self->{fasta_string}){
+	  $self->fasta_string_to_phylip($self->{fasta_string});
+	  $self->write_phylip_file();
+	}elsif(defined $self->{fasta_file}){
 		$self->fasta_file_to_phylip(); 
 	}else{
-		die "Must specify alignment fasta file in Phyml constructor argument hash ref.\n";
+		die "Must specify alignment fasta string or fasta file in Phyml constructor argument hash ref.\n";
 	}
 
 	$self->construct_phyml_command_line();
@@ -69,20 +72,34 @@ sub construct_phyml_command_line{
 	if(defined $self->{p_invariant}){ $phyml_command_line .= ' -v ' . $self->{p_invariant}; }
 	if(defined $self->{subst_model}){ $phyml_command_line .= ' -m ' . $self->{subst_model}; }
 
+	if (defined $self->{initial_tree_newick}) {
+	  my $init_tree_newick = $self->{initial_tree_newick};
+	  my $init_newick_encoded = $self->encode_newick($init_tree_newick);
+#	  print "encoded init newick: $init_newick_encoded\n";
 
-	if(defined $self->{initial_tree_newick_file}){
-	  my $init_tree_newick_file = $self->{initial_tree_newick_file};
-	  open my $fhinittree, "<$init_tree_newick_file";
-	  my $init_newick = join("", <$fhinittree>);
-#print "init newick $init_newick\n";
-  $init_newick = $self->encode_newick($init_newick);
-#print "encoded init newick: $init_newick\n";
-	  close $fhinittree; open $fhinittree, ">init_newick_tmp";
-	  print $fhinittree "$init_newick\n";
-	  $phyml_command_line .= ' -u init_newick_tmp '; 
+	  my $tmp_filename = $$ . "_ft.newick_tmp";
+	  open my $fhinittree, ">","$tmp_filename";
+	  print $fhinittree "$init_newick_encoded;\n";
+	  $phyml_command_line .= " -u $tmp_filename --quiet ";
 	}
 
-	print STDERR "phyml command line: $phyml_command_line \n";
+# 	if(defined $self->{initial_tree_newick_file}){
+# 	  my $init_tree_newick_file = $self->{initial_tree_newick_file};
+# 	  open my $fhinittree, "<", "$init_tree_newick_file";
+# 	  my $init_newick = join("", <$fhinittree>);
+# #print "init newick $init_newick\n";
+	  
+#   $init_newick = $self->encode_newick($init_newick);
+# #print "encoded init newick: $init_newick\n";
+# 	  close $fhinittree; 
+
+
+# open $fhinittree, ">","init_newick_tmp";
+# 	  print $fhinittree "$init_newick\n";
+# 	  $phyml_command_line .= ' -u init_newick_tmp --quiet '; 
+# 	}
+
+#	print STDERR "phyml command line: $phyml_command_line \n";
 	$self->{phyml_command_line} = $phyml_command_line;
 	return $self;
 }
@@ -112,7 +129,7 @@ sub fasta_file_to_phylip{
 	my $seq_number = 0;
 	my $seq_length;
 
-	open my $fh, "<$align_fasta_file";
+	open my $fh, "<", "$align_fasta_file";
 	while(<$fh>){
 
 		if(/^>(\S+)/){
@@ -131,7 +148,7 @@ sub fasta_file_to_phylip{
 			$encodedid_seq{$encoded_id} = $seq;
 			$seq_number++;
 		}else{
-			print STDERR "line skipped: $_";
+			print STDERR "In Phyml::fasta_file_to_phylip. No initial > ; line skipped: $_";
 		}
 	}
 	close $fh;
@@ -155,7 +172,7 @@ sub fasta_file_to_phylip{
 	$phylip_file =~ s/fasta$//;
 	$phylip_file =~ s/[.]$//;
 	$phylip_file .= '.sqphlp';
-	open $fh, ">$phylip_file";
+	open $fh, ">", "$phylip_file";
 	print $fh $phylip_string;
 	close $fh;
 
@@ -165,38 +182,134 @@ sub fasta_file_to_phylip{
 
 }
 
-sub run_phyml{
+sub fasta_string_to_phylip{
+# get the input alignment into proper format:
+# takes a fasta alignment string as argument,
+# gets phylip format string and stores it in obj.
 	my $self = shift;
-	my $phyml_command_line = $self->{phyml_command_line};
+	my $fasta_string = shift || undef;
 
-	system "$phyml_command_line";
+# set up "encoded" ids of form seq_n (n=0,1,2...) and 1-1 mapping between 
+# actual sequence ids and these
+	my %id_encodedid = ();
+	my %encodedid_id = ();
+	my %encodedid_seq = ();
 
+	my $seq_number = 0;
+	my $seq_length;
 
-	my $phyml_tree_outfile = $self->{phylip_file};
-#	$phyml_tree_outfile =~ s/seqphylip$//; 
-		my $phyml_stats_outfile = $phyml_tree_outfile;
-	$phyml_tree_outfile .= "_phyml_tree.txt";
-	$phyml_stats_outfile .= "_phyml_stats.txt";
+my @fasta_lines = split("\n", $fasta_string);
+#	while(<$fh>){
+	while (@fasta_lines) {
+	  $_ = shift @fasta_lines;
+	  if (/^>(\S+)/) {
+	    my $id = $1;
+	    my $encoded_id = 'seq_' . $seq_number;
+	    $id_encodedid{$id} = $encoded_id;
+	    $encodedid_id{$encoded_id} = $id;
+	    my $seq = shift @fasta_lines;
+	      $seq =~ s/^\s*(\S.*\S)\s*$/$1/; # remove initial, final whitespace.
+	    if ($seq_number > 0) {
+	      warn "Sequences in alignment have different lengths.\n" if(length $seq ne $seq_length);
+	    }
+	    $seq_length = length $seq;
 
-	my $newick = `cat $phyml_tree_outfile`;
-	if (0) {
-	  my @sorted_encodedids = sort { length $b <=> length $a } keys %{$self->{encodedid_id}};
-
-	  foreach my $encoded_id (@sorted_encodedids) {
-	    #       print $enc_id, "\n";
-	    my $id = $self->{encodedid_id}->{$encoded_id};
-	    $newick =~ s/$encoded_id/$id/g;
+	    $encodedid_seq{$encoded_id} = $seq;
+	    $seq_number++;
+	  } else {
+	    print STDERR "In Phyml::fasta_string_to_phylip. No initial > ; line skipped: $_";
 	  }
-	} else {
-	  $newick = $self->decode_newick($newick);
 	}
+#	close $fh;
 
-#print $newick, "\n";
+	$self->{id_encodedid} = \%id_encodedid;
+	$self->{encodedid_id} = \%encodedid_id;
+	$self->{encodedid_seq} = \%encodedid_seq;
 
-	$newick =~ s/,/,\n/g;
-	print $newick, "\n";
-	$self->{newick_out} = $newick;
+# get phylip formatted string and print to file
+	my $phylip_string = "$seq_number $seq_length \n";
+	my $line_length = 80;
+	foreach (keys %encodedid_seq){
+		my $id_and_seq = substr($_ . '           ', 0, 10) . $encodedid_seq{$_}; # key (id) should be <= 10 char
 
+		my $pos = 0;
+		while($pos < length $id_and_seq){
+			$phylip_string .= substr($id_and_seq, $pos, $line_length) . "\n";
+			$pos += $line_length;
+		}
+	}
+	$self->{phylip_string} = $phylip_string;
+	return $phylip_string;
+      }
+
+sub write_phylip_file{
+  my $self = shift;
+  my $phylip_file;
+  if (defined $self->{phylip_file}) {
+    $phylip_file = $self->{phylip_file};
+ 
+  } elsif (defined $self->{fasta_file}) { # if phylip filename not already defined, construct from fasta file name.
+    $phylip_file = $self->{fasta_file};
+    $phylip_file =~ s/fasta$//;
+    $phylip_file =~ s/[.]$//;
+    $phylip_file .= '.sqphlp';
+    $self->{phylip_file} = $phylip_file;
+  } else {
+    my $PID = $$;
+    $phylip_file = $PID . "_align.phylip";
+  }
+  $self->{phylip_file} = $phylip_file;
+#  print STDERR "phylip filename: $phylip_file \n";
+  open my $fh, ">", "$phylip_file" or die "Couldnt open $phylip_file for reading. \n";
+  if ($self->{phylip_string}) {
+    print $fh $self->{phylip_string};
+  } else {
+    die "Phylip string: [", $self->{phylip_string}, "]??? \n";
+  }
+  close $fh;
+}
+
+sub run{
+  my $self = shift;
+  my $phyml_command_line = $self->{phyml_command_line};
+
+
+  #print "Phyml command line: \n";
+  #print "$phyml_command_line \n";
+  #	system "$phyml_command_line";
+  my $phyml_stdout = `$phyml_command_line`;
+  $self->{phyml_stdout} = $phyml_stdout;
+  my $lnl = ($phyml_stdout =~ /Log likelihood of the current tree:\s+(\S+)/)? $1 : '---';
+  my $cpu_time = ($phyml_stdout =~ /Time used (\d+)h(\d+)m(\d+)s/)? 3600*$1 + 60*$2 + $3 : '---';
+  $lnl =~ s/[.]\s*$//;		# remove final . if present.
+  #print "lnL: $lnl \n";
+  $self->{log_likelihood} = $lnl; # store likelihood
+$self->{cpu_time} = $cpu_time;
+  my $phyml_tree_outfile = $self->{phylip_file};
+  #	$phyml_tree_outfile =~ s/seqphylip$//; 
+  my $phyml_stats_outfile = $phyml_tree_outfile;
+  $phyml_tree_outfile .= "_phyml_tree.txt";
+  $phyml_stats_outfile .= "_phyml_stats.txt";
+
+  my $newick = `cat $phyml_tree_outfile`;
+  if (0) {
+    my @sorted_encodedids = sort { length $b <=> length $a } keys %{$self->{encodedid_id}};
+
+    foreach my $encoded_id (@sorted_encodedids) {
+      #       print $enc_id, "\n";
+      my $id = $self->{encodedid_id}->{$encoded_id};
+      $newick =~ s/$encoded_id/$id/g;
+    }
+  } else {
+    $newick = $self->decode_newick($newick);
+  }
+
+  #print $newick, "\n";
+
+  $newick =~ s/,/,\n/g;
+  #print $newick, "\n";
+  $self->{newick_out} = $newick;
+  # print STDERR "in Phyml::run. returning.\n";
 }
 
 sub encode_newick{
@@ -242,5 +355,13 @@ my $oldlength = length $oldpart;
 return $string;
 }
 
+sub get_phyml_command_line{
+  my $self = shift;
+  if(defined $self->{phyml_command_line}){
+    return $self->{phyml_command_line};
+  }else{
+    return 'undefined';
+  }
+}
 
 1; 
