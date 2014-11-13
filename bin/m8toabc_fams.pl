@@ -16,7 +16,7 @@ my $ggfilename = undef;
 my $m8_filename = undef;
 my $abc_filename = '';
 my $fam_size_limit = 150;
-my $fff = 'inf';
+my $fff = 'inf'; # fff = 'inf' => just take top n of each species 
 
 my $species_list = []; # array ref
 
@@ -43,6 +43,7 @@ print STDERR
   "# output file: $abc_filename \n",
   "# ggfilename: $ggfilename \n",
   "# max_eval : $max_eval \n",
+
   "# fam size limit: $fam_size_limit \n",
   ($fff eq 'inf')? "e-value only as tie-breaker \n" : "# match handicap factors powers: " . join(", ", @pows[1..10]) . "\n";
 
@@ -131,7 +132,7 @@ print $fh_abc_out "$fam_string \n";
 
 ##################################################################################################
 
-sub get_fam_string{
+sub get_fam_string{ 
   my $id1 = shift;
   my $id2eval_string = shift;
   my $id_species = shift;
@@ -167,27 +168,25 @@ sub get_fam_string{
     #   sort { $id2_eveff{$a} <=> $id2_eveff{$b} } keys %id2_eveff;
     sort { $id2_log10eveff{$a} <=> $id2_log10eveff{$b} } keys %id2_log10eveff;
 
-  my $got_query = 0;
-  my $fam_size_count = 0;
   %species_count = ();
+  my $qqev = (defined $id2_ev{$id1})? $id2_ev{$id1} : $min_ev;
+  $out_fam_string .= "$id1  $id1  $qqev \n"; # make the query be a match to itself, and it is first match in family 
+  # even if the e-value isn't that good.
+  my $fam_size_count = 1;
   for (@sorted_id2s) {
+    next if($_ eq $id1); # don't put the query in again!
     my $ev = $id2_ev{$_};
     $out_fam_string .=  "$id1  $_  $ev \n";
     $fam_size_count++;
-    $got_query = 1 if($_ eq $id1);
     my $species = $id_species->{$_};
     $species_count{$species}++;
     last if($fam_size_count >= $fam_size_limit);
-  }
-  if (! $got_query) { # make sure the query is in the family
-    my $qqev = (defined $id2_ev{$id1})? $id2_ev{$id1} : $min_ev;
-    $out_fam_string .= "$id1  $id1  $qqev \n";
   }
   chomp $out_fam_string;
   return ($out_fam_string, $fam_size_count, scalar keys %species_count);
 }
 
-sub get_fam_string_inf{
+sub get_fam_string_inf{ 
   my $id1 = shift;
   my $id2eval_string = shift;
   my $id_species = shift;
@@ -199,9 +198,9 @@ sub get_fam_string_inf{
   my $species_present_top = 0;
   my $species_present_ff = 0;
   my %species_matches = (); # keys: species; values: arrayrefs of match ids
-  my %idpair_ev = ();
+#  my %idpair_ev = ();
   my %id2_ev = ();
-#  my $small = 1e-180;
+  #  my $small = 1e-180;
 
   my @id2ev_lines = split("\n", $id2eval_string);
   for (@id2ev_lines) {
@@ -217,15 +216,17 @@ sub get_fam_string_inf{
   }
   my @species_list = keys %species_matches;
 
-  my $fam_size_count = 0;
-  my $got_query = 0;
+  my $qqev = (defined $id2_ev{$id1})? $id2_ev{$id1} : $min_ev;
+ #  $idpair_ev{"$id1  $id1"} = $qqev;
+  my $fam_size_count = 1;
+  my $out_fam_string = "$id1  $id1  $qqev \n";
   while ($fam_size_count < $size_limit) {
     my %ith_round_ev = ();	#
     for my $a_species (@species_list) {
       next if(! defined $species_matches{$a_species});
       my $matches = $species_matches{$a_species};
       if (scalar @$matches > 0) {
-	my $match_id = shift @$matches;
+	my $match_id = shift @$matches; # get the best remaining match of this species
 	my $match_ev = $id2_ev{$match_id};
 	$ith_round_ev{$match_id} = $match_ev;
       } else {			# no more matches of this species
@@ -233,93 +234,85 @@ sub get_fam_string_inf{
       }
     }
 
-    my @sms = sort {$ith_round_ev{$a} <=> $ith_round_ev{$b}} keys %ith_round_ev;
+    my @sms = sort {$ith_round_ev{$a} <=> $ith_round_ev{$b}} keys %ith_round_ev; # sort the matches in this round
     for my $match_id (@sms) {
+      next if($match_id eq $id1);
       my $the_ev = $ith_round_ev{$match_id};
-      $got_query = 1 if($match_id eq $id1);
-      $idpair_ev{"$id1  $match_id"} = $id2_ev{$match_id};
+      #  $got_query = 1 if($match_id eq $id1);
+   #   $idpair_ev{"$id1  $match_id"} = $id2_ev{$match_id};
+      $out_fam_string .= "$id1  $match_id  $the_ev \n";
       $fam_size_count++;
       last if($fam_size_count >= $size_limit);
     }
     last if(scalar keys %species_matches == 0);
   }
-  if (! $got_query) {
-    my $qqev = (defined $id2_ev{$id1})? $id2_ev{$id1} : $min_ev;
-    $idpair_ev{"$id1  $id1"} = $qqev;
-    $fam_size_count++;
-  }
 
-  my $out_fam_string = '';
-  my @skeys = sort {$idpair_ev{$a} <=> $idpair_ev{$b}} keys %idpair_ev; # sort by e-value
-  for (@skeys) {
-    $out_fam_string .= "$_  " . $idpair_ev{$_} . "\n";
-  }
   chomp $out_fam_string;
   return ($out_fam_string, $fam_size_count, scalar @species_list);
 }
 
 
-sub get_fam_string_old{
-  # ($id1, $fstring, \%id_species, $fam_size_limit, $n_first_few, $ff_factor);
-  my $id1 = shift;
-  my $id2eval_string = shift;
-  my $id_species = shift;
-  my $fam_size_limit = shift;
-  my $n_first_few = shift;
-  my $ff_factor = shift;
+# sub get_fam_string_old{
+#   # ($id1, $fstring, \%id_species, $fam_size_limit, $n_first_few, $ff_factor);
+#   my $id1 = shift;
+#   my $id2eval_string = shift;
+#   my $id_species = shift;
+#   my $fam_size_limit = shift;
+#   my $n_first_few = shift;
+#   my $ff_factor = shift;
 
-  my $out_fam_string = '';
-  my $first_few_count = 0;
-  my $total_count = 0;
-  my $top_count = 0;
-  my $species_present_top = 0;
-  my $species_present_ff = 0;
-  my %species_count = ();
-  # print STDERR "in get_fam_string. id2eval_string: \n $id2eval_string \n"; #exit;
-  my @id2ev_lines = split("\n", $id2eval_string);
-  my $top_n_max_eval; 
-  for (my $i = 0; $i < min($fam_size_limit, scalar @id2ev_lines); $i++ ) {
-    my $id2_ev = $id2ev_lines[$i];
-    my ($id2, $ev) = ($1, $2) if($id2_ev =~ /^\s*(\S+)\s+(\S+)/);
-    $top_n_max_eval = $ev;
-    my $species = $id_species->{$id2} || undef;
-    if (defined $species) {
-      $species_count{$species}++;
-      my $sp_count = $species_count{$species};
-      $out_fam_string .= "$id1  $id2_ev \n";
-      $total_count++;
-      #     print STDERR "TOPN:  $id1  $id2   $species  $sp_count  $total_count \n";
-    } else {
-      die "Id $id2 has no species defined. \n";
-    }
+#   my $out_fam_string = '';
+#   my $first_few_count = 0;
+#   my $total_count = 0;
+#   my $top_count = 0;
+#   my $species_present_top = 0;
+#   my $species_present_ff = 0;
+#   my %species_count = ();
+#   # print STDERR "in get_fam_string. id2eval_string: \n $id2eval_string \n"; #exit;
+#   my @id2ev_lines = split("\n", $id2eval_string);
+#   my $top_n_max_eval; 
+#   for (my $i = 0; $i < min($fam_size_limit, scalar @id2ev_lines); $i++ ) {
+#     my $id2_ev = $id2ev_lines[$i];
+#     my ($id2, $ev) = ($1, $2) if($id2_ev =~ /^\s*(\S+)\s+(\S+)/);
+#     $top_n_max_eval = $ev;
+#     my $species = $id_species->{$id2} || undef;
+#     if (defined $species) {
+#       $species_count{$species}++;
+#       my $sp_count = $species_count{$species};
+#       $out_fam_string .= "$id1  $id2_ev \n";
+#       $total_count++;
+#       #     print STDERR "TOPN:  $id1  $id2   $species  $sp_count  $total_count \n";
+#     } else {
+#       die "Id $id2 has no species defined. \n";
+#     }
    
-  }
-  $species_present_top = scalar keys %species_count;
-  $top_count = $total_count;
-  if (scalar @id2ev_lines > $fam_size_limit) { # do any matches past the first $fam_size_limit
-    for (my $i = $fam_size_limit; $i < scalar @id2ev_lines; $i++) {
-      my $id2_ev = $id2ev_lines[$i];
-      my ($id2, $ev) = ($1, $2) if($id2_ev =~ /^\s*(\S+)\s+(\S+)/);
-      my $species = $id_species->{$id2} || undef;
-      if (defined $species) {
-	$species_count{$species}++;
-	my $sp_count = $species_count{$species};
-	if ( ( ($sp_count <= $n_first_few)  and  $ev <= ($top_n_max_eval * $ff_factor) ) or ($id1 eq $id2) ) {
-	  $out_fam_string .= "$id1  $id2  $ev \n";
-	  $first_few_count++;
-	  #	  print STDERR "FF:    $id1  $id2   $species  $sp_count  $first_few_count \n";
-	}
-      } else {
-	die "Id $id2 has no species defined. \n";
-      }
-    }
-  }
-  my $distinct_species_present = scalar keys %species_count;
-  #print "[$out_fam_string]\n";
-  $total_count += $first_few_count;
-  chomp $out_fam_string;
-  return ($out_fam_string, $top_count, $first_few_count, $total_count, $species_present_top, $distinct_species_present - $species_present_top, $distinct_species_present);
-}
+#   }
+#   $species_present_top = scalar keys %species_count;
+#   $top_count = $total_count;
+#   if (scalar @id2ev_lines > $fam_size_limit) { # do any matches past the first $fam_size_limit
+#     for (my $i = $fam_size_limit; $i < scalar @id2ev_lines; $i++) {
+#       my $id2_ev = $id2ev_lines[$i];
+#       my ($id2, $ev) = ($1, $2) if($id2_ev =~ /^\s*(\S+)\s+(\S+)/);
+#       my $species = $id_species->{$id2} || undef;
+#       if (defined $species) {
+# 	$species_count{$species}++;
+# 	my $sp_count = $species_count{$species};
+# 	if ( ( ($sp_count <= $n_first_few)  and  $ev <= ($top_n_max_eval * $ff_factor) ) or ($id1 eq $id2) ) {
+# 	  $out_fam_string .= "$id1  $id2  $ev \n";
+# 	  $first_few_count++;
+# 	  #	  print STDERR "FF:    $id1  $id2   $species  $sp_count  $first_few_count \n";
+# 	}
+#       } else {
+# 	die "Id $id2 has no species defined. \n";
+#       }
+#     }
+#   }
+#   my $distinct_species_present = scalar keys %species_count;
+#   #print "[$out_fam_string]\n";
+#   $total_count += $first_few_count;
+#   chomp $out_fam_string;
+#   return ($out_fam_string, $top_count, $first_few_count, $total_count, $species_present_top, $distinct_species_present - $species_present_top, $distinct_species_present);
+# }
 
 
   # my $_24_species = [
