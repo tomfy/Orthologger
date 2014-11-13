@@ -45,78 +45,235 @@ use CXGN::Phylo::CladeSpecifier;
 #print "KNOWN SPECIES: ", join(", ", sort keys %species_count), "\n";
 
 my $predefined_taxon_groups =
-  {    # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
-    '4nonangiosperms' => {
-        'Chlamydomonas_reinhardtii'  => 1,
-        'Physcomitrella_patens'      => 1,
-        'Selaginella_moellendorffii' => 1,
-        'Pinus_taeda'                => 1,
-    },
-    '8monocots' => {
+  { # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
+   '4nonangiosperms' => {
+			 'Chlamydomonas_reinhardtii'  => 1,
+			 'Physcomitrella_patens'      => 1,
+			 'Selaginella_moellendorffii' => 1,
+			 'Pinus_taeda'                => 1,
+			},
+   '8monocots' => {
 
-        'Phoenix_dactylifera'     => 1,    # date palm
-        'Setaria_italica'         => 1,    # foxtail millet
-        'Triticum_aestivum'       => 1,    # wheat
-        'Hordeam_vulgare'         => 1,    # barley
-        'Zea_mays'                => 1,    # maize
-        'Brachypodium_distachyon' => 1,
-        'Sorghum_bicolor'         => 1,
-        'Oryza_sativa'            => 1     # rice
-    },
-    '4monocots' => {
-        'Zea_mays'                => 1,    # maize
-        'Brachypodium_distachyon' => 1,
-        'Sorghum_bicolor'         => 1,
-        'Oryza_sativa'            => 1     # rice
-    },
-    '7dicots' => {
-        'Solanum_lycopersicum' => 1,       # tomato
-        'Solanum_tuberosum'    => 1,       # potato
-        'Vitis_vinifera'       => 1,       # grape
-        'Glycine_max'          => 1,       # soy
-        'Populus_trichocarpa'  => 1,       # poplar
-        'Ricinus_communis'     => 1,       # castor
-        'Cucumis_sativus'      => 1        # cucumber
-    },
-    '8dicots_incl_papaya' => {
-        'Solanum_lycopersicum' => 1,       # tomato
-        'Solanum_tuberosum'    => 1,       # potato
-        'Vitis_vinifera'       => 1,       # grape
-        'Glycine_max'          => 1,       # soy
-        'Populus_trichocarpa'  => 1,       # poplar
-        'Ricinus_communis'     => 1,       # castor
-        'Cucumis_sativus'      => 1,       # cucumber
-        'Carica_papaya'        => 1        # papaya
-    },
-    '5brassicas' => {
-        Brassica_rapa           => 1,      # turnip
-        Arabidopsis_thaliana    => 1,
-        Arabidopsis_lyrata      => 1,
-        Thellungiella_halophila => 1,
-        Capsella_rubella        => 1
-    },
-  '6negatives' =>  {
-        Brassica_rapa           => 1,      # turnip
-        Arabidopsis_thaliana    => 1,
-        Arabidopsis_lyrata      => 1,
-        Thellungiella_halophila => 1,
-        Capsella_rubella        => 1,
-		  Beta_vulgaris => 1,      # beet
-    },
+		   'Phoenix_dactylifera'     => 1, # date palm
+		   'Setaria_italica'         => 1, # foxtail millet
+		   'Triticum_aestivum'       => 1, # wheat
+		   'Hordeam_vulgare'         => 1, # barley
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
+   '6monocots' => { # These are the monocots in the 36-species analysis, May 2014
+		   'Phoenix_dactylifera'     => 1, # date palm
+		   'Musa_acuminata' => 1,	   # banana
+		   #	   'Setaria_italica'         => 1, # foxtail millet
+		   #	   'Triticum_aestivum'       => 1, # wheat
+		   #	   'Hordeum_vulgare'         => 1, # barley
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
+   '4monocots' => {
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
+   '7dicots' => {
+		 'Solanum_lycopersicum' => 1, # tomato
+		 'Solanum_tuberosum'    => 1, # potato
+		 'Vitis_vinifera'       => 1, # grape
+		 'Glycine_max'          => 1, # soy
+		 'Populus_trichocarpa'  => 1, # poplar
+		 'Ricinus_communis'     => 1, # castor
+		 'Cucumis_sativus'      => 1  # cucumber
+		},
+   '8dicots_incl_papaya' => {
+			     'Solanum_lycopersicum' => 1, # tomato
+			     'Solanum_tuberosum'    => 1, # potato
+			     'Vitis_vinifera'       => 1, # grape
+			     'Glycine_max'          => 1, # soy
+			     'Populus_trichocarpa'  => 1, # poplar
+			     'Ricinus_communis'     => 1, # castor
+			     'Cucumis_sativus'      => 1, # cucumber
+			     'Carica_papaya'        => 1  # papaya
+			    },
+   '12pdicots' => {
+		   'Solanum_lycopersicum' => 1, # tomato
+		   #	'Solanum_tuberosum'    => 1, # potato
+		   'Vitis_vinifera'       => 1,	# grape
+		   'Glycine_max'          => 1,	# soy
+		   'Populus_trichocarpa'  => 1,	# poplar
+		   'Ricinus_communis'     => 1,	# castor
+		   'Cucumis_sativus'      => 1,	# cucumber
+		   'Aquilegia_coerulea' => 1,	# columbine
+		   'Mimulus_guttatus' => 1,	# monkeyflower
+		   'Theobroma_cacao' => 1,
+		   'Carica_papaya' => 1,
+		   #		 'Tarenaya_hassleriana' => 1, # this is an AM negative
+		   'Lupinus_angustifolius' => 1,
+		   'Lotus_japonicus' => 1,
+		   #	       'Eucalyptus_grandis' => 1,
+		   #	       'Manihot_esculenta' => 1,
+		  },
+
+   '5brassicas' => {
+		    Brassica_rapa           => 1, # turnip
+		    Arabidopsis_thaliana    => 1,
+		    Arabidopsis_lyrata      => 1,
+		    Thellungiella_halophila => 1,
+		    Capsella_rubella        => 1
+		   },
+   '6negatives' =>  {
+		     Brassica_rapa           => 1, # turnip
+		     Arabidopsis_thaliana    => 1,
+		     Arabidopsis_lyrata      => 1,
+		     Thellungiella_halophila => 1,
+		     Capsella_rubella        => 1,
+		     Beta_vulgaris => 1, # beet
+		    },
    'few' => {
 	     'Oryza_sativa' => 1,
 	     'Arabidopsis_thaliana' => 1,
 	     'Glycine_max' => 1,
 	     'Solanum_lycopersicum' => 1,
 	     'Selaginella_moellendorffii' => 1,
-},
+	    },
+
+
+
+   '23_AMp_dicots' => {
+		       'Aquilegia_coerulea' => 1, # columbine
+
+		       'Solanum_lycopersicum' => 1, # tomato
+		       'Solanum_tuberosum'    => 1, # potato
+		       'Mimulus_guttatus' => 1,	    # monkeyflower
+		       'Fraxinus_excelsior' => 1,   # Ash
+		       'Sesamum_indicum' => 1,
+
+		       'Vitis_vinifera'       => 1, # grape
+
+		       'Glycine_max'          => 1, # soy
+		       'Phaseolus_vulgaris' => 1,
+		       'Lupinus_angustifolius' => 1,
+		       'Lotus_japonicus' => 1,
+		       'Medicago_truncatula' => 1,
+
+		       'Populus_trichocarpa'  => 1, # poplar
+		       'Ricinus_communis'     => 1, # castor
+		       'Cucumis_sativus'      => 1, # cucumber
+		       'Manihot_esculenta' => 1,
+		       'Salix_purpurea' => 1,
+
+		       'Theobroma_cacao' => 1,
+		       'Carica_papaya' => 1,
+		       'Eucalyptus_grandis' => 1,
+		       'Gossypium_raimondii' => 1,
+		       'Citrus_clementina' => 1,
+		       'Citrus_sinensis' => 1,
+		      }, 
+   '9_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
+		    'Panicum_virgatum' => 1,		 # switchgrass
+		    'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
+		    'Phoenix_dactylifera'     => 1,   # date palm
+		    'Musa_acuminata' => 1,	      # banana
+		    'Zea_mays'                => 1,   # maize
+		    'Brachypodium_distachyon' => 1,
+		    'Sorghum_bicolor'         => 1,
+		    'Oryza_sativa'            => 1, # rice
+		    'Spirodela_polyrhiza' => 1, # duckweed - AM negative monocot
+		    #	   'Setaria_italica'         => 1, # foxtail millet
+		    #	   'Triticum_aestivum'       => 1, # wheat
+		    #	   'Hordeum_vulgare'         => 1, # barley
+		   },
+   '8_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
+		  'Ostreococcus_tauri' => 1,
+		  'Ostreococcus_lucimarinus' => 1,
+		  'Volvox_carteri' => 1,
+		  'Chlamydomonas_reinhardtii'  => 1,
+		  'Physcomitrella_patens'      => 1, 
+		  'Selaginella_moellendorffii' => 1, 
+		  'Picea_abies' => 1, # norway spruce
+		  'Amborella_trichopoda' => 1
+		 },
+   '11_AMnegatives' =>  {
+			 Brassica_rapa           => 1, # turnip
+			 Arabidopsis_thaliana    => 1,
+			 Arabidopsis_lyrata      => 1,
+			 Thellungiella_halophila => 1,
+			 Capsella_rubella        => 1,
+			 Beta_vulgaris => 1,
+			 Nelumbo_nucifera => 1,
+			 Utricularia_gibba => 1,
+			 'Tarenaya_hassleriana' => 1,
+			 'Dianthus_caryophyllus' => 1,
+			 'Spirodela_polyrhiza' => 1, # duckweed - monocot
+			},
+
+   # 23 sp for C4 analysis: 
+   '9_C3_dicots' => {
+		     'Aquilegia_coerulea' => 1,	  # columbine
+		     'Solanum_lycopersicum' => 1, # tomato
+		     'Vitis_vinifera'       => 1, # grape
+		     'Medicago_truncatula' => 1,
+		     'Ricinus_communis'     => 1, # castor
+		     'Cucumis_sativus'      => 1, # cucumber
+		     Arabidopsis_thaliana    => 1,
+		     Beta_vulgaris => 1,
+		     'Tarenaya_hassleriana' => 1,
+		    }, 
+   '6_C3_monocots' => {
+		       'Brachypodium_distachyon' => 1,
+		       'Oryza_sativa' => 1,
+		       'Phyllostachys_heterocycla' => 1,
+		       'Musa_acuminata' => 1,
+		       'Phoenix_dactylifera' => 1,
+		       'Spirodela_polyrhiza' => 1,
+		      },
+   '4_C4_monocots' => {
+		       'Sorghum_bicolor' => 1,
+		       'Zea_mays' => 1,
+		       'Panicum_virgatum' => 1,
+		       'Setaria_italica' => 1,
+		      },
+   '4_basals' => {
+		  'Amborella_trichopoda' => 1,
+		  'Picea_abies' => 1,
+		  'Selaginella_moellendorffii' => 1,
+		  'Physcomitrella_patens' => 1,
+		 },
+   '19_non_C4s' => {
+		    'Amborella_trichopoda' => 1,  # 4 basals
+		    'Picea_abies' => 1,
+		    'Selaginella_moellendorffii' => 1,
+		    'Physcomitrella_patens' => 1,
+
+		    'Aquilegia_coerulea' => 1,	 # columbine   # 9 C3 dicots
+		    'Solanum_lycopersicum' => 1, # tomato
+		    'Vitis_vinifera'       => 1, # grape
+		    'Medicago_truncatula' => 1,
+		    'Ricinus_communis'     => 1, # castor
+		    'Cucumis_sativus'      => 1, # cucumber
+		    Arabidopsis_thaliana    => 1,
+		    Beta_vulgaris => 1,
+		    'Tarenaya_hassleriana' => 1,
+
+		    'Brachypodium_distachyon' => 1, # 6 C3 monocots
+		    'Oryza_sativa' => 1,
+		    'Phyllostachys_heterocycla' => 1,
+		    'Musa_acuminata' => 1,
+		    'Phoenix_dactylifera' => 1,
+		    'Spirodela_polyrhiza' => 1,
+		   }
   };
-my $default_taxon_requirements_string = '7dicots,6; 4monocots,3'; # ; Selaginella_moellendorffii,1';
+
+my $default_taxon_requirements_string = '4_C4_monocots,4'; # 19_non_C4s, 3'; # '23_AMp_dicots,9; 9_monocots,4';  #
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
 my $input_fasta_filename      = undef;                                                    # fasta for all sequences
- my $max_eval                  = 100;                                                     # default is big - 
+# my $max_eval                  = 100;                                                     # default is big - 
 my $max_family_size           = 10000;   # default is just a big number, to let families be just whatever is in abc file.
 my $output_filename = undef;
 
@@ -125,7 +282,7 @@ GetOptions(
     'gg_file=s'           => \$gg_filename,
     'abc_file=s'          => \$abc_file,
     'fasta_infile=s'      => \$input_fasta_filename,
-    'max_eval=s'          => \$max_eval,
+ #   'max_eval=s'          => \$max_eval,
     'max_family_size=i'   => \$max_family_size,
     'taxon_requirement=s' => \$taxon_requirements_string,
     'output_filename=s' => \$output_filename,
@@ -151,7 +308,7 @@ my $min_n_dicots = 6;
 my $id_sequence_all = store_fasta_sequences($input_fasta_filename);
 my $gene_genome     = store_gene_genome_association_info($gg_filename);
 
-open my $fh_blast, "<", "$abc_file";
+open my $fh_blast, "<", "$abc_file" or die "couldnt open $abc_file for reading. \n";
 my $previous_id1    = undef;
 my $previous_id2    = undef;
 if(!defined $output_filename){ # if no output filename specified on CL, make a file name
@@ -164,9 +321,11 @@ open my $fh, ">", "$output_filename" or die "Failed to open $output_filename for
 my ( $fam_size, $fam_string_head, $fam_string_fasta ) = ( 0, '', '' );
 my %taxon_count = ();
 while ( my $line = <$fh_blast> ) {
+  next if($line =~ /^\s*#/); # skip comment lines
+next if($line =~ /^\s*$/); # skip all whitespace lines
     my @cols = split( " ", $line );
     my ( $id1, $id2, $eval ) = @cols[ 0, 1, 2 ];
-    next if ( $eval > $max_eval );
+ #   next if ( $eval > $max_eval ); # don't select on basis of e-value; that should be done in earlier step.
     next if ( defined $previous_id1 and ( $id1 eq $previous_id1 and $id2 eq $previous_id2 ) );
 
     if ( ( !defined $previous_id1 ) or ( $id1 ne $previous_id1 ) ) {
@@ -179,7 +338,7 @@ while ( my $line = <$fh_blast> ) {
 
 	my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
 
-	if ($using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)) {
+	if (0 and $using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)) {
 	  warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
 	}
 
@@ -209,7 +368,12 @@ while ( my $line = <$fh_blast> ) {
         if ( $fam_size <= $max_family_size ) {
 
             #    print $fh
+#	  my $seqwince = $id_sequence_all->{$id2};
             $fam_string_fasta .= ">$id2 \n" . $id_sequence_all->{$id2} . "\n";
+	  # if(! $seqwince =~ /\S/){
+	  #   print STDERR "XXX: $id2, [$seqwince]\n Exiting."; exit;
+	  # }
+	   
             $fam_size++;
 
             #    $previous_id1 = $id1;
@@ -230,7 +394,7 @@ $fam_string_head .= "fam_size: $fam_size  $cs_taxa\n";
 my ( $n_dicots, $n_monocots, $selaginella_present ) = check_taxon_list($cs_taxa);
 my $old_OK = ($n_dicots >= $min_n_dicots and $n_monocots >= $min_n_monocots); #  and !$selaginella_present);
 
-#use new requirement, but check against old, and warn if they differ.
+# use new requirement, but check against old, and warn if they differ.
 my $taxon_requirement_satisfied = check_taxon_requirements(\@tax_req_objs, \@taxa);
 	if($using_default_taxon_requirements and ($old_OK ne $taxon_requirement_satisfied)){
 warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_satisfied] n_dicots: $n_dicots n_monocots: $n_monocots \n";
@@ -241,6 +405,8 @@ warn "Old, new taxon requirements satisfied:  [$old_OK]  [$taxon_requirement_sat
   # print "XXX: $cs_taxa    [$n_monocots]   [$selaginella_present].\n";
   if ( defined $previous_id1 ) {
     if ($taxon_requirement_satisfied){ #  $n_dicots >= $min_n_dicots and $n_monocots >= 3 and !$selaginella_present ){
+  #    print "fam string head: [$fam_string_head]\n";
+  #    print "fam string fasta: [$fam_string_fasta]\n";
     print $fh "$fam_string_head";
     print $fh "$fam_string_fasta";
     print $fh "\n";
@@ -282,7 +448,9 @@ sub store_fasta_sequences {
             $sequence = '';
         }
         else {
-            $line =~ s/\s*(\S+)\s*/$1/;    # remove whitespace at beginning, end of line.
+$line =~ s/^\s+//; # remove initial whitespace
+$line =~ s/\s+$//; #remove final 
+#  $line =~ s/\s*(\S+)\s*/$1/;    # remove whitespace at beginning, end of line.
             $sequence .= $line;
         }
     }
