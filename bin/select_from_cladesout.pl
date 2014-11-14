@@ -19,7 +19,7 @@ GetOptions(
 
 
 my @clades_required = split('', $clades_required_string);
-my @the_types = ('NJ', 'ML', 'NJ_BS', 'ML_BS');
+my @the_types = ('NJ', 'FT', 'PHYML', 'NJ_BS', 'FT_BS');
 my ($prev_id, $id) = (undef, '');
 my $type_acc_count = {};
 
@@ -49,13 +49,16 @@ my @depths = ();
 my @nparalogs =();
 my @ndisallowed = ();
 my @sizes = ();
+my @clade_species = ();
   for(my $i=0; $i<$n_clades; $i++){
     $depths[$i] = @cols[$columns_per_clade*$i];
     $nparalogs[$i] = @cols[$columns_per_clade*$i + 1] - 1;
     $ndisallowed[$i] = @cols[$columns_per_clade*$i + 2];
     $sizes[$i] = ($columns_per_clade > 3)? @cols[$columns_per_clade*$i + 3] : -1;
+    $clade_species[$i] = ($columns_per_clade > 4)? @cols[$columns_per_clade*$i + 4] : -1;
 # print "AAA:  ", $i, "  ", $depths[$i], "  ", $nparalogs[$i], "  ", $ndisallowed[$i], "  ", $sizes[$i], "\n";
 }
+$depths[4] = 10000 if($n_clades >= 5 and $depths[4] < 0);
 #print join(", ", @depths), "  nesting_string: $nesting_string \n";
  my $nesting_OK = check_nesting(\@depths, $nesting_string);
 my $paralogs_OK = check_paralogs(\@nparalogs, $max_paralogs_string, $min_paralogs);
@@ -109,6 +112,7 @@ sub check_nesting{
     my ($inner, $outer) = split(/\s*[<]\s*/, $_);
 #print "$inner,  $outer \n";
     $inner--; $outer--;
+	print "Depths: ", join("; ", @$depths), "\n";
     return 0 if($depths->[$inner] < 0 or $depths->[$outer] < 0); # one of the relevant clades not found.
     return 0 if($depths->[$inner] >= $depths->[$outer]); # one of the nesting conditions not met.
   }

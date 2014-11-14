@@ -28,12 +28,18 @@ my $target_bin_weight         = shift || 0.02;
 my $mrb_obj = CXGN::Phylo::Mrbayes->new(
     { 'alignment_nex_filename' => $alignment_nex_filename, 'burnin_fraction' => $burnin_frac } );
 print "# ", join( "\n# ", @{ $mrb_obj->get_id_species_string_array() } ), "\n";
-my $gen_param_hrefs =
-  $mrb_obj->retrieve_param_samples();    # read in from *.run?.p file
-my ( $generation_toponumber_hrefs, $newick_number_map, $number_newick_map ) =
+# my $gen_param_hrefs = $mrb_obj->retrieve_param_samples();    # read in from *.run?.p file
+print "after retrieve_param_samples \n";
+# exit;
+my ( $topo_chaindata, $newick_number_map, $number_newick_map ) =
   $mrb_obj->retrieve_topology_samples(undef, $start_gen);    #read in from * .run?.t file
+print "after retrieve_topology_samples \n";
+# $generation_toponumber_hrefs is a ChainData object.
+my $generation_toponumber_hrefs = $topo_chaindata->{run_gen_value};
 my $n_runs = scalar @$generation_toponumber_hrefs;
 
+$mrb_obj->topo_analyze();
+exit;
 # $topo_count is
 my ( $topo_count, $total_trees ) =
   $mrb_obj->count_post_burn_in_topologies($generation_toponumber_hrefs);
@@ -115,7 +121,8 @@ foreach my $generation_toponumber (@$generation_toponumber_hrefs) {
         $string .=
             "$i_gen   "
           . $number_rank_map{ $generation_toponumber->{$i_gen} } . "   "
-          . $gen_param_hrefs->[ $j_run - 1 ]->{$i_gen} . "\n";
+      #    . $gen_param_hrefs->[ $j_run - 1 ]->{$i_gen} . "\n";
+	. $generation_toponumber_hrefs->[ $j_run - 1 ]->{$i_gen} . "\n";
     }    # loop over gens
          #  print "$string\n" if(1);
     open my $fhtp, ">run$j_run.tp";

@@ -34,6 +34,17 @@ my $predefined_taxon_groups =
 		   'Sorghum_bicolor'         => 1,
 		   'Oryza_sativa'            => 1 # rice
 		  },
+  '6monocots' => { # These are the monocots in the 36-species analysis, May 2014
+		   'Phoenix_dactylifera'     => 1, # date palm
+		   'Musa_acuminata' => 1,	   # banana
+	      #	   'Setaria_italica'         => 1, # foxtail millet
+	#	   'Triticum_aestivum'       => 1, # wheat
+      	   #	   'Hordeum_vulgare'         => 1, # barley
+		   'Zea_mays'                => 1, # maize
+		   'Brachypodium_distachyon' => 1,
+		   'Sorghum_bicolor'         => 1,
+		   'Oryza_sativa'            => 1 # rice
+		  },
    '7dicots' => {
 		 'Solanum_lycopersicum' => 1, # tomato
 		 'Solanum_tuberosum'    => 1, # potato
@@ -53,6 +64,24 @@ my $predefined_taxon_groups =
 			     'Cucumis_sativus'      => 1, # cucumber
 			     'Carica_papaya'        => 1  # papaya
 			    },
+'13pdicots' => {
+		 'Solanum_lycopersicum' => 1, # tomato
+		 #	'Solanum_tuberosum'    => 1, # potato
+		 'Vitis_vinifera'       => 1,	# grape
+		 'Glycine_max'          => 1,	# soy
+		 'Populus_trichocarpa'  => 1,	# poplar
+		 'Ricinus_communis'     => 1,	# castor
+		 'Cucumis_sativus'      => 1,	# cucumber
+		 'Aquilegia_coerulea' => 1,	# columbine
+		 'Mimulus_guttatus' => 1,	# monkeyflower
+		 'Theobroma_cacao' => 1,
+		 'Carica_papaya' => 1,
+		 'Tarenaya_hassleriana' => 1,
+		 'Lupinus_angustifolius' => 1,
+		 'Lotus_japonicus' => 1,
+		 #	       'Eucalyptus_grandis' => 1,
+		 #	       'Manihot_esculenta' => 1,
+		},
    '5brassicas' => {
 		    Brassica_rapa           => 1, # turnip
 		    Arabidopsis_thaliana    => 1,
@@ -61,7 +90,7 @@ my $predefined_taxon_groups =
 		    Capsella_rubella        => 1
 		   },
   };
-my $taxon_requirements_string = '7dicots,6 : 4monocots,3'; # : Selaginella_moellendorffii,1';
+my $taxon_requirements_string = '13pdicots,7 : 6monocots,3'; # '7dicots,6 : 4monocots,3'; # : Selaginella_moellendorffii,1';
 my $gg_filename               = undef; # genome-gene association file
 my $fammer_file                  = undef; # blast output in abc format
 my $input_fasta_filename      = undef;	  # fasta for all sequences

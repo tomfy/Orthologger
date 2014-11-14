@@ -17,6 +17,7 @@ my @ids_array = ();
 my %id_newick = ();
 open my $fh, "<", $id_file;
 while(<$fh>){
+  next if(/^\s*#/); # ignore comment lines
 	my @cols = split(" ", $_);
 	my $bs_support = (scalar @cols ge 5)? $cols[4] : -1;
 	/^\s*(\S+)/;
@@ -28,8 +29,8 @@ while(<$fh>){
 while(<>){
 	my $id = (/^Id\s*(\S+)\s/)? $1 : undef;
 	if(defined $id  and  exists $ids{$id}){
-		my $string = '';
-		$string .= "bs: " . $ids{$id} . "  $_";
+		my $string = $_;
+	#	$string .= # "bs: " . $ids{$id} . "$_";
 		my $newick_line = <>;
 		$string .= "$newick_line \n";
 		$id_newick{$id} = $string;
@@ -38,5 +39,9 @@ while(<>){
 #my @sids = sort { $ids{$a} <=> $ids{b} } keys %ids;
 
 for(@ids_array){
+  if(exists $id_newick{$_}){
 	print $id_newick{$_};
+      }else{
+	print STDERR "id $_ not a key of id_newick hash.\n";
+      }
 }

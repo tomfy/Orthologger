@@ -155,6 +155,7 @@ print "[" ,join("][", @abc_part_filenames), "]\n";
 print $fh_progress "abc family filenames: \n", join("\n", @abc_part_filenames), "\n";
 
 # ************** done making abc files *******************
+exit;
 my @fastas_filenames = ();
 die "fasta input file undefined or file does not exist.\n" unless(defined $all_species_fasta_filename and -f $all_species_fasta_filename); 
 for my $the_abc_part (@abc_part_filenames) {
@@ -239,7 +240,7 @@ sub get_params_from_control_file{
   my %param_name_val = ();
   my %file_taxon = ();
   while (<$fh_ctrl>) {
-    next if(/^\s*#/);
+    next if(/^\s*#/); # skip all comment lines
     if (/^\s*query_fasta_filename/) {
       if (/^\s*query_fasta_filename\s+(\S+)\s+(\S+)/) {
 	$file_taxon{$1} = $2;

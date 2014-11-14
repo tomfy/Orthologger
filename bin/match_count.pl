@@ -40,6 +40,7 @@ while (<>) {
 	
   }
   #	print "$idpair ", $id1id2_eval{$idpair}, "\n" if( ($id_count % 10000) == 0);
+}
 
 $cume_id_count += $id_count; $cume_good_eval_id_count += $id_low_e_val_count;
 print "$old_id  $id_count  $id_low_e_val_count \n" if($verbose); # ($old_id ne $init_id) and $verbose);
@@ -59,3 +60,4 @@ for (keys %id1id2_eval) {
   my $eval21 = (exists $id1id2_eval{$id21pair})? $id1id2_eval{$id21pair} : '-';
   print "$_  ", $id1id2_eval{$_}, "  $eval21 \n";
 }
+
