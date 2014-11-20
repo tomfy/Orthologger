@@ -36,7 +36,8 @@ sub store_gg_info {	 #xx    # read in gene-genome association file
 
 sub run_quicktree {
   my $overlap_fasta_string       = shift;
-  my $correction                 = shift || 'kimura';
+  my $method = 'NJ'; # just NJ for now - FME not implemented. # shift || 'NJ';	# can choose FastME ('FME')
+  my $correction                 = shift || ''; # default is no correction. 'kimura' to get correction
   my $tmp_overlap_fasta_filename = "PID" . $$ . "_tmp_overlap_fasta";
   open my $fhtmp, ">", "$tmp_overlap_fasta_filename";
   print $fhtmp $overlap_fasta_string, "\n";
@@ -46,11 +47,25 @@ sub run_quicktree {
   system
     "sreformat stockholm $tmp_overlap_fasta_filename > $tmp_overlap_stockholm_filename";
   my $newick_out;
-  if ( $correction eq 'kimura' ) {
-    $newick_out = `quicktree -kimura $tmp_overlap_stockholm_filename`;
-  } else {
-    $newick_out = `quicktree  $tmp_overlap_stockholm_filename`;
+  my $distance_matrix_out;
+  if ('NJ')) {
+    if ( $correction eq 'kimura' ) {
+      $newick_out = `quicktree -kimura $tmp_overlap_stockholm_filename`;
+    } else {
+      $newick_out = `quicktree  $tmp_overlap_stockholm_filename`;
+    }
+  } elsif ($method eq 'FME') { # not implemented yet.
+    if ( $correction eq 'kimura') {
+      $distance_matrix_out = `quicktree -kimura  -out m $tmp_overlap_stockholm_filename`;
+    } else {			# no correction
+      $distance_matrix_out = `quicktree  -out m $tmp_overlap_stockholm_filename`;
+    }
+    my $temp_filename = "PID" . $$ . "_distance_matrix.tmp";
+    open $fh_tmp, ">", "$temp_filename";
+    print $fh_tmp $distance_matrix_out, "\n";
   }
+
+}
 
   $newick_out =~ s/\s+//g;	# remove whitespace
   $newick_out =~ s/;$//;
@@ -76,7 +91,9 @@ sub run_fasttree {
     my $temp_file = "PID" . $$ . "_ft_input_tmpfile";
     open my $fh, ">", "$temp_file";
     print $fh $overlap_fasta_string, "\n"; close $fh;
-    $fasttree_out = `$fasttree_cl $temp_file 2>&1`; #  $stderr_outfile`;
+    $fasttree_out = 
+      `$fasttree_cl $temp_file 2>&1`; #  $stderr_outfile`;
+     # `$fasttree_cl -nome -mllen $temp_file 2>&1`; #  $stderr_outfile
 
     my @output_lines = split("\n", $fasttree_out);
     $fasttree_newick_out = pop @output_lines;
