@@ -39,7 +39,8 @@ print "\n";
 }
 
 my ($n1, $nboth, $n2) = (scalar @only1, scalar @both, scalar @only2);
-print "# n 1, both, 2, union:  $n1   $nboth   $n2      ", $n1+$n2+$nboth, "\n"; 
+my $n_union = $n1+$n2+$nboth;
+print "# n 1, both, 2, union:  $n1   $nboth   $n2      $n_union  ", $nboth/$n_union, "\n"; 
 
 #print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
 
