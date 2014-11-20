@@ -152,14 +152,18 @@ while (<$fh_in>) {
 	  # sort by FT likelihood 
 	  my @skeys = sort {$description_lnL{$b} <=> $description_lnL{$a} } keys %description_lnL; #Sort by FastTree likelihoods (best first)
 	  print "Query id: $qid \n";
-	  for (@skeys) {
+	  my $best_ft_lnL = $description_lnL{$skeys[0]};
+	  my $i = 1;
+for (@skeys) {
 	    my ($descript, $ft_cputime, $newick) = split(" ",$_);
 	    my $ft_lnL = $description_lnL{$_};
 	  # phyml, if requested.
 	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = ($do_phyml)? 
 	      run_phyml($alignment_overlap, $newick, $phyml_opt) : 
 		(undef, '()', 0, 0);
-	    printf("%32s   %12s   %12.2f  %5.1f  %12.2f  %5.1f \n", $qid, $descript, $ft_lnL, $ft_cputime, $phyml_lnL, $phyml_cput);
+my $delta_lnL = $best_ft_lnL - $ft_lnL;
+	    printf("%3i %28s %10s  %11.2f  %5.3f  %8.6f  %5.2f  %12.2f  %5.1f \n",$i, $qid, $descript, $ft_lnL, $delta_lnL, $delta_lnL/abs($best_ft_lnL), $ft_cputime, $phyml_lnL, $phyml_cput);
+	    $i++;
 	  }
 	}
       }
