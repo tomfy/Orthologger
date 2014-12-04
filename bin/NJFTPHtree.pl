@@ -88,9 +88,11 @@ my $fh_in = \*STDIN;
 if (defined $input_alignment_file) {
   open $fh_in, "<", "$input_alignment_file" or die "File [$input_alignment_file] could not be opened for reading.\n";
 }
-my $fh_out = \*STDOUT;
+my $fh_out;
 if (defined $output_newick_file) {
   open $fh_out, ">", "$output_newick_file" or die "File [$output_newick_file] could not be opened for writing.\n";
+}else{
+ $fh_out = \*STDOUT;
 }
 
 print STDERR # "gg_file: ", (defined $gg_filename)? $gg_filename: 'undefined', " \n", 
@@ -125,46 +127,58 @@ while (<$fh_in>) {
 	my $alignment_overlap =
 	  $overlap_obj->overlap_fasta_string('');
 	my $overlap_length = $overlap_obj->get_overlap_length();
-#	print "id: $qid  overlap_length: $overlap_length  n_sequences: ", $overlap_obj->get_n_sequences(), "\n";
+	#	print "id: $qid  overlap_length: $overlap_length  n_sequences: ", $overlap_obj->get_n_sequences(), "\n";
 	$string_to_print .= "$overlap_length ";
 	if ( $overlap_length >= $min_overlap_length and $overlap_length <= $max_overlap_length and $overlap_obj->get_n_sequences() < $max_n_sequences) { # sufficient overlap
 	  my %description_lnL = ();
 
 	  ################## run FastTree  ######################################## 
 	  # standard way:
-	    my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport $additional_ft_options ";
-	    my ($ft_newick, $ft_lnL, $ft_cputime) = run_fasttree($alignment_overlap, $fasttree_command);
-	    $description_lnL{"FT $ft_cputime $ft_newick"} = $ft_lnL;
+	  my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport $additional_ft_options ";
+	  my ($ft_newick, $ft_lnL, $ft_cputime) = run_fasttree($alignment_overlap, $fasttree_command);
+	  my $type = "FT";
+	  my $description = "$type  $ft_cputime  $ft_newick";
+	  $description_lnL{$description} = $ft_lnL;
+	  print STDERR "$type $ft_lnL;  ";
+
 	  # using NJ tree as initial tree (rather than bionj done within FT)
-	    my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
-	    $description_lnL{'NJ->FT ' . $njft_cputime . " " . $njft_newick} = $njft_lnL;
+	  my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
+	  $type = 'NJ->FT';
+	  $description = "$type  $njft_cputime  $njft_newick";
+	  $description_lnL{$description} = $njft_lnL;
+	  print STDERR "$type $ft_lnL;  ";
 
 	  # using NJ bootstrap trees as initial trees.
 	  for my $i_bs (1..$n_bs) {
 	    my $bs_alignment_overlap =
 	      $overlap_obj->bootstrap_overlap_fasta_string('');
-
-	    my $description = 'BS' . $i_bs . 'NJ->FT ';
+	    my $type = 'BS' . $i_bs . 'NJ->FT ';
 	    my ($bsnjft_newick, $bsnjft_lnL, $bsnjft_cputime) = nj_to_ft($bs_alignment_overlap, $alignment_overlap);
-	    $description_lnL{"$description $bsnjft_cputime $bsnjft_newick"} = $bsnjft_lnL;
-	  }
+	    $description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
+	    print STDERR "$type $bsnjft_lnL;  ";
+	  }			# end of bootstraps loop
+	  print STDERR "\n";
 
 	  # sort by FT likelihood 
 	  my @skeys = sort {$description_lnL{$b} <=> $description_lnL{$a} } keys %description_lnL; #Sort by FastTree likelihoods (best first)
-	  print "Query id: $qid \n";
+	  print "Id $qid  \n";
 	  my $best_ft_lnL = $description_lnL{$skeys[0]};
 	  my $i = 1;
-for (@skeys) {
+	  for (@skeys) {
 	    my ($descript, $ft_cputime, $newick) = split(" ",$_);
 	    my $ft_lnL = $description_lnL{$_};
-	  # phyml, if requested.
+	    # phyml, if requested.
 	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = ($do_phyml)? 
 	      run_phyml($alignment_overlap, $newick, $phyml_opt) : 
 		(undef, '()', 0, 0);
-my $delta_lnL = $best_ft_lnL - $ft_lnL;
+	    my $delta_lnL = $best_ft_lnL - $ft_lnL;
 	    printf("%3i %28s %10s  %11.2f  %5.3f  %8.6f  %5.2f  %12.2f  %5.1f \n",$i, $qid, $descript, $ft_lnL, $delta_lnL, $delta_lnL/abs($best_ft_lnL), $ft_cputime, $phyml_lnL, $phyml_cput);
+	    if ($i == 1) {
+	      print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime  $phyml_lnL $phyml_cput \n");
+	      print $fh_out "$descript  $newick \n";
+	    }
 	    $i++;
-	  }
+	  }			# loop over sorted trees
 	}
       }
       $state = 'idline';

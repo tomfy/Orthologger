@@ -9,17 +9,17 @@ open my $fhid, "<$idfile";
 
 # store ids in has
 my %id_count = ();
-for(<$fhid>){
-next if(/^\s*#/);
-if(/^\s*(\S+)/){
-	$id_count{$1}++;
-}
+for (<$fhid>) {
+  next if(/^\s*#/);
+  if (/^\s*(\S+)/) {
+    $id_count{$1}++;
+  }
 }
 
-while(<>){ # read in line of abc file
-next if(/^\s*#/);
-my ($id1, $id2, $eval) = split(" ", $_);
-if(exists $id_count{$id1}){
-	print;
-}
+while (<>) {			# read in line of abc file
+  next if(/^\s*#/);
+  my ($id1, $id2, $eval) = split(" ", $_);
+  if (exists $id_count{$id1}) {
+    print;
+  }
 }
