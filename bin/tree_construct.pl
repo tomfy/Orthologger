@@ -5,7 +5,6 @@ use Getopt::Long;
 use IPC::Run3;
 use List::Util qw (min max sum);
 
-
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 
 use File::Basename 'dirname';
@@ -20,13 +19,6 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
 }
 use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
-
-# this is another directory where CXGN/Phyml/*.pm  (e.g. BasicTree.pm etc.) may be located
-# add it to @INC if the directory exists.
-my $alt_lib_dir = '/home/tomfy/Orthologger_2014_11_28/';
-  if(-d $alt_lib_dir){
-    use lib $alt_lib_dir;
-  }
 
 use Phyml;
 use CXGN::Phylo::Overlap;
