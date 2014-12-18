@@ -5,14 +5,12 @@ use strict;
 # In each, there should be a file 'all.cladesout'
 # process each with sfc_brsupp.pl
 
-my $MinN_min_support = shift || 0.25;
-my $DinN_min_support = shift || 0.5;
-my $DinM_min_support = shift || 0.4999;
-my $MinNA_min_support = shift || 0.25;
+my $MinN_min_support = shift || 0.501;
+my $DinN_min_support = shift || 0.501;
+my $DinM_min_support = shift || 0.501;
+my $MinNA_min_support = shift || 0.501;
 
-my %id_nregioncount_x = ();
-my %id_nregioncount_y = ();
-my %id_nregioncount_xy = ();
+my %id_nregioncount = ();
 
 my $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/';
 my @dirs = (
@@ -33,36 +31,67 @@ my @dirs = (
 	    '250_10/mafftquick/newicks_55_20/cladesout/',
 
 	    '200_inf/muscle24/newicks/cladesout/',
+	    '200_inf/muscle24/newicks_55_20/cladesout/',
+	    '200_10/muscle4/newicks/cladesout/',
+	    '200_10/muscle4/newicks_55_20/cladesout/',
 	   );
-my $x = 0.5;
+if (0) {
+  $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/ok702/200_10/';
+  @dirs = (
+	   '/mafft-best/newicks/multiFT/cladesout/',
+	   '/mafft-best/newicks_55_20/multiFT/cladesout/', 
+	   '/muscle24/newicks/multiFT/cladesout/',
+	   '/muscle24/newicks_55_20/multiFT/cladesout/'
+	  );
+}
+if (0) {
+  $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/ok702/200_10/';
+  @dirs = (
+	   '/mafft-best/newicks/cladesout/',
+	   '/mafft-best/newicks_55_20/cladesout/', 
+	   '/muscle24/newicks/cladesout/',
+	   '/muscle24/newicks_55_20/cladesout/'
+	  );
+}
+
+#my $x = 0.5;
+#print "# x min support values: $x $x $x $x \n";
+print "# min support values:  $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support \n";
 for (@dirs) {
   my $the_file = $base_dir . $_ . 'all.cladesout';
-  my $sfc_brsupp_outstring =  `sfc_brsupp.pl $x $x $x $x < $the_file`;
+  my $out_filename = $base_dir . $_ . 'all_ok_' 
+    . $MinN_min_support . "_" 
+      .  $DinN_min_support . "_" 
+	. $DinM_min_support  . "_" 
+	  . $MinNA_min_support . '.cladesout';
+#  print STDERR "# file: $the_file \n";
+  my $sfc_brsupp_outstring = 
+    `sfc_brsupp.pl $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support < $the_file`;
+  open my $fh_out, ">", "$out_filename";
+  print $fh_out $sfc_brsupp_outstring, "\n";
   my @ok_lines = split("\n", $sfc_brsupp_outstring);
-  print STDERR "x: ", $the_file, "  ", scalar @ok_lines, " ok fams.\n";
+  print STDERR "# $the_file  ", scalar @ok_lines, " ok fams.\n";
   for (@ok_lines) {
     if (/^\s*(Med\S+)/) {
       my $id = $1;
-      $id_nregioncount_x{$id}++;
-      $id_nregioncount_xy{$id}++;
+      $id_nregioncount{$id}++;
     }
   }
+}
 
-  $sfc_brsupp_outstring = `sfc_brsupp.pl $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support < $the_file`;
-  @ok_lines = split("\n", $sfc_brsupp_outstring);
- print STDERR "y: ", $the_file, "  ", scalar @ok_lines, " ok fams.\n";
-  for (@ok_lines) {
-    if (/^\s*(Med\S+)/) {
-      my $id = $1;
-      $id_nregioncount_y{$id}++;
-      $id_nregioncount_xy{$id}++;
-    }
-  }
-}
-#exit;
-my @skeys = sort { $id_nregioncount_xy{$a} <=> $id_nregioncount_xy{$b} } keys %id_nregioncount_xy;
+my %nregion_population = ();
+
+my @skeys = sort { $id_nregioncount{$a} <=> $id_nregioncount{$b} } keys %id_nregioncount;
 for (@skeys) {
-  my $x_count = (exists $id_nregioncount_x{$_})? $id_nregioncount_x{$_} : 0;
- my $y_count = (exists $id_nregioncount_y{$_})? $id_nregioncount_y{$_} : 0;
-  print "$_   $x_count  $y_count  " . $id_nregioncount_xy{$_} . "\n";
+  my $count = (exists $id_nregioncount{$_})? $id_nregioncount{$_} : 0;
+  print "$_   $count \n";
+  $nregion_population{$count}++;
 }
+# print histogram
+my $total = 0;
+for (1..scalar @dirs) {
+  my $pop = $nregion_population{$_};
+  print "# $_   $pop\n";
+  $total += $pop;
+}
+
