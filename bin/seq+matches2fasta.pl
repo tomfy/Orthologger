@@ -16,10 +16,9 @@ BEGIN {  # this has to go in Begin block so happens at compile time
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
-my $alt_lib_dir = '/home/tomfy/Orthologger_2014_11_28/';
-  if(-d $alt_lib_dir){
-    use lib $alt_lib_dir;
-  }
+use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
+
+print STDERR "INC: ", join(", ", @INC), "\n";
 
 use CXGN::Phylo::CladeSpecifier;
 
