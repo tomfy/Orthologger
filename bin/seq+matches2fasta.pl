@@ -272,7 +272,8 @@ my $predefined_taxon_groups =
 		   }
   };
 
-my $default_taxon_requirements_string = '4_C4_monocots,4'; # 19_non_C4s, 3'; # '23_AMp_dicots,9; 9_monocots,4';  #
+my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
+	 '23_AMp_dicots,9; 9_monocots,4';  #
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format

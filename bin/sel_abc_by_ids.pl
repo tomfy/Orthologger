@@ -5,7 +5,7 @@ use strict;
 # sel_abc_by_ids.pl  idfilename < abcfile.abc
 # print out all lines of abcfile.file which have id (query id) in $idfile
 my $idfile = shift;
-open my $fhid, "<$idfile";
+open my $fhid, "<", "$idfile";
 
 # store ids in has
 my %id_count = ();

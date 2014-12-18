@@ -92,13 +92,13 @@ while (<$fh_in>) {
 	}
 	if ($align_program eq 'muscle') {
 	  if ($quality eq 'best') {
-	    $maxiters = 100;
+	    $maxiters = 24;
 	}elsif($quality eq 'medium'){
-	$maxiters = 5;
+	$maxiters = 4;
 	  } else {		# ($quality eq 'quick'){
 	    $maxiters = 2;
 	  }
-	  $alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters -maxhours 0.5  2> $stderr_filename";
+	  $alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters -maxhours 0.4  2> $stderr_filename";
 	} elsif ($align_program eq 'mafft') {
 	  if ($quality eq 'best') {
 	    $alignment_cl = "mafft --maxiterate 50 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)

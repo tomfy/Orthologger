@@ -3,10 +3,10 @@ use strict;
 
 my $file1 = shift;
 my $file2 = shift;
-# my $col = shift || 0;
+my $col = shift || 0;
 my $verbose = shift || undef;
-my $ids1 = store_ids($file1);
-my $ids2 = store_ids($file2);
+my $ids1 = store_ids($file1, $col);
+my $ids2 = store_ids($file2, $col);
 
 my @both = ();
 my @only1 = ();
@@ -47,11 +47,15 @@ print "# n 1, both, 2, union:  $n1   $nboth   $n2      $n_union  ", $nboth/$n_un
 
 sub store_ids{
 	my $filename = shift;
+	my $the_col = shift;
 	my %ids = ();
 	open my $fh, "<", "$filename" or die "couldnt open file $filename \n";;
 	while(<$fh>){
 		next if(/^\s*#/); # skip commented lines
-		$ids{$1}++ if(/^\s*(\S+)/); # store the id
+		my @cols = split(" ", $_);
+		my $the_id = $cols[$the_col];
+		$ids{$the_id}++ if(scalar @cols > $the_col);	
+#	$ids{$1}++ if(/^\s*(\S+)/); # store the id
 	}
 	return \%ids;
 }
