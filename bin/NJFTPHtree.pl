@@ -17,12 +17,8 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
   $libdir = $bindir . '/../lib'; 
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
-use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
-my $alt_lib_dir = '/home/tomfy/Orthologger_2014_11_28/';
-  if(-d $alt_lib_dir){
-    use lib $alt_lib_dir;
-  }
+use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 
 use Phyml;
 use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info';
@@ -182,7 +178,7 @@ $description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
 	    my $ft_lnL = $description_lnL{$the_key};
 #print "QQQQQQQ: $the_key \n";
 	    # phyml, if requested.
-	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = ($do_phyml)? 
+	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = ($do_phyml and ($i <= 2))? 
 	      run_phyml($alignment_overlap, $newick, 'r') : 
 		(undef, '()', 0, 0);
 #print "RRRRRRRR: $the_key \n";
