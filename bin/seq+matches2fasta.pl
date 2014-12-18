@@ -16,7 +16,7 @@ BEGIN {  # this has to go in Begin block so happens at compile time
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
-
+use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use CXGN::Phylo::CladeSpecifier;
 
 # read in blast output
@@ -268,7 +268,8 @@ my $predefined_taxon_groups =
 		   }
   };
 
-my $default_taxon_requirements_string = '4_C4_monocots,4'; # 19_non_C4s, 3'; # '23_AMp_dicots,9; 9_monocots,4';  #
+my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
+	 '23_AMp_dicots,9; 9_monocots,4';  #
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
