@@ -18,6 +18,10 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
+my $alt_lib_dir = '/home/tomfy/Orthologger_2014_11_28/';
+  if(-d $alt_lib_dir){
+    use lib $alt_lib_dir;
+  }
 
 use Phyml;
 use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info';
@@ -37,7 +41,7 @@ my $gg_filename;  # required  cl parameter
 my $n_bs = 5;
 #my ($do_ft, $n_ft_bs) = (1, 0);
 my ($do_phyml, $n_phyml_bs) = (0, 0);
-my $phyml_opt = 'r';
+my $phyml_opt = 'tlr';
 
 my $input_alignment_file = undef;
 my $output_newick_file = undef;
@@ -141,12 +145,14 @@ while (<$fh_in>) {
 	  $description_lnL{$description} = $ft_lnL;
 	  print STDERR "$type $ft_lnL;  ";
 
+
 	  # using NJ tree as initial tree (rather than bionj done within FT)
 	  my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
 	  $type = 'NJ->FT';
 	  $description = "$type  $njft_cputime  $njft_newick";
 	  $description_lnL{$description} = $njft_lnL;
-	  print STDERR "$type $ft_lnL;  ";
+	  print STDERR "$type $njft_lnL;  ";
+
 
 	  # using NJ bootstrap trees as initial trees.
 	  for my $i_bs (1..$n_bs) {
@@ -159,26 +165,48 @@ while (<$fh_in>) {
 	  }			# end of bootstraps loop
 	  print STDERR "\n";
 
+
 	  # sort by FT likelihood 
 	  my @skeys = sort {$description_lnL{$b} <=> $description_lnL{$a} } keys %description_lnL; #Sort by FastTree likelihoods (best first)
+#print "A: \n  ", join("\n  ", @skeys), "\n";
 	  print "Id $qid  \n";
 	  my $best_ft_lnL = $description_lnL{$skeys[0]};
 	  my $i = 1;
-	  for (@skeys) {
-	    my ($descript, $ft_cputime, $newick) = split(" ",$_);
-	    my $ft_lnL = $description_lnL{$_};
+	  for my $the_key (@skeys) {
+
+	    my ($descript, $ft_cputime, $newick) = split(" ",$the_key);
+	    my $ft_lnL = $description_lnL{$the_key};
+#print "QQQQQQQ: $the_key \n";
 	    # phyml, if requested.
 	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = ($do_phyml)? 
-	      run_phyml($alignment_overlap, $newick, $phyml_opt) : 
+	      run_phyml($alignment_overlap, $newick, 'r') : 
 		(undef, '()', 0, 0);
+#print "RRRRRRRR: $the_key \n";
 	    my $delta_lnL = $best_ft_lnL - $ft_lnL;
-	    printf("%3i %28s %10s  %11.2f  %5.3f  %8.6f  %5.2f  %12.2f  %5.1f \n",$i, $qid, $descript, $ft_lnL, $delta_lnL, $delta_lnL/abs($best_ft_lnL), $ft_cputime, $phyml_lnL, $phyml_cput);
+	    printf("%3i %28s %10s  %11.2f  %5.3f  %8.6f  %5.2f  %12.2f  %5.1f \n",
+		   $i, $qid, $descript, $ft_lnL, $delta_lnL, $delta_lnL/abs($best_ft_lnL), $ft_cputime, $phyml_lnL, $phyml_cput);
+#	    print "ZZZZ: \n", $skeys[0], "\n";
 	    if ($i == 1) {
-	      print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime  $phyml_lnL $phyml_cput \n");
-	      print $fh_out "$descript  $newick \n";
+	      print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime   r  $phyml_lnL $phyml_cput \n");
+	      $phymlnewick =~ s/\s//g; # remove whitespace
+	      $phymlnewick =~ s/;\s*$//; # remove final ;
+	      print $fh_out "$descript  $phymlnewick \n\n";
 	    }
 	    $i++;
 	  }			# loop over sorted trees
+#print "B: ", join("\n", @skeys), "\n";
+	  if ($do_phyml) {
+	  #  print "XXX: ", $skeys[0], "\n";
+	    my ($descript, $ft_cputime, $newick_in) = split(" ", $skeys[0]);
+	 #   print "$descript  $ft_cputime  $newick_in \n";
+	    my $ft_lnL = $description_lnL{$skeys[0]};
+	    my ($phymlobj, $phymlnewick, $phyml_lnL, $phyml_cput) = run_phyml($alignment_overlap, $newick_in, $phyml_opt);
+	    print "Id $qid  $descript  $ft_lnL  $ft_cputime  $phyml_opt  $phyml_lnL $phyml_cput \n";
+	    print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime  $phyml_opt  $phyml_lnL $phyml_cput \n");
+	    $phymlnewick =~ s/\s//g; # remove whitespace
+	    $phymlnewick =~ s/;\s*$//; # remove final ;
+	    print $fh_out "$descript  $phymlnewick \n\n";
+	  }
 	}
       }
       $state = 'idline';
@@ -198,10 +226,11 @@ sub nj_to_ft{  # get a tree using NJ and use as init tree for FastTree
   if (1) {			# use NJ for the bs trees ...
     $nj_newick = run_quicktree($nj_input_alignment);
   } else { # can use FastTree (just min. evolution, no ML) for bs trees ...
-    ($nj_newick, $bs_lnL, $bs_cputime) = run_fasttree($nj_input_alignment,"FastTree -wag -gamma -bionj -nosupport -noml" );
+    ($nj_newick, $bs_lnL, $bs_cputime) = run_fasttree($nj_input_alignment,"FastTree -wag -gamma -bionj -noml" );
   }
-  my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport ";
+  my $fasttree_command = "FastTree -wag -gamma -bionj ";
   my ($ft_newick, $ft_lnL, $ft_cpu_time) = 
     run_fasttree($ft_input_alignment, $fasttree_command, $nj_newick);
   return ($ft_newick, $ft_lnL, $ft_cpu_time);
 }
+
