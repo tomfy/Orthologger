@@ -419,10 +419,15 @@ while (<$fh_in>) {
 
             #	print STDERR $the_input_newick, "\n"; exit;
             #  $next_line =~ s/;?\s*$//;	# remove final ; and whitespace if present\
-
+#	print STDERR "$BS_count $max_nbs  $the_input_newick  ", scalar keys %$seqid_species, " \n\n\n\n"; exit;
             if ( $BS_count <= $max_nbs ) {
-	      if((! $the_input_newick =~ /\[species=[a-zA-Z_]+\]/) and (scalar keys %$seqid_species > 0)) {
+#	print STDERR "$BS_count $max_nbs  $the_input_newick  ", scalar keys %$seqid_species, " \n\n\n\n"; 
+#	print STDERR "XXX: [", ! ($the_input_newick =~ /\[species=[a-zA-Z_]+\]/), "]\n"; exit;
+	      if((! ($the_input_newick =~ /\[species=[a-zA-Z_]+\]/)) and (scalar keys %$seqid_species > 0)) {
+	#	print STDERR "$BS_count $the_input_newick \n\n\n\n";
+	#	print "XXX\n";
                     $the_input_newick = taxonify_newick( $the_input_newick, $seqid_species );
+#	print STDERR "YYY \n";
                 }
                 ################## CONSTRUCT TREE OBJECT #################################
                 my $parser = CXGN::Phylo::Parse_newick->new( $the_input_newick, 0 );
