@@ -17,6 +17,7 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
   $libdir = $bindir . '/../lib'; 
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
+use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
 
 use Phyml;
@@ -138,6 +139,7 @@ while (<$fh_in>) {
 	  my ($ft_newick, $ft_lnL, $ft_cputime) = run_fasttree($alignment_overlap, $fasttree_command);
 	  my $type = "FT";
 	  my $description = "$type  $ft_cputime  $ft_newick";
+	$ft_lnL = -1e100 if($ft_lnL eq '---');
 	  $description_lnL{$description} = $ft_lnL;
 	  print STDERR "$type $ft_lnL;  ";
 
@@ -145,6 +147,7 @@ while (<$fh_in>) {
 	  my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
 	  $type = 'NJ->FT';
 	  $description = "$type  $njft_cputime  $njft_newick";
+	$njft_lnL = -1e100 if($njft_lnL eq '---');
 	  $description_lnL{$description} = $njft_lnL;
 	  print STDERR "$type $ft_lnL;  ";
 
@@ -154,7 +157,8 @@ while (<$fh_in>) {
 	      $overlap_obj->bootstrap_overlap_fasta_string('');
 	    my $type = 'BS' . $i_bs . 'NJ->FT ';
 	    my ($bsnjft_newick, $bsnjft_lnL, $bsnjft_cputime) = nj_to_ft($bs_alignment_overlap, $alignment_overlap);
-	    $description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
+	$bsnjft_lnL = -1e100 if($bsnjft_lnL eq '---');	    
+$description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
 	    print STDERR "$type $bsnjft_lnL;  ";
 	  }			# end of bootstraps loop
 	  print STDERR "\n";
@@ -188,7 +192,6 @@ while (<$fh_in>) {
   }
 }
 
-
 sub nj_to_ft{  # get a tree using NJ and use as init tree for FastTree
   # usually want bootstrap alignment as input to NJ, then real alignment as input to FastTree
   my $nj_input_alignment = shift; #
@@ -198,9 +201,9 @@ sub nj_to_ft{  # get a tree using NJ and use as init tree for FastTree
   if (1) {			# use NJ for the bs trees ...
     $nj_newick = run_quicktree($nj_input_alignment);
   } else { # can use FastTree (just min. evolution, no ML) for bs trees ...
-    ($nj_newick, $bs_lnL, $bs_cputime) = run_fasttree($nj_input_alignment,"FastTree -wag -gamma -bionj -nosupport -noml" );
+    ($nj_newick, $bs_lnL, $bs_cputime) = run_fasttree($nj_input_alignment,"FastTree -wag -gamma -bionj -noml" );
   }
-  my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport ";
+  my $fasttree_command = "FastTree -wag -gamma -bionj ";
   my ($ft_newick, $ft_lnL, $ft_cpu_time) = 
     run_fasttree($ft_input_alignment, $fasttree_command, $nj_newick);
   return ($ft_newick, $ft_lnL, $ft_cpu_time);
