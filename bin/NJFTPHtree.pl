@@ -196,7 +196,7 @@ $description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
 	      print $fh_out "$descript  $phymlnewick \n\n";
 	    }
 	    $i++;
-	  }			# loop over sorted trees
+	  }			# end of loop over sorted trees
 #print "B: ", join("\n", @skeys), "\n";
 	  if ($do_phyml) {
 	  #  print "XXX: ", $skeys[0], "\n";
