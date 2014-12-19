@@ -230,7 +230,9 @@ my @fasta_lines = split("\n", $fasta_string);
 	my $phylip_string = "$seq_number $seq_length \n";
 	my $line_length = 80;
 	foreach (keys %encodedid_seq){
-		my $id_and_seq = substr($_ . '           ', 0, 10) . $encodedid_seq{$_}; # key (id) should be <= 10 char
+	  my $sequence $encodedid_seq{$_};
+	  $sequence =~ s/[jJ]/-/g; # Phyml can't handle amino-acid 'J' (leucine/isoleucine); replace with - (gap)
+		my $id_and_seq = substr($_ . '           ', 0, 10) . $sequence; # key (id) should be <= 10 char
 
 		my $pos = 0;
 		while($pos < length $id_and_seq){
