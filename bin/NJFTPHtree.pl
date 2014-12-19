@@ -187,6 +187,9 @@ $description_lnL{"$type  $bsnjft_cputime  $bsnjft_newick"} = $bsnjft_lnL;
 		   $i, $qid, $descript, $ft_lnL, $delta_lnL, $delta_lnL/abs($best_ft_lnL), $ft_cputime, $phyml_lnL, $phyml_cput);
 #	    print "ZZZZ: \n", $skeys[0], "\n";
 	    if ($i == 1) {
+	      print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime   -  0  0  \n");
+	      print $fh_out "$descript  $newick \n\n";
+
 	      print $fh_out ("Id $qid  $descript  $ft_lnL  $ft_cputime   r  $phyml_lnL $phyml_cput \n");
 	      $phymlnewick =~ s/\s//g; # remove whitespace
 	      $phymlnewick =~ s/;\s*$//; # remove final ;
