@@ -48,7 +48,8 @@ sub new {
 	  print "XXX: \n" . "$phylip_string \n";
 	  $self->write_phylip_file();
 	}elsif(defined $self->{fasta_file}){
-		$self->fasta_file_to_phylip(); 
+		my $phylip_string = $self->fasta_file_to_phylip(); 
+print "YYY: \n" . "$phylip_string \n";
 	}else{
 		die "Must specify alignment fasta string or fasta file in Phyml constructor argument hash ref.\n";
 	}
@@ -162,7 +163,9 @@ sub fasta_file_to_phylip{
 	my $phylip_string = "$seq_number $seq_length \n";
 	my $line_length = 80;
 	foreach (keys %encodedid_seq){
-		my $id_and_seq = substr($_ . '           ', 0, 10) . $encodedid_seq{$_};
+	  my $the_sequence = $encodedid_seq{$_};
+	  $the_sequence =~ s/jJ/-/g;
+		my $id_and_seq = substr($_ . '           ', 0, 10) . $the_sequence;
 		my $pos = 0;
 		while($pos < length $id_and_seq){
 			$phylip_string .= substr($id_and_seq, $pos, $line_length) . "\n";
@@ -232,7 +235,7 @@ my @fasta_lines = split("\n", $fasta_string);
 	my $line_length = 80;
 	foreach (keys %encodedid_seq){
 	  my $sequence $encodedid_seq{$_};
-	  $sequence =~ s/[J]/-/g; # Phyml can't handle amino-acid 'J' (leucine/isoleucine); replace with - (gap)
+	  $sequence =~ s/[jJ]/-/g; # Phyml can't handle amino-acid 'J' (leucine/isoleucine); replace with - (gap)
 		my $id_and_seq = substr($_ . '           ', 0, 10) . $sequence; # key (id) should be <= 10 char
 
 		my $pos = 0;
