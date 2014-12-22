@@ -44,7 +44,8 @@ sub new {
 	}
 
 	if(defined $self->{fasta_string}){
-	  $self->fasta_string_to_phylip($self->{fasta_string});
+	  my $phylip_string = $self->fasta_string_to_phylip($self->{fasta_string});
+	  print "XXX: \n" . "$phylip_string \n";
 	  $self->write_phylip_file();
 	}elsif(defined $self->{fasta_file}){
 		$self->fasta_file_to_phylip(); 
