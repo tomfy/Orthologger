@@ -17,8 +17,9 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
   $libdir = $bindir . '/../lib'; 
   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
-use lib $libdir;
+#use lib $libdir;
 use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
+use lib $libdir;
 
 use Phyml;
 use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info';
