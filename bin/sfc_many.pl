@@ -12,6 +12,7 @@ my $MinNA_min_support = shift || 0.501;
 
 my %id_nregioncount = ();
 
+my $the_filename = 'all.cladesout';
 my $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/';
 my @dirs = (
 	    '150_inf/mafftquick/newicks/cladesout/',
@@ -54,11 +55,33 @@ if (0) {
 	  );
 }
 
+if (1) {
+  $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/ok791/200_10/';
+  @dirs = (
+	   '/mafft-best/ftphyml_newicks/cladesout/',
+	   '/mafft-best/ftphyml_55_newicks/cladesout/', 
+	   '/muscle24/ftphyml_newicks/cladesout/',
+	   '/muscle24/ftphyml_55_newicks/cladesout/'
+	  );
+  $the_filename = 'all_tlr.cladesout';
+}
+
+if (0) {
+  $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/ok791/200_10/';
+  @dirs = (
+	   '/mafft-best/ftphyml_newicks/cladesout/',
+	   '/mafft-best/ftphyml_55_newicks/cladesout/', 
+	   '/muscle24/ftphyml_newicks/cladesout/',
+	   '/muscle24/ftphyml_55_newicks/cladesout/'
+	  );
+  $the_filename = 'all_r.cladesout';
+}
+
 #my $x = 0.5;
 #print "# x min support values: $x $x $x $x \n";
 print "# min support values:  $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support \n";
 for (@dirs) {
-  my $the_file = $base_dir . $_ . 'all.cladesout';
+  my $the_file = $base_dir . $_ . $the_filename;
   my $out_filename = $base_dir . $_ . 'all_ok_' 
     . $MinN_min_support . "_" 
       .  $DinN_min_support . "_" 

@@ -18,7 +18,7 @@ my $default_arg_href = {
 			'fasta_file' => undef,
 			'phylip_string' => undef,
 			'phylip_file' => undef,
-			'n_bootstrap' => 0,
+			'bootstrap' => -4, # do 'SH-like branch support'
 			'optimize_param' => 'none', # l, lt, ltr
 			'initial_tree_newick_file' => undef,
 			'alpha' => undef,
@@ -67,7 +67,7 @@ sub construct_phyml_command_line{
 	if($self->{interleaved_or_sequential} eq 'sequential'){ $phyml_command_line .= ' -q '; }
 
 	if(defined $self->{phylip_file}){ $phyml_command_line .= ' -i ' . $self->{phylip_file}; }
-	if(defined $self->{n_bootstrap}){ $phyml_command_line .= ' -b ' . $self->{n_bootstrap}; }
+	if(defined $self->{bootstrap}){ $phyml_command_line .= ' -b ' . $self->{bootstrap}; }
 	if(defined $self->{optimize_param}){ $phyml_command_line .= ' -o ' . $self->{optimize_param}; }
 	if(defined $self->{alpha}){ $phyml_command_line .= ' -a ' . $self->{alpha}; }
 	if(defined $self->{n_rate_classes}){ $phyml_command_line .= ' -c ' . $self->{n_rate_classes}; }
@@ -103,6 +103,7 @@ sub construct_phyml_command_line{
 
 #	print STDERR "phyml command line: $phyml_command_line \n";
 	$self->{phyml_command_line} = $phyml_command_line;
+
 	return $self;
 }
 
@@ -297,6 +298,7 @@ $self->{cpu_time} = $cpu_time;
   $phyml_stats_outfile .= "_phyml_stats.txt";
 
   my $newick = `cat $phyml_tree_outfile`;
+# print STDERR "YYY: $newick \n";
   if (0) {
     my @sorted_encodedids = sort { length $b <=> length $a } keys %{$self->{encodedid_id}};
 
