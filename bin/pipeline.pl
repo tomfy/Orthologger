@@ -11,7 +11,7 @@ my $max_fam_size = 140;
 # my $gg_filename_cl = undef;
 # my $m8_filename = undef;
 my $fasta_infile = undef;
-my $n_pieces = 8;
+my $n_pieces = 2;
 # my $abc_filename = undef;
 my $first_of_species_factor = 1; # has no effect if no ggfile.
 # by setting this to some large number (e.g. 1e20) will keep the best match
@@ -56,7 +56,6 @@ while (my ($p, $v) = each %$param_name_val) {
   print STDERR "$p, $v \n";
 }
 print "\n";
-
 
 # get date for incorporating into file names...
 my $ltobj = localtime;
@@ -112,7 +111,7 @@ print $fh_progress "blast db created for $all_species_fasta_filename.\n";
 my $qfasta_filename = $param_name_val->{query_fasta_filename};
 my $qfasta_filename_noshortseqs = $qfasta_filename . "_nss";
 system "remove_short_seqs.pl < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
-my $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_parts});
+my $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_pieces});
 
 # ********** run blast *********************
 my @blast_out_m8_filenames = ();
@@ -235,35 +234,34 @@ close $fh_progress;
 
 
 sub get_params_from_control_file{
-  my $control_filename = shift;
-  open my $fh_ctrl, "<", "$control_filename" or die "Could not open $control_filename for reading; exiting.";
-  my %param_name_val = ();
-  my %file_taxon = ();
-  while (<$fh_ctrl>) {
-    next if(/^\s*#/); # skip all comment lines
-    if (/^\s*query_fasta_filename/) {
-      if (/^\s*query_fasta_filename\s+(\S+)\s+(\S+)/) {
-	$file_taxon{$1} = $2;
-	$param_name_val{query_fasta_filename} = $1;
-      } elsif (/\S/) {		# not all whitespace
-	warn "A unexpected line in control_file: $_";
+   my $control_filename = shift;
+   open my $fh_ctrl, "<", "$control_filename" or die "Could not open $control_filename for reading; exiting.";
+   my %param_name_val = ();
+   my %file_taxon = ();
+   while (<$fh_ctrl>) {
+      next if(/^\s*#/);         # skip all comment lines
+      if (/^\s*query_fasta_filename/) {
+         if (/^\s*query_fasta_filename\s+(\S+)\s+(\S+)/) {
+            $file_taxon{$1} = $2;
+            $param_name_val{query_fasta_filename} = $1;
+         } elsif (/\S/) {       # not all whitespace
+            warn "A unexpected line in control_file: $_";
+         }
+      } elsif (/^\s*fasta_filename/) {
+         if (/^\s*fasta_filename\s+(\S+)\s+(\S+)/) {
+            $file_taxon{$1} = $2;
+         } elsif (/\S/) {       # not all whitespace
+            warn "B unexpected line in control_file: $_";
+         }
+      } elsif (/^\s*(\S+)\s+(\S+)/) { # if param value is not present in file (blank) nothing is stored
+         #  print "param and val: $1 $2 \n";
+         $param_name_val{$1} = $2; 
+      } elsif (/\S/) {
+         warn "C unexpected line in control_file: $_";
       }
-    } elsif (/^\s*fasta_filename/) {
-      if (/^\s*fasta_filename\s+(\S+)\s+(\S+)/) {
-	$file_taxon{$1} = $2;
-      } elsif (/\S/) {		# not all whitespace
-	warn "B unexpected line in control_file: $_";
-      }
-    } elsif (/^\s*(\S+)\s+(\S+)/) { # if param value is not present in file (blank) nothing i sstored
-   #  print "param and val: $1 $2 \n";
-      $param_name_val{$1} = $2; 
-    } elsif (/\S/) {
-      warn "C unexpected line in control_file: $_";
-    }
-  }
-  return (\%file_taxon, \%param_name_val);
+   }
+   return (\%file_taxon, \%param_name_val);
 }
-
 
 sub make_gg{ # make gene-genome string specifying association between seq. ids, and their species.
   my $file_species = shift;	# hashref 
