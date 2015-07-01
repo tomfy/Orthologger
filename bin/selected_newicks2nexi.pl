@@ -18,6 +18,11 @@ while (<$fh_qids>) {
   }
 }
 close $fh_qids;
+for(keys %qids){
+  print "# $_   ", $qids{$_}, "\n";
+}
+#exit;
+
 print STDERR scalar keys %qids, "\n";
 print STDERR "[", join("] [", keys %qids), "]\n";
 #exit;

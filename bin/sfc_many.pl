@@ -4,11 +4,25 @@ use strict;
 # Give it several directories.
 # In each, there should be a file 'all.cladesout'
 # process each with sfc_brsupp.pl
+my $strict_nesting = 0;
 
-my $MinN_min_support = shift || 0.501;
-my $DinN_min_support = shift || 0.501;
-my $DinM_min_support = shift || 0.501;
-my $MinNA_min_support = shift || 0.501;
+my $arg1 = shift || undef;
+
+my $MinN_min_support = 0.0;
+my $DinN_min_support = 0.0;
+my $DinM_min_support = 0.0;
+my $MinNA_min_support = 0.0;
+my $DinNA_min_support = 0.0;
+
+if(defined $arg1 and $arg1 eq 'strict'){
+$strict_nesting = 1;
+}else{
+$MinN_min_support = $arg1;
+$DinN_min_support = shift || 0.501;
+$DinM_min_support = shift || 0.501;
+$MinNA_min_support = shift || 0.501;
+$DinNA_min_support = shift || 0.501;
+}
 
 my %id_nregioncount = ();
 
@@ -77,19 +91,34 @@ if (0) {
   $the_filename = 'all_r.cladesout';
 }
 
+if (0) {
+  $base_dir = '/home/tomfy/Genome_data/50species/compact/ge20/ok791/200_10/';
+  @dirs = (
+	   '/mafft-best/ftphyml_newicks/old/cladesout/',
+	   '/mafft-best/ftphyml_55_newicks/old/cladesout/', 
+	   '/muscle24/ftphyml_newicks/old/cladesout/',
+	   '/muscle24/ftphyml_55_newicks/old/cladesout/'
+	  );
+  $the_filename = 'all_r.cladesout';
+}
+
 #my $x = 0.5;
 #print "# x min support values: $x $x $x $x \n";
 print "# min support values:  $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support \n";
 for (@dirs) {
   my $the_file = $base_dir . $_ . $the_filename;
-  my $out_filename = $base_dir . $_ . 'all_ok_' 
+  my $out_filename = ($strict_nesting)?
+  $base_dir . $_ . 'all_ok_strict.cladesout'  
+: $base_dir . $_ . 'all_ok_' 
     . $MinN_min_support . "_" 
       .  $DinN_min_support . "_" 
 	. $DinM_min_support  . "_" 
 	  . $MinNA_min_support . '.cladesout';
 #  print STDERR "# file: $the_file \n";
   my $sfc_brsupp_outstring = 
-    `sfc_brsupp.pl $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support < $the_file`;
+    ($strict_nesting)? 
+      `sfc_brsupp.pl strict < $the_file`
+    : `sfc_brsupp.pl $MinN_min_support $DinN_min_support $DinM_min_support $MinNA_min_support < $the_file`;
   open my $fh_out, ">", "$out_filename";
   print $fh_out $sfc_brsupp_outstring, "\n";
   my @ok_lines = split("\n", $sfc_brsupp_outstring);

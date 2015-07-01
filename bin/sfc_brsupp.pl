@@ -2,14 +2,30 @@
 use strict;
 use List::Util qw (min max sum);
 
-my $MinN_min_support = shift || 0.5;
-my $DinN_min_support = shift || 0.5;
-my $DinM_min_support = shift || 0.5;
-my $MinNA_min_support = shift || 0.5;
+my $strict_nesting = 0;
 
-print "# MinN_min_support, DinN_min_support, DinM_min_support, MinNA_min_support: ",
-  "$MinN_min_support, $DinN_min_support, $DinM_min_support, $MinNA_min_support. \n";
-my $require_no_amborella_in_monocots = shift || 0;
+my $MinN_min_support = 0.0;
+my $DinN_min_support = 0.0;
+my $DinM_min_support = 0.0;
+my $MinNA_min_support = 0.0;
+my $DinNA_min_support = 0.0;
+my $arg1 = shift;
+
+
+if($arg1 eq 'strict'){
+$strict_nesting = 1;
+print "Strict nesting (not branch-support based.)\n";
+}else{
+$MinN_min_support = $arg1 || 0.501;
+$DinN_min_support = shift || 0.501;
+$DinM_min_support = shift || 0.501;
+$MinNA_min_support = shift || 0.501;
+$DinNA_min_support = shift || 0.501;
+
+print "# MinN_min_support, DinN_min_support, DinM_min_support, DinNA_min_support: ",
+  "$MinN_min_support, $DinN_min_support, $DinM_min_support, $DinNA_min_support. \n";
+}
+# my $require_no_amborella_in_monocots = shift || 0;
 
 my ($AMpos_offset, $monocots_offset, $basals_offset, $non_angiosperms_offset, $AMneg_offset) = 
   (0, 5, 10, 15, 20);
@@ -27,7 +43,7 @@ while (<>) {
     my $basals_node_height = $cols[$basals_offset];
     my $nonangiosperms_node_height = $cols[$non_angiosperms_offset];
     my $AMneg_node_height = $cols[$AMneg_offset];
-
+  
    # next if($AMposdicots_node_height <= 0);	   # no AMpos dicots clade
   #  next if($monocots_node_height <= 0); # no monocots clade
 
@@ -47,6 +63,7 @@ while (<>) {
     my $Pdicots_in_Monocots_support = a_in_b_support($AMposdicots_eps_prod, $monocots_eps_prod);
     my $Monocots_in_Basals_support =  a_in_b_support($monocots_eps_prod, $basals_eps_prod);
     my $Monocots_in_Nonangiosperms_support =  a_in_b_support($monocots_eps_prod, $nonangiosperms_eps_prod);
+my $Pdicots_in_Nonangiosperms_support = a_in_b_support($AMposdicots_eps_prod, $nonangiosperms_eps_prod);
     my $Monocots_in_Negatives_support = a_in_b_support($monocots_eps_prod, $AMneg_eps_prod);
     my $Pdicots_in_Negatives_support = a_in_b_support($AMposdicots_eps_prod, $AMneg_eps_prod);
 
@@ -56,18 +73,29 @@ while (<>) {
 
     my $min_supp1 = min($Pdicots_in_Monocots_support, $Monocots_in_Basals_support, $Monocots_in_Negatives_support);
     $min_supp1 = max($min_supp1, -1.0);
-    my $min_supp2 = min($Pdicots_in_Monocots_support, $Monocots_in_Nonangiosperms_support, $Monocots_in_Negatives_support);
+ #   my $min_supp2 = min($Pdicots_in_Monocots_support, $Monocots_in_Nonangiosperms_support, $Monocots_in_Negatives_support);
+ my $min_supp2 = min($Pdicots_in_Monocots_support, $Pdicots_in_Nonangiosperms_support, $Monocots_in_Negatives_support);
     #		print STDERR "min_supp: $min_supp1 $min_supp2    $min_support.\n";
  #   if ($min_supp2 >= $min_support) {
-      if($Pdicots_in_Monocots_support >= $DinM_min_support and 
+ if( ($strict_nesting and 
+      (($monocots_node_height > 0  and $AMposdicots_node_height > 0) and
+	 ($monocots_node_height > $AMposdicots_node_height) and
+	 ($AMneg_node_height < 0 or $AMneg_node_height > $monocots_node_height) and 
+	 ($nonangiosperms_node_height < 0 or $nonangiosperms_node_height > $AMposdicots_node_height)
+# and ($nonangiosperms_node_height < 0 or $nonangiosperms_node_height > $monocots_node_height)
+	) )
+   or (!$strict_nesting and
+      ( ($Pdicots_in_Monocots_support >= $DinM_min_support and 
 	 ($Monocots_in_Negatives_support >= $MinN_min_support and $monocots_node_height != $AMneg_node_height) and
 	 $Monocots_in_Nonangiosperms_support >= $MinNA_min_support and
-	$Pdicots_in_Negatives_support >= $DinN_min_support){
+	 $Pdicots_in_Nonangiosperms_support >= $DinNA_min_support and
+	$Pdicots_in_Negatives_support >= $DinN_min_support) ) ) ) {
       print "$_  ";
       printf("%6.4f %6.4f %6.4f %6.4f  %6.4f %6.4f\n", 
-	     $Pdicots_in_Monocots_support, $Monocots_in_Basals_support, 
-	     $Monocots_in_Nonangiosperms_support, $Monocots_in_Negatives_support, $min_supp1, $min_supp2);
+	     $Pdicots_in_Monocots_support, $Monocots_in_Nonangiosperms_support, 
+	     $Pdicots_in_Nonangiosperms_support, $Monocots_in_Negatives_support, $min_supp1, $min_supp2);
     }
+  
   }
 }
 

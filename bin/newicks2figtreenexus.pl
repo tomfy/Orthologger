@@ -248,7 +248,7 @@ my $qcolor = '#00ff00';
 my %group_color = ('11_AMnegatives' => '#ff0000',
 		   '23_AMp_dicots' => '#000000',
 		   '8_basals' => '#0000ff',
-		   '8_AMp_monocots' => '#BBBB00',
+		   '8_AMp_monocots' => '#BB6600',
 		   '4_basals' => '#0000ff',
 		   '4_C4_monocots' => '#000000', 
 		   '7_C3_monocots' => '#FF0000',
