@@ -32,7 +32,7 @@ use CXGN::Phylo::Species_name_map;
 
 # The idea here is to get several NJ bootstrap trees, and use them as initial trees
 # for FastTree to optimize (w.r.t. actual data, not the bootstrap resampled data).
-# and then get the few with the best likelihoods, and further optimize using Phyml.
+# and then get the few with the best likelihoods, and optionally further optimize using Phyml.
 
 my $gg_filename;  # required  cl parameter 
 # by default do just fasttree, and no bootstrapping.
