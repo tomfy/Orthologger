@@ -143,6 +143,7 @@ my $predefined_taxon_groups =
 	     'Glycine_max' => 1,
 	     'Solanum_lycopersicum' => 1,
 	     'Selaginella_moellendorffii' => 1,
+             'Medicago_truncatula' => 1,
 	    },
 
 
