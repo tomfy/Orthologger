@@ -43,6 +43,35 @@ my %group_species = (
 					 'Citrus_clementina' => 1,
 					 'Citrus_sinensis' => 1,
 					},
+ '22_AMp_dicots' => {
+					 'Aquilegia_coerulea' => 1, # columbine
+
+					 'Solanum_lycopersicum' => 1, # tomato
+					 'Solanum_tuberosum'    => 1, # potato
+					 'Mimulus_guttatus' => 1, # monkeyflower
+					 'Fraxinus_excelsior' => 1, # Ash
+					 'Sesamum_indicum' => 1,
+
+					 'Vitis_vinifera'       => 1, # grape
+
+					 'Glycine_max'          => 1, # soy
+					 'Phaseolus_vulgaris' => 1,
+					 'Lotus_japonicus' => 1,
+					 'Medicago_truncatula' => 1,
+
+					 'Populus_trichocarpa'  => 1, # poplar
+					 'Ricinus_communis'     => 1, # castor
+					 'Cucumis_sativus'      => 1, # cucumber
+				  	 'Manihot_esculenta' => 1,
+					 'Salix_purpurea' => 1,
+
+					 'Theobroma_cacao' => 1,
+					 'Carica_papaya' => 1,
+					 'Eucalyptus_grandis' => 1,
+					 'Gossypium_raimondii' => 1,
+					 'Citrus_clementina' => 1,
+					 'Citrus_sinensis' => 1,
+					},
 		     '8_AMp_monocots' => { # These are the monocots in the 36-species analysis, May 2014
 					  'Panicum_virgatum' => 1, # switchgrass
 					  'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
@@ -93,7 +122,10 @@ for my $grp (keys %group_species) {
 my %group_seqcount = ();
 my %group_speciescount = ();
 
-my @group_list = ('23_AMp_dicots', '8_AMp_monocots', '8_basals', '11_AMnegatives');
+my @group_list = (
+# '23_AMp_dicots', 
+ '22_AMp_dicots', 
+                  '8_AMp_monocots', '8_basals', '11_AMnegatives');
 
 my @species = (			# 37
 	       # Basal species (8)
