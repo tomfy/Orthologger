@@ -39,7 +39,7 @@ my $gg_filename   = $default_gg_file_path;
 my $reroot_method = undef; # default is do not reroot ( mindl rerooting is default for nj_ml_bs.pl )
 
 my $clade_specifiers = 
-'23_AMp_dicots,10 : 9_monocots,4 : 8_basals,1 : 7_basals,1 : 11_AMnegatives,1';
+'23_AMp_dicots,10 : 22_AMp_dicots,10 : 9_monocots,4 : 7_basals,1 : 11_AMnegatives,1';
 #'12pdicots,6 : 6monocots,3 : 8basals,1 : 9negatives,1'; 
 # '8dicots,7 : 7dicots,6 : 4monocots,3 : Selaginella_moellendorffii,1'; # default clade specifiers.
 
@@ -197,6 +197,35 @@ my $predefined_taxon_groups =
 					 'Citrus_clementina' => 1,
 					 'Citrus_sinensis' => 1,
 }, 
+'22_AMp_dicots' => {
+					 'Aquilegia_coerulea' => 1, # columbine
+
+					 'Solanum_lycopersicum' => 1, # tomato
+					 'Solanum_tuberosum'    => 1, # potato
+					 'Mimulus_guttatus' => 1, # monkeyflower
+					 'Fraxinus_excelsior' => 1, # Ash
+					 'Sesamum_indicum' => 1,
+
+					 'Vitis_vinifera'       => 1, # grape
+
+					 'Glycine_max'          => 1, # soy
+					 'Phaseolus_vulgaris' => 1,
+					 'Lotus_japonicus' => 1,
+					 'Medicago_truncatula' => 1,
+
+					 'Populus_trichocarpa'  => 1, # poplar
+					 'Ricinus_communis'     => 1, # castor
+					 'Cucumis_sativus'      => 1, # cucumber
+				  	 'Manihot_esculenta' => 1,
+					 'Salix_purpurea' => 1,
+
+					 'Theobroma_cacao' => 1,
+					 'Carica_papaya' => 1,
+					 'Eucalyptus_grandis' => 1,
+					 'Gossypium_raimondii' => 1,
+					 'Citrus_clementina' => 1,
+					 'Citrus_sinensis' => 1,
+}, 
  '9_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
 		       'Panicum_virgatum' => 1, # switchgrass
 		       'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
@@ -221,7 +250,7 @@ my $predefined_taxon_groups =
 		'Picea_abies' => 1, # norway spruce
 		'Amborella_trichopoda' => 1
 },
-'7_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
+'7_basals' => { # which branch off before the monocot-dicot split;  non-angiosperms.
 		'Ostreococcus_tauri' => 1,
 		'Ostreococcus_lucimarinus' => 1,
 		'Volvox_carteri' => 1,

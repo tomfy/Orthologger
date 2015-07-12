@@ -1,11 +1,20 @@
-# query sequences fasta filename, species_name:
-query_fasta_filename     Slyc-pep_subset.fasta   Solanum_lycopersicum
+# input files:
+# query species_name, sequence fasta filename:
+query_taxon_inputpath   Solanum_lycopersicum     genome_fastas/Slyc-pep_5seqs.fasta
 
-# other fasta filenames, species_names:
-fasta_filename     Smoellendorffii-pep.fasta    Selaginella_moellendorffii
-fasta_filename     Athaliana-pep.fasta    Arabidopsis_thaliana
-fasta_filename     Osativa-pep.fasta    Oryza_sativa
-fasta_filename     Mtruncatula-pep.fasta   Medicago_truncatula
+# other species_names, sequence fasta filenames:
+taxon_inputpath     Selaginella_moellendorffii   genome_fastas/Smoellendorffii-pep.fasta
+taxon_inputpath     Arabidopsis_thaliana         genome_fastas/Athaliana-pep.fasta    
+taxon_inputpath     Oryza_sativa                 genome_fastas/Osativa-pep.fasta    
+taxon_inputpath     Medicago_truncatula          genome_fastas/Mtruncatula-pep.fasta   
+
+# output directories
+blastout_dir            blast_out  # for m8 files
+fam_abcs_dir            fam_abcs
+fam_fastas_dir          fam_fastas
+alignments_dir          alignments
+cleaned_alignments_dir  cleaned_alignments
+newick_trees_dir        newick_trees  
 
 #
 n_pieces  2  # number of pieces to divide query file into (should be <= number of processors available)
@@ -17,3 +26,8 @@ blast_max_e_value    1e-12    # keep matches with e-value <= this
 # family parameters:
 family_size_limit   100
 family_max_e_value  1e-20
+family_taxon_requirement 'few,3' 
+
+# other params
+alignment_program both
+alignment_quality quick
