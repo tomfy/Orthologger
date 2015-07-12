@@ -27,6 +27,7 @@ GetOptions(
 	   'fam_size_limit=i' => \$fam_size_limit,
 	   'factor=f' => \$fff,
 	   'ggfilename=s' => \$ggfilename,
+           'max_eval=f' => \$max_eval,
 	  );
 
 my $max_of_a_species = 50;

@@ -1,7 +1,9 @@
 #!/usr/bin/perl -w
 use strict;
 use Getopt::Long;
-use Cwd;
+use File::Basename 'dirname';
+use File::Spec qw(splitpath);
+use Cwd qw(abs_path getcwd);
 use Time::Piece;
 
 
@@ -19,6 +21,12 @@ my $first_of_species_factor = 1; # has no effect if no ggfile.
 # so if it is 1, it has no effect.
 
 # my $best_model_only = 0;
+my $blast_out_dir = 'blast_out';
+my $fams_abc_dir = 'fams_abc';
+my $fams_fastas_dir = 'fams_fastas';
+my $mafft_alignment_dir = 'mafft_aligment_fastas';
+my $muscle_alignment_dir = 'muscle_alignment_fastas';
+my $multi_ft = 5;
 
 # define some abbreviations for species names, for use in file names
 my %species_long_short = ('Medicago_truncatula' => 'Med.tr',
@@ -44,10 +52,10 @@ GetOptions(
 	  );
 
 
-my ($file_taxon, $param_name_val) = get_params_from_control_file($control_filename);
+my ($taxon_file, $param_name_val) = get_params_from_control_file($control_filename);
 
 print STDERR "species, file: \n";
-while (my ($f, $s) = each %$file_taxon) {
+while (my ($s, $f) = each %$taxon_file) {
   print STDERR "$s, $f\n";
 }
 print "\n";
@@ -56,19 +64,20 @@ while (my ($p, $v) = each %$param_name_val) {
   print STDERR "$p, $v \n";
 }
 print "\n";
+#exit;
 
 # get date for incorporating into file names...
 my $ltobj = localtime;
 my $date = $ltobj->strftime('%Y%h%d');
 my $time = $ltobj->hms;
-print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n\n";
+#print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n\n";
 print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n";
-# exit;
+#exit;
 
-my $qspecies = $file_taxon->{$param_name_val->{query_fasta_filename}};
+my $qspecies = $param_name_val->{query_taxon};
 $qspecies = $species_long_short{$qspecies} if(exists $species_long_short{$qspecies});
 print STDERR "qspecies: $qspecies \n";
-my $n_species = scalar keys %$file_taxon;
+my $n_species = scalar keys %$taxon_file;
 my $filename_head = "$qspecies" . "_vs_" . "$n_species" . "_" . $date;
 print STDERR "filename head: $filename_head \n";
 my $progress_filename = $filename_head . '.progress';
@@ -87,7 +96,7 @@ my $alignment_quality = (exists $param_name_val->{alignment_quality})? $param_na
 
   # ********** make gg string and file (gene-genome association)
   my $gg_filename = "$filename_head.gg";
-my ($gg_string, $species_seqcount) = make_gg($file_taxon, $gg_filename);
+my ($gg_string, $species_seqcount) = make_gg($taxon_file, $gg_filename);
 my $gg_summary = gg_summary_string($species_seqcount);
 print STDERR $gg_summary;
 print $fh_progress $gg_summary;
@@ -96,7 +105,7 @@ print $fh_progress "gg file: $gg_filename \n";
 # ********** make blast db ****************
 my $all_species_fasta_filename = "all_" . $n_species . "_species_" . $date . ".fasta";
 my $fasta_files = '';
-for my $filename (keys %$file_taxon) {
+for my $filename (values %$taxon_file) {
   $fasta_files .= "$filename ";
 }
 
@@ -108,16 +117,27 @@ print STDERR "blast db created for $all_species_fasta_filename.\n";
 print $fh_progress "blast db created for $all_species_fasta_filename.\n";
 
 # ********* split query fasta **************
-my $qfasta_filename = $param_name_val->{query_fasta_filename};
-my $qfasta_filename_noshortseqs = $qfasta_filename . "_nss";
+my $qfasta_filename = $param_name_val->{query_inputpath};
+#my ($vol, $path, $fname) = File::Spec->splitpath($qfasta_filename);
+#print "[$vol]  [$path]  [$fname]   \n";
+my $qfname = $qfasta_filename;
+$qfname =~ s/[.]fasta//; # remove final .fasta
+#$qfname =~ $param_name_val->{} . '/' . 
+my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta";
 system "remove_short_seqs.pl < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
 my $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_pieces});
+
 
 # ********** run blast *********************
 my @blast_out_m8_filenames = ();
 for my $q_fasta_part_filename (@$fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
   my $blast_out_filename = $q_fasta_part_filename;
   $blast_out_filename =~ s/fasta$/m8/;
+  my ($v, $dir, $fname) = File::Spec->splitpath($blast_out_filename);
+  my $blastout_dir = $param_name_val->{blastout_dir};
+  mkdir $blastout_dir unless(-d $blastout_dir);
+  $blast_out_filename = $blastout_dir . '/' . $fname;
+  print "blastout path: $blast_out_filename \n";
   push @blast_out_m8_filenames, $blast_out_filename;
   my $pid = fork(); # returns 0 to child process, pid of child to parent process.
   if ($pid == 0) {  # child process
@@ -137,29 +157,38 @@ while (wait() != -1) {
 print STDERR "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 print $fh_progress "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 
-
+#exit;
 # *************** done running blast ******************
 
 my @abc_part_filenames = ();
 for my $m8_filename (@blast_out_m8_filenames) {
-  my $abc_filename = `m8toabc_fams.pl -input $m8_filename -max_eval $family_max_e_value -fam_size_limit $family_size_limit`;
+   my ($v, $dir, $fname) = File::Spec->splitpath($m8_filename);
+   $fname =~ s/m8$/abc/;
+   my $fam_abcs_dir = $param_name_val->{fam_abcs_dir};
+   mkdir $fam_abcs_dir unless(-d $fam_abcs_dir); # create dir if doesn't exist.
+   my $fam_abcs_filename = $fam_abcs_dir . '/' . $fname;
+  my $abc_filename = `m8toabc_fams.pl -input $m8_filename -max_eval $family_max_e_value -fam_size_limit $family_size_limit -gg $gg_filename -output $fam_abcs_filename`;
   $abc_filename =~ s/\s+$//; 
   print STDERR "[$abc_filename]\n";
   push @abc_part_filenames, $abc_filename;
 }
 #my $abc_part_filenames = `split_abc.pl $abc_filename $n_pieces`;
 #my @abc_parts = split(" ", $abc_part_filenames);
+#exit;
 
 print "[" ,join("][", @abc_part_filenames), "]\n";
 print $fh_progress "abc family filenames: \n", join("\n", @abc_part_filenames), "\n";
 
 # ************** done making abc files *******************
-exit;
+# exit;
 my @fastas_filenames = ();
-die "fasta input file undefined or file does not exist.\n" unless(defined $all_species_fasta_filename and -f $all_species_fasta_filename); 
+die "fasta input file undefined or file does not exist.\n" unless(defined $all_species_fasta_filename and -f $all_species_fasta_filename);
+my $fam_fastas_dir = $param_name_val->{fam_fastas_dir};
+mkdir $fam_fastas_dir unless(-d $fam_fastas_dir);
 for my $the_abc_part (@abc_part_filenames) {
-  my $output_fastas_filename = $the_abc_part;
-  $output_fastas_filename =~ s/abc$/fastas/;
+   my ($v, $dir, $fname) = File::Spec->splitpath($the_abc_part);
+  $fname =~ s/abc$/fastas/;
+   my $output_fastas_filename = $fam_fastas_dir . '/' . $fname;
 my $seqm2f_cl = "seq+matches2fasta.pl -gg $gg_filename -abc_file $the_abc_part -fasta_infile $all_species_fasta_filename -output_filename $output_fastas_filename";
 $seqm2f_cl .= " -taxon_requirement '$family_taxon_requirement' " if(defined $family_taxon_requirement);
   print STDERR "seq+... cl:  $seqm2f_cl \n";
@@ -171,10 +200,10 @@ $seqm2f_cl .= " -taxon_requirement '$family_taxon_requirement' " if(defined $fam
 print STDERR "Family fastas file ready to align: \n", join("\n", @fastas_filenames), "\n";
 
 print $fh_progress "Family_fastas_files: " , join("  ", @fastas_filenames), "\n";
-# exit;
+#exit;
 
 # fork processes to do alignment, tree finding.
-my @alignment_programs = ('muscle', 'mafft');
+my @alignment_programs = ('muscle', 'mafft'); # i.e. default is do both
 if($alignment_program eq 'muscle'){
 @alignment_programs = ('muscle');
 }elsif($alignment_program eq 'mafft'){
@@ -182,30 +211,36 @@ if($alignment_program eq 'muscle'){
 }
 
 for my $align_program (@alignment_programs) {
-  mkdir $align_program or die "Couldnt make directory $align_program.\n"; # make a directory to put alignments, etc. in.
-  chdir $align_program or die "Couldnt change directory to $align_program.\n";
-  
+   my $align_dir = $align_program . "_" . $param_name_val->{alignments_dir};
+  mkdir $align_dir unless(-d $align_dir);
+    die "Couldnt make directory $align_dir.\n" unless(-d $align_dir); # make a directory to put alignments in.
+  chdir $align_dir or die "Couldnt change directory to $align_dir.\n";
+  my $newick_dir = $param_name_val->{newick_trees_dir};
+  mkdir $newick_dir unless(-d $newick_dir);
   my $n_alignment_files_to_do = scalar @fastas_filenames;
   my @alfastas_filenames = ();
 my @newicks_filenames = ();
   for my $a_fastas_filename (@fastas_filenames) {
     my $malign_out_filename = $a_fastas_filename;
-
+    my ($v, $dir, $fname) = File::Spec->splitpath($malign_out_filename);
+    $malign_out_filename = $fname;
     $malign_out_filename =~ s/fastas$/alfastas/;
     push @alfastas_filenames, $malign_out_filename;
-    my $output_newick_filename = $malign_out_filename;
-      $output_newick_filename =~ s/alfastas$/newicks/;
+    my $output_newick_filename = $newick_dir . "/" . $malign_out_filename;
+    $output_newick_filename =~ s/alfastas$/newicks/;
     push @newicks_filenames, $output_newick_filename;
     my $pid = fork(); # returns 0 to child process, pid of child to parent process.
     if ($pid == 0) {  # child process
       $a_fastas_filename = '../' . $a_fastas_filename;
       $gg_filename = '../' . $gg_filename;
+print "just before malign. cwd: ", getcwd, "\n";
       my $malign_cl = "malign.pl  -input $a_fastas_filename  -align $align_program  -quality $alignment_quality  -output $malign_out_filename ";
       print STDERR "malign command line: [$malign_cl] \n";
       my $malign_stdout = `$malign_cl`;
       print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
 
-      my $nj_ft_bs_stdout = `nj_ft_bs.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename`;
+      my $tree_construct_stdout = #`tree_construct.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename`;
+      `NJFTPHtree.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -n_bs $multi_ft`;
       exit(0);
     }
   }
@@ -237,38 +272,39 @@ sub get_params_from_control_file{
    my $control_filename = shift;
    open my $fh_ctrl, "<", "$control_filename" or die "Could not open $control_filename for reading; exiting.";
    my %param_name_val = ();
-   my %file_taxon = ();
+   my %taxon_file = ();
    while (<$fh_ctrl>) {
       next if(/^\s*#/);         # skip all comment lines
-      if (/^\s*query_fasta_filename/) {
-         if (/^\s*query_fasta_filename\s+(\S+)\s+(\S+)/) {
-            $file_taxon{$1} = $2;
-            $param_name_val{query_fasta_filename} = $1;
+      if (/^\s*query_taxon_inputpath/) {
+         if (/^\s*query_taxon_inputpath\s+(\S+)\s+(\S+)/) { # $1 is taxon name, e.g. Zea_mays, $2 is path to corresponding input file (protein-models fasta format)
+            $taxon_file{$1} = $2;
+            $param_name_val{query_taxon} = $1;
+            $param_name_val{query_inputpath} = $2;
          } elsif (/\S/) {       # not all whitespace
             warn "A unexpected line in control_file: $_";
          }
-      } elsif (/^\s*fasta_filename/) {
-         if (/^\s*fasta_filename\s+(\S+)\s+(\S+)/) {
-            $file_taxon{$1} = $2;
+      } elsif (/^\s*taxon_inputpath/) {
+         if (/^\s*taxon_inputpath\s+(\S+)\s+(\S+)/) {
+            $taxon_file{$1} = $2;
          } elsif (/\S/) {       # not all whitespace
             warn "B unexpected line in control_file: $_";
          }
       } elsif (/^\s*(\S+)\s+(\S+)/) { # if param value is not present in file (blank) nothing is stored
          #  print "param and val: $1 $2 \n";
-         $param_name_val{$1} = $2; 
+         $param_name_val{$1} = $2;
       } elsif (/\S/) {
          warn "C unexpected line in control_file: $_";
       }
    }
-   return (\%file_taxon, \%param_name_val);
+   return (\%taxon_file, \%param_name_val);
 }
 
 sub make_gg{ # make gene-genome string specifying association between seq. ids, and their species.
-  my $file_species = shift;	# hashref 
+  my $taxon_file = shift;	# hashref 
   my $gg_filename = shift || undef;
   my $gg_string = '';
 my %species_seqcount = ();
-  while ( my ($file, $species) = each %$file_species) {
+  while ( my ($species, $file) = each %$taxon_file) {
     $gg_string .= "$species:";
     open my $fh, "<", "$file" or die "In make_gg, couldnt open file [$file] for reading.\n";
     while (<$fh>) {
