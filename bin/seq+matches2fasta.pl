@@ -282,7 +282,7 @@ my $input_fasta_filename      = undef;                                          
 # my $max_eval                  = 100;                                                     # default is big - 
 my $max_family_size           = 10000;   # default is just a big number, to let families be just whatever is in abc file.
 my $output_filename = undef;
-
+my $added_groups_string = '';
 # Process long cl options
 GetOptions(
     'gg_file=s'           => \$gg_filename,
@@ -292,8 +292,15 @@ GetOptions(
     'max_family_size=i'   => \$max_family_size,
     'taxon_requirement=s' => \$taxon_requirements_string,
     'output_filename=s' => \$output_filename,
+           'added_groups=s' => \$added_groups_string, # string of form: 'groupname1:a,b,c,d,e;groupname2:h,i,j,k,l'
 );
 my $using_default_taxon_requirements = $taxon_requirements_string eq $default_taxon_requirements_string;
+
+#print STDERR "TTTTTTTTTTT: $added_groups_string \n";
+
+
+my $taxon_groups = ($added_groups_string)? group_string_to_hashref($added_groups_string, $predefined_taxon_groups) : $predefined_taxon_groups;
+# exit;
 
 print STDERR "seq+matches2fasta.pl OUTPUT FILENAME: $output_filename \n";
 print STDERR "seq+matches2fasta.pl taxon requirements: $taxon_requirements_string \n";
@@ -302,7 +309,7 @@ my @tax_reqs = split( ":", $taxon_requirements_string );
 my @tax_req_objs = ();
 for (@tax_reqs) {
 #   print "in loop over tax_reqs, $_ \n";
-      my $the_CS = CXGN::Phylo::CladeSpecifier->new( $_, $predefined_taxon_groups );
+      my $the_CS = CXGN::Phylo::CladeSpecifier->new( $_, $taxon_groups );
       print $the_CS->as_string(), "\n";
  push @tax_req_objs, $the_CS;
 }
@@ -524,6 +531,29 @@ sub check_taxon_requirements {
     $tax_req->reset();
   }
   return $n_satisfied == scalar @$taxon_requirements; # true if all the given requirements are satisfied.
+}
+
+sub group_string_to_hashref{
+   my $group_string = shift; # e.g. 'group1:a,b,c,d;group2:h,i,j,k,l,m'
+ my $grpname_taxonhref = shift || {};
+#print STDERR "YYYYYY: $group_string \n";
+
+   my @group_strings = split(";", $group_string);
+   for my $grpstr (@group_strings) {
+      my @tokens = split(/[:,]/, $grpstr);
+      my $grpname = shift @tokens;
+      print "grpname: $grpname; taxa: ", join("; ", @tokens), "\n";
+      my $href = {};
+      for(@tokens){
+         $href->{$_} = 1;
+      }
+      $grpname_taxonhref->{$grpname} = $href;
+   }
+   # while (my($gname, $taxa) = each %$grpname_taxonhref) {
+   # #   print "ref taxa: ", ref($taxa), "\n";
+   #    print STDERR  "XXXXX $gname   ", join(', ', keys %$taxa), "\n";
+   # }
+   return $grpname_taxonhref;
 }
 
 # sub count_species{
