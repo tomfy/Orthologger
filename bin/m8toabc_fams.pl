@@ -10,13 +10,14 @@ use List::Util qw( min max sum );
 #
 
 my $min_ev = 1e-180;
-
+my $max_of_a_species = 50;
 my $max_eval = 1e-4;
 my $ggfilename = undef;
 my $m8_filename = undef;
 my $abc_filename = '';
-my $fam_size_limit = 150;
-my $fff = 'inf'; # fff = 'inf' => just take top n of each species 
+my $fam_size_limit = undef;
+my $multiplicity_knee = 6; # beyond this number of matches of a species, penalize the e-value.
+my $log10_eval_penalty = 'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
 
 my $species_list = []; # array ref
 
@@ -24,19 +25,20 @@ my $species_list = []; # array ref
 GetOptions(
 	   'input_filename=s' => \$m8_filename,
 	   'output_filename=s' => \$abc_filename,
-	   'fam_size_limit=i' => \$fam_size_limit,
-	   'factor=f' => \$fff,
+	   'fam_size_limit=i' => \$fam_size_limit, # default size limit is n_species * (multiplicity_knee+1)
+	   'log10penalty=f' => \$log10_eval_penalty,
+           'multiplicity_knee=i' => \$multiplicity_knee,
 	   'ggfilename=s' => \$ggfilename,
            'max_eval=f' => \$max_eval,
 	  );
 
-my $max_of_a_species = 50;
-my @factors = (1);
+#my @factors = (1);
 my @pows = (1);
 for my $j (1..$max_of_a_species) {
-  $pows[$j] = ($j-1)*$fff; # $fff * (0,1,2,3,4,  5,6,7,8,9, ... ) 'method A'
+#  $pows[$j] = ($j-1)*$log10_eval_penalty; # $log10_eval_penalty * (0,1,2,3,4,  5,6,7,8,9, ... ) 'method A'
 #  $pows[$j] = ($j <= 2)? 0: ($j-2)*($j-1) if($method eq 'AA'); # 0,0,2,6,12, 20,30,42,56,72,  ...
-  $factors[$j] = ($pows[$j] < 2000)? 10**$pows[$j] : 1e2000;
+$pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity_knee) : 0;
+#  $factors[$j] = ($pows[$j] < 2000)? 10**$pows[$j] : 1e2000;
 }
 
 print STDERR 
@@ -46,7 +48,7 @@ print STDERR
   "# max_eval : $max_eval \n",
 
   "# fam size limit: $fam_size_limit \n",
-  ($fff eq 'inf')? "e-value only as tie-breaker \n" : "# match handicap factors powers: " . join(", ", @pows[1..10]) . "\n";
+  ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..20]) . "\n";
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
 open my $fh_m8_in, "<", "$m8_filename";
@@ -57,12 +59,14 @@ if (!defined $abc_filename or $abc_filename eq '') {
   $abc_filename .= '_fams.abc';
 }
 print STDOUT "$abc_filename\n";
+my %species_present = ();
 my %id_species = ();
 if (defined $ggfilename  and  -f $ggfilename) { # read in id-species info
   open my $fhgg, "<", "$ggfilename";
   while (<$fhgg>) {
     my @ids = split(" ", $_);
     my $species = shift @ids;
+    $species_present{$species} = 1;
     $species =~ s/:$//;		# remove final colon
     for (@ids) {
       $id_species{$_} = $species;
@@ -70,12 +74,17 @@ if (defined $ggfilename  and  -f $ggfilename) { # read in id-species info
   }
 }
 
+my $n_species = scalar keys %species_present; # number of species in analysis (may be fewer in a family)
+if(!defined $fam_size_limit){
+   $fam_size_limit = ($multiplicity_knee+1) * $n_species;
+}
+
 my %id2_ev = ();
 my $init_old_id1 = 'xxxxxx xxxxxx';
 my $old_id1 = $init_old_id1;
 my $old_idpair = 'xxxxxxx xxxxxxx' ;
 my $the_line = '';
-my $fstring = '';
+my $fstring = ''; # for each id1, $fstring is concat of lines, each with "id2 eval \n";
 my $first = 1;
 my %matchspecies_count = ();
 #my %id2locus_ = (); # key is id2 with final '.1' or '_P01', etc. removed, value is 1
@@ -95,12 +104,12 @@ while ($the_line = <$fh_m8_in>) {
     %matchspecies_count = ();
     if ($fstring ne '') {
       my ($fam_string, $total_count,  $species_present);
-      if($fff eq 'inf'){
+      if($log10_eval_penalty eq 'inf'){
 	($fam_string, $total_count, $species_present) = 
 	  get_fam_string_inf($old_id1, $fstring, \%id_species, $fam_size_limit); #, $_24_species);
       }else{
 	($fam_string, $total_count, $species_present) = 
-	  get_fam_string($old_id1, $fstring, \%id_species, $fam_size_limit, \@factors, \@pows);
+	  get_fam_string($old_id1, $fstring, \%id_species, $fam_size_limit, \@pows);
       }
 
       print $fh_abc_out "$fam_string \n";
@@ -121,12 +130,12 @@ while ($the_line = <$fh_m8_in>) {
 
  my ($fam_string, $top_count, $ff_count, $total_count, $species_top, $species_ff, $species_present); 
 
-  if($fff eq 'inf'){
+  if($log10_eval_penalty eq 'inf'){
 	($fam_string, $total_count, $species_present) = 
 	  get_fam_string_inf($old_id1, $fstring, \%id_species, $fam_size_limit); #, $_24_species);
       }else{
 	($fam_string, $total_count, $species_present) = 
-	  get_fam_string($old_id1, $fstring, \%id_species, $fam_size_limit, \@factors, \@pows);
+	  get_fam_string($old_id1, $fstring, \%id_species, $fam_size_limit, \@pows);
       }
 print $fh_abc_out "$fam_string \n";
       print STDERR "$old_id1   $total_count  $species_present \n";
@@ -136,13 +145,13 @@ print $fh_abc_out "$fam_string \n";
 sub get_fam_string{ 
   my $id1 = shift;
   my $id2eval_string = shift;
-  my $id_species = shift;
+  my $id_species = shift; # keys ids, values species
   my $fam_size_limit = shift;
-  my $factors = shift;
+#  my $max_n_of_species = shift;
   my $powers = shift;
 #  my $small = 1e-180;
 
-  my $max_n_of_species = scalar @$factors -1;
+  my $max_n_of_species = scalar @$powers - 1;
   my $out_fam_string = '';
   my %id2_log10eveff = ();
   my %id2_ev = ();
