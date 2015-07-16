@@ -145,13 +145,13 @@ while (<$fh_in>) {
 	  print STDERR "$type $ft_lnL;  ";
 
 
-	  # using NJ tree as initial tree (rather than bionj done within FT)
-	  my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
-	  $type = 'NJ->FT';
-	  $description = "$type  $njft_cputime  $njft_newick";
-	$njft_lnL = -1e100 if($njft_lnL eq '---');
-	  $description_lnL{$description} = $njft_lnL;
-	  print STDERR "$type $njft_lnL;  ";
+	#   # using NJ tree as initial tree (rather than bionj done within FT)
+	#   my ($njft_newick, $njft_lnL, $njft_cputime) = nj_to_ft($alignment_overlap, $alignment_overlap);
+	#   $type = 'NJ->FT';
+	#   $description = "$type  $njft_cputime  $njft_newick";
+	# $njft_lnL = -1e100 if($njft_lnL eq '---');
+	#   $description_lnL{$description} = $njft_lnL;
+	#   print STDERR "$type $njft_lnL;  ";
 
 
 	  # using NJ bootstrap trees as initial trees.
