@@ -292,7 +292,7 @@ GetOptions(
     'max_family_size=i'   => \$max_family_size,
     'taxon_requirement=s' => \$taxon_requirements_string,
     'output_filename=s' => \$output_filename,
-           'added_groups=s' => \$added_groups_string, # string of form: 'groupname1:a,b,c,d,e;groupname2:h,i,j,k,l'
+    'added_groups=s' => \$added_groups_string, # string of form: 'groupname1:a,b,c,d,e;groupname2:h,i,j,k,l'
 );
 my $using_default_taxon_requirements = $taxon_requirements_string eq $default_taxon_requirements_string;
 
