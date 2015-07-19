@@ -1,17 +1,17 @@
 # input files:
 # query species name, sequence fasta filename: (this can have either whole genome or smaller set of sequences)
-query_taxon_inputpath   Solanum_lycopersicum     genome_fastas/Slyc-pep_5seqs.fasta
+query_taxon_inputpath   Solanum_lycopersicum     genome_fastas/Slyc1seq.fasta
 
 # other species_names, sequence fasta filenames:
 taxon_inputpath   Solanum_lycopersicum          genome_fastas/Slycopersicum-pep.fasta
-#taxon_inputpath     Selaginella_moellendorffii   genome_fastas/Smoellendorffii-pep.fasta
+taxon_inputpath     Selaginella_moellendorffii   genome_fastas/Smoellendorffii-pep.fasta
 taxon_inputpath     Arabidopsis_thaliana         genome_fastas/Athaliana-pep.fasta    
-#taxon_inputpath     Oryza_sativa                 genome_fastas/Osativa-pep.fasta    
-#taxon_inputpath     Medicago_truncatula          genome_fastas/Mtruncatula-pep.fasta 
-#taxon_inputpath     Theobroma_cacao              genome_fastas/Tcacao-pep.fasta
+taxon_inputpath     Oryza_sativa                 genome_fastas/Osativa-pep.fasta    
+taxon_inputpath     Medicago_truncatula          genome_fastas/Mtruncatula-pep.fasta 
+taxon_inputpath     Theobroma_cacao              genome_fastas/Tcacao-pep.fasta
 taxon_inputpath     Manihot_esculenta            genome_fastas/Mesculenta-pep.fasta
 taxon_inputpath     Phoenix_dactylifera          genome_fastas/Pdactylifera-pep.fasta
-#taxon_inputpath     Brassica_rapa                genome_fastas/Brapa-pep.fasta
+taxon_inputpath     Brassica_rapa                genome_fastas/Brapa-pep.fasta
 
 # output directories
 blastout_dir            blast_out  # for m8 files
@@ -23,10 +23,10 @@ newick_trees_dir        newick_trees
 
 #
 min_sequence_length 24
-n_pieces  2  # number of pieces to divide query file into (should be <= number of processors available)
+n_pieces 1  # number of pieces to divide query file into (should be <= number of processors available)
 
 # blast control parameters 
-blast_max_matches    2000    # keep no more than this number of matches for each query sequence
+blast_max_matches    2500    # keep no more than this number of matches for each query sequence
 blast_max_e_value    1e-6    # keep matches with e-value <= this
 
 # groups
@@ -38,7 +38,7 @@ group   NonAngios 'Selaginella_moellendorffii';
 # family parameters:
 #family_size_limit   400
 family_max_e_value  1e-10
-family_multiplicity_knee 4
+family_multiplicity_knee 7
 family_log10_eval_penalty 12
 family_taxon_requirement 'amposdicots,2;monocots,1' 
 
@@ -46,5 +46,8 @@ family_taxon_requirement 'amposdicots,2;monocots,1'
 alignment_program mafft
 alignment_quality quick
 
+# alignment thinning params
+min_nongap_fraction 0.75
+
 # tree parameters
-n_multi_ft 3
+n_multi_ft 1
