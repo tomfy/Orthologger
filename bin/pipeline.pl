@@ -105,9 +105,11 @@ my $family_taxon_requirement = (exists $param_name_val->{family_taxon_requiremen
 my $alignment_program = (exists $param_name_val->{alignment_program})? $param_name_val->{alignment_program} : 'both'; # muscle, mafft, or both.
 my $alignment_quality = (exists $param_name_val->{alignment_quality})? $param_name_val->{alignment_quality} : 'best'; # quick or best.
 
+my $min_nongap_fraction = (exists $param_name_val->{min_nongap_fraction})? $param_name_val->{min_nongap_fraction} : 0.15;
+
 $n_multi_ft = $param_name_val->{n_multi_ft} if(defined $param_name_val->{n_multi_ft});
 $n_multi_ft = ($n_multi_ft > 1)? $n_multi_ft : 1;
-my $n_bs = ($n_multi_ft >= 2)? $n_multi_ft - 1 : 1;
+my $n_bs = ($n_multi_ft >= 1)? $n_multi_ft - 1 : 0;
 # ********** make gg string and file (gene-genome association)
 my $gg_filename = "$filename_head.gg";
 my ($gg_string, $species_seqcount) = make_gg($taxon_file, $gg_filename);
@@ -280,7 +282,7 @@ for my $align_program (@alignment_programs) {
          print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
 
          my $tree_construct_stdout = #`tree_construct.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename`;
-           `NJFTPHtree.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -n_bs $n_bs`;
+           `NJFTPHtree.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -n_bs $n_bs -nongap_frac $min_nongap_fraction`;
          exit(0);
       }
    }
