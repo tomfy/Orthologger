@@ -82,7 +82,7 @@ print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n";
 #exit;
 
 my $qspecies = $param_name_val->{query_taxon};
-$qspecies = $species_long_short{$qspecies} if(exists $species_long_short{$qspecies});
+# $qspecies = $species_long_short{$qspecies} if(exists $species_long_short{$qspecies});
 print STDERR "qspecies: $qspecies \n";
 my $n_species = scalar keys %$taxon_file;
 my $filename_head = "$qspecies" . "_vs_" . "$n_species" . "_" . $date;
@@ -327,7 +327,7 @@ sub get_params_from_control_file{
          }
       } elsif (/^\s*taxon_inputpath/) {
          if (/^\s*taxon_inputpath\s+(\S+)\s+(\S+)/) {
-            $taxon_file{$1} = $2;
+            $taxon_file{$1} = glob($2); # ~/xxx -> /home/tomfy/xxx
          } elsif (/\S/) {       # not all whitespace
             warn "B unexpected line in control_file: $_";
          }
