@@ -26,6 +26,7 @@ my $cl_query_taxon = undef;
 my $query_id = undef;
 my $default_min_sequence_length = 20;
 my $query_number;               # either 'single' or 'multiple'
+# my $added_groups_string = '';
 
 # define some abbreviations for species names, for use in file names
 my %species_long_short = ('Medicago_truncatula' => 'Med.tr',
@@ -70,7 +71,7 @@ while (my ($p, $v) = each %$param_name_val) {
 
 }
 print "\n";
-# exit;
+#exit;
 
 # get date for incorporating into file names...
 my $ltobj = localtime;
@@ -100,6 +101,7 @@ my $family_multiplicity_knee =  (exists $param_name_val->{family_multiplicity_kn
 my $family_log10_eval_penalty = (exists $param_name_val->{family_log10_eval_penalty})? $param_name_val->{family_log10_eval_penalty} : 12;
 my $family_taxon_requirement = (exists $param_name_val->{family_taxon_requirement})? 
   $param_name_val->{family_taxon_requirement} : '7dicots,6; 4monocots,3';
+my $added_groups_string = (exists $param_name_val->{added_groups_string})?  $param_name_val->{added_groups_string} : undef;
 
 my $alignment_program = (exists $param_name_val->{alignment_program})? $param_name_val->{alignment_program} : 'both'; # muscle, mafft, or both.
 my $alignment_quality = (exists $param_name_val->{alignment_quality})? $param_name_val->{alignment_quality} : 'best'; # quick or best.
@@ -228,10 +230,10 @@ for my $the_abc_part (@abc_part_filenames) {
    $fname =~ s/abc$/fastas/;
    my $output_fastas_filename = $fam_fastas_dir . '/' . $fname;
    print STDERR "ZZZZ: ", `which seq+matches2fasta.pl`, "\n";
-   my $addgrpstring = "'" . 'amposdicots:Solanum_lycopersicum,Theobroma_cacao,Medicago_truncatula,Manihot_esculenta;monocots:Oryza_sativa,Phoenix_dactylifera' . "'";
+ #  my $addgrpstring = "'" . 'amposdicots:Solanum_lycopersicum,Theobroma_cacao,Medicago_truncatula,Manihot_esculenta;monocots:Oryza_sativa,Phoenix_dactylifera' . "'";
    my $seqm2f_cl = "seq+matches2fasta.pl -gg $gg_filename -abc_file $the_abc_part -fasta_infile $all_species_fasta_filename -output_filename $output_fastas_filename";
    $seqm2f_cl .= " -taxon_requirement $family_taxon_requirement " if(defined $family_taxon_requirement);
-   $seqm2f_cl .= " -added_groups $addgrpstring ";
+   $seqm2f_cl .= " -added_groups $added_groups_string " if(defined $added_groups_string);
    print STDERR "seq+... cl:  $seqm2f_cl \n";
    system("$seqm2f_cl");
    # "seq+matches2fasta.pl -gg $gg_filename -abc_file $the_abc_part -fasta_infile $all_species_fasta_filename -output_filename $output_fastas_filename");
@@ -312,6 +314,7 @@ close $fh_progress;
 sub get_params_from_control_file{
    my $control_filename = shift;
    open my $fh_ctrl, "<", "$control_filename" or die "Could not open $control_filename for reading; exiting.";
+   my $added_groups_string = '';
    my %param_name_val = ();
    my %taxon_file = ();
    while (<$fh_ctrl>) {
@@ -326,14 +329,18 @@ sub get_params_from_control_file{
          }
       } elsif (/^\s*taxon_inputpath/) {
          if (/^\s*taxon_inputpath\s+(\S+)\s+(\S+)/) {
-   my @exp_filenames = glob($2);
-   my $the_filename = $exp_filenames[0]; 
-   #   print STDERR "AAA: [", $2, "]  [", glob($2), "] [$the_filename]\n";            
-$taxon_file{$1} = $the_filename; # glob($2); # ~/xxx -> /home/tomfy/xxx
- # print STDERR "BBB: [$1]  [", $taxon_file{$1}, "]\n\n";
+            my @exp_filenames = glob($2);
+            my $the_filename = $exp_filenames[0]; 
+            #   print STDERR "AAA: [", $2, "]  [", glob($2), "] [$the_filename]\n";            
+            $taxon_file{$1} = $the_filename; # glob($2); # ~/xxx -> /home/tomfy/xxx
+            # print STDERR "BBB: [$1]  [", $taxon_file{$1}, "]\n\n";
          } elsif (/\S/) {       # not all whitespace
             warn "B unexpected line in control_file: $_";
          }
+      } elsif (/^\s*group\s+(\S+)\s+\'([^']*)\'/) {
+         # 'groupname1:a,b,c,d,e;groupname2:h,i,j,k,l'
+       #  print STDERR "QWERTY: [$1] [$2] \n";
+         $added_groups_string .= $1 . ':' . $2 . ';';
       } elsif (/^\s*(\S+)\s+(\S+)/) { # if param value is not present in file (blank) nothing is stored
          #  print "param and val: $1 $2 \n";
          $param_name_val{$1} = $2;
@@ -341,6 +348,11 @@ $taxon_file{$1} = $the_filename; # glob($2); # ~/xxx -> /home/tomfy/xxx
          warn "C unexpected line in control_file: $_";
       }
    }
+#   print STDERR 'Added groups String: ' . "$added_groups_string \n";
+   $added_groups_string =~ s/;\s*$//; # remove final ;
+$added_groups_string = "'" . $added_groups_string . "'";
+   $param_name_val{added_groups_string} = $added_groups_string;
+#print STDERR 'Added groups String: ' . "$added_groups_string \n";
    return (\%taxon_file, \%param_name_val);
 }
 
