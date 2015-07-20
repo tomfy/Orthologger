@@ -1,6 +1,6 @@
 # input files:
 # query species name, sequence fasta filename: (this can have either whole genome or smaller set of sequences)
-query_taxon_inputpath   Solanum_lycopersicum     genome_fastas/Slyc1seq.fasta
+query_taxon_inputpath   Solanum_lycopersicum     genome_fastas/Slyc-pep_5seqs.fasta
 
 # other species_names, sequence fasta filenames:
 taxon_inputpath   Solanum_lycopersicum          genome_fastas/Slycopersicum-pep.fasta
@@ -40,7 +40,7 @@ group   NonAngios 'Selaginella_moellendorffii';
 family_max_e_value  1e-10
 family_multiplicity_knee 7
 family_log10_eval_penalty 12
-family_taxon_requirement 'amposdicots,2;monocots,1' 
+family_taxon_requirement 'AMpos_dicots,2;Monocots,1' 
 
 # alignment params
 alignment_program mafft
