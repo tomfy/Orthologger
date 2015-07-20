@@ -128,7 +128,8 @@ for my $filename (values %$taxon_file) {
 
 my $asff = $all_species_fasta_filename . "_x";
 system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
-my $min_seq_length = $param_name_val->{min_sequence_length} || $default_min_sequence_length;
+my $min_seq_length = (defined $param_name_val->{min_sequence_length})? $param_name_val->{min_sequence_length} :  $default_min_sequence_length;
+print STDERR "About to call remove_short_seqs.pl with min_seq_length = $min_seq_length \n";
 system "remove_short_seqs.pl $min_seq_length < $asff > $all_species_fasta_filename";
 system "formatdb -p T -i $all_species_fasta_filename ";
 print STDERR "blast db created for $all_species_fasta_filename.\n";
@@ -160,7 +161,7 @@ if (defined $query_id) {
    $qfname =~ s/[.]fasta//;   # remove final .fasta
    #$qfname =~ $param_name_val->{} . '/' . 
    my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta";
-   system "remove_short_seqs.pl < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
+   system "remove_short_seqs.pl $min_seq_length < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
    $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_pieces});
 }
 
