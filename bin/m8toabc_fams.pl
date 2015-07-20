@@ -42,7 +42,7 @@ $pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity
 }
 
 
-  ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..20]) . "\n";
+  print ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..20]) . "\n";
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
 open my $fh_m8_in, "<", "$m8_filename";
