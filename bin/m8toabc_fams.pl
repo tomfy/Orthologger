@@ -41,13 +41,7 @@ $pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity
 #  $factors[$j] = ($pows[$j] < 2000)? 10**$pows[$j] : 1e2000;
 }
 
-print STDERR 
-  "# input file: $m8_filename \n",
-  "# output file: $abc_filename \n",
-  "# ggfilename: $ggfilename \n",
-  "# max_eval : $max_eval \n",
 
-  "# fam size limit: $fam_size_limit \n",
   ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..20]) . "\n";
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
@@ -78,6 +72,13 @@ my $n_species = scalar keys %species_present; # number of species in analysis (m
 if(!defined $fam_size_limit){
    $fam_size_limit = ($multiplicity_knee+1) * $n_species;
 }
+
+print STDERR 
+  "# input file: $m8_filename \n",
+  "# output file: $abc_filename \n",
+  "# ggfilename: $ggfilename \n",
+  "# max_eval : $max_eval \n",
+  "# fam size limit: $fam_size_limit \n",
 
 my %id2_ev = ();
 my $init_old_id1 = 'xxxxxx xxxxxx';
