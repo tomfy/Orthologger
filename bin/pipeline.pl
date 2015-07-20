@@ -6,7 +6,6 @@ use File::Spec qw(splitpath);
 use Cwd qw(abs_path getcwd);
 use Time::Piece;
 
-
 my $control_filename = undef;
 my $max_eval = 1e-6;		# default.
 my $max_fam_size = 140;
@@ -327,7 +326,11 @@ sub get_params_from_control_file{
          }
       } elsif (/^\s*taxon_inputpath/) {
          if (/^\s*taxon_inputpath\s+(\S+)\s+(\S+)/) {
-            $taxon_file{$1} = glob($2); # ~/xxx -> /home/tomfy/xxx
+   my @exp_filenames = glob($2);
+   my $the_filename = $exp_filenames[0]; 
+   #   print STDERR "AAA: [", $2, "]  [", glob($2), "] [$the_filename]\n";            
+$taxon_file{$1} = $the_filename; # glob($2); # ~/xxx -> /home/tomfy/xxx
+ # print STDERR "BBB: [$1]  [", $taxon_file{$1}, "]\n\n";
          } elsif (/\S/) {       # not all whitespace
             warn "B unexpected line in control_file: $_";
          }
