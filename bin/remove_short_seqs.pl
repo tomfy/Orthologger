@@ -22,8 +22,8 @@ while (<>) {
          # print STDERR "$id, sequence is too short: $seqlength \n";
          $short_count++;
       }
-      if ($count % 1000 == 0) {
-         print STDERR "$count  $short_count \r";
+      if ($count % 100000 == 0) {
+         print STDERR "$count  $short_count \n";
       }
       $seqlength = 0;	
       $sequence = '';
