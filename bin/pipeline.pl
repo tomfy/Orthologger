@@ -282,8 +282,10 @@ for my $align_program (@alignment_programs) {
          my $malign_stdout = `$malign_cl`;
          print "malign.pl finished aligning $a_fastas_filename; output file: $malign_out_filename. \n";
 
-         my $tree_construct_stdout = #`tree_construct.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename`;
-           `NJFTPHtree.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -n_bs $n_bs -nongap_frac $min_nongap_fraction`;
+         my $tree_construct_cl =  "tree_construct.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -nongap_frac $min_nongap_fraction";
+         # "NJFTPHtree.pl -gg $gg_filename -input $malign_out_filename -output $output_newick_filename -n_bs $n_bs -nongap_frac $min_nongap_fraction ";
+         print "tree construction cl: $tree_construct_cl \n";
+         my $tree_construct_stdout = `$tree_construct_cl`;
          exit(0);
       }
    }
