@@ -1,0 +1,108 @@
+# input files:
+# query species name, sequence fasta filename: (this can have either whole genome or smaller set of sequences)
+query_taxon_inputpath   Solanum_lycopersicum     ./Slyc-pep_5seqs.fasta
+
+# other species_names, sequence fasta filenames:
+# 7 non-angiosperms:
+taxon_inputpath         Ostreococcus_lucimarinus         ~/Genome_data/fastas/Olucimarinus-pep.fasta
+taxon_inputpath         Ostreococcus_tauri               ~/Genome_data/fastas/Otauri-pep.fasta
+taxon_inputpath         Volvox_carteri                   ~/Genome_data/fastas/Vcarteri-pep.fasta
+taxon_inputpath         Chlamydomonas_reinhardtii        ~/Genome_data/fastas/Creinhardtii-pep.fasta
+taxon_inputpath         Physcomitrella_patens        ~/Genome_data/fastas/Ppatens-pep.fasta  
+taxon_inputpath         Selaginella_moellendorffii   ~/Genome_data/fastas/Smoellendorffii-pep.fasta
+taxon_inputpath         Picea_abies                  ~/Genome_data/fastas/Pabies-pep.fasta
+# 1 basal angiosperm:
+taxon_inputpath         Amborella_trichopoda         ~/Genome_data/fastas/Atrichopoda-pep.fasta
+# 10 monocots (9 AMS hosts)
+#   (3 non-grasses):
+#taxon_inputpath         Spirodela_polyrhiza              ~/Genome_data/fastas/Spolyrhiza-pep.fasta
+taxon_inputpath         Musa_acuminata                   ~/Genome_data/fastas/Macuminata-pep.fasta
+taxon_inputpath         Phoenix_dactylifera              ~/Genome_data/fastas/Pdactylifera-pep.fasta
+#   (7 grasses):
+taxon_inputpath         Brachypodium_distachyon          ~/Genome_data/fastas/Bdistachyon-pep.fasta
+taxon_inputpath         Sorghum_bicolor                  ~/Genome_data/fastas/Sbicolor-pep.fasta
+taxon_inputpath         Oryza_sativa                     ~/Genome_data/fastas/Osativa-pep.fasta
+taxon_inputpath         Zea_mays                         ~/Genome_data/fastas/Zmays-pep.fasta
+taxon_inputpath         Panicum_virgatum                 ~/Genome_data/fastas/Pvirgatum-pep.fasta
+taxon_inputpath         Phyllostachys_heterocycla        ~/Genome_data/fastas/Pheterocycla-pep.fasta   
+taxon_inputpath         Hordeum_vulgare                  ~/Genome_data/fastas/Hvulgare-pep.fasta
+# 22 AMS-host dicots
+# 1 basal dicot
+taxon_inputpath         Aquilegia_coerulea              ~/Genome_data/fastas/Acoerulea-pep.fasta    
+# 5 AMS asterids:
+taxon_inputpath         Solanum_lycopersicum          ~/Genome_data/fastas/Slycopersicum-pep.fasta
+taxon_inputpath         Solanum_tuberosum             ~/Genome_data/fastas/Stuberosum-pep.fasta
+taxon_inputpath         Mimulus_guttatus              ~/Genome_data/fastas/Mguttatus-pep.fasta
+taxon_inputpath         Sesamum_indicum               ~/Genome_data/fastas/Sindicum-pep.fasta
+taxon_inputpath         Fraxinus_excelsior            ~/Genome_data/fastas/Fexcelsior-pep.fasta
+# 16 AMS rosids:
+# 1 basal rosid:
+taxon_inputpath         Vitis_vinifera                ~/Genome_data/fastas/Vvinifera-pep.fasta
+# 9 fabids
+taxon_inputpath         Lotus_japonicus               ~/Genome_data/fastas/Ljaponicus-pep.fasta
+taxon_inputpath         Medicago_truncatula          ~/Genome_data/fastas/Mtruncatula-pep.fasta 
+taxon_inputpath         Phaseolus_vulgaris           ~/Genome_data/fastas/Pvulgaris-pep.fasta
+taxon_inputpath         Glycine_max                  ~/Genome_data/fastas/Gmax-pep.fasta
+taxon_inputpath         Cucumis_sativus              ~/Genome_data/fastas/Csativus-pep.fasta
+taxon_inputpath         Ricinus_communis             ~/Genome_data/fastas/Rcommunis-pep.fasta
+taxon_inputpath         Manihot_esculenta            ~/Genome_data/fastas/Mesculenta-pep.fasta
+taxon_inputpath         Populus_trichocarpa          ~/Genome_data/fastas/Ptrichocarpa-pep.fasta
+taxon_inputpath         Salix_purpurea               ~/Genome_data/fastas/Spurpurea-pep.fasta
+# 6 malvids
+taxon_inputpath         Citrus_clementina            ~/Genome_data/fastas/Cclementina-pep.fasta
+taxon_inputpath         Citrus_sinensis              ~/Genome_data/fastas/Csinensis-pep.fasta
+taxon_inputpath         Theobroma_cacao              ~/Genome_data/fastas/Tcacao-pep.fasta
+taxon_inputpath         Gossypium_raimondii          ~/Genome_data/fastas/Graimondii-pep.fasta
+taxon_inputpath         Eucalyptus_grandis           ~/Genome_data/fastas/Egrandis-pep.fasta
+taxon_inputpath         Carica_papaya                ~/Genome_data/fastas/Cpapaya-pep.fasta
+# 11 AMS non-hosts
+taxon_inputpath         Spirodela_polyrhiza              ~/Genome_data/fastas/Spolyrhiza-pep.fasta
+taxon_inputpath         Nelumbo_nucifera                 ~/Genome_data/fastas/Nnucifera-pep.fasta
+taxon_inputpath         Utricularia_gibba                ~/Genome_data/fastas/Ugibba-pep.fasta
+taxon_inputpath         Dianthus_caryophyllus            ~/Genome_data/fastas/Dcaryophyllos-pep.fasta
+taxon_inputpath         Beta_vulgaris                 ~/Genome_data/fastas/Bvulgaris-pep.fasta
+taxon_inputpath         Tarenaya_hassleriana          ~/Genome_data/fastas/Thassleriana-pep.fasta
+taxon_inputpath         Brassica_rapa                ~/Genome_data/fastas/Brapa-pep.fasta
+taxon_inputpath         Arabidopsis_thaliana         ~/Genome_data/fastas/Athaliana-pep.fasta
+taxon_inputpath         Arabidopsis_lyrata           ~/Genome_data/fastas/Alyrata-pep.fasta
+taxon_inputpath         Capsella_rubella             ~/Genome_data/fastas/Crubella-pep.fasta
+taxon_inputpath         Thellungiella_halophila      ~/Genome_data/fastas/Thalophila-pep.fasta
+
+# output directories
+blastout_dir            blast_out  # for m8 files
+fam_abcs_dir            fam_abcs
+fam_fastas_dir          fam_fastas
+alignments_dir          alignments
+cleaned_alignments_dir  cleaned_alignments
+newick_trees_dir        newick_trees  
+
+#
+min_sequence_length 24
+n_pieces 1  # number of pieces to divide query file into (should be <= number of processors available)
+
+# blast control parameters 
+blast_max_matches    2500    # keep no more than this number of matches for each query sequence
+blast_max_e_value    1e-6    # keep matches with e-value <= this
+
+# groups
+group   AMpos_dicots 'Medicago_truncatula,Theobroma_cacao,Manihot_esculenta,Solanum_lycopersicum';
+group   AMnegs 'Brassica_rapa,Arabidopsis_thaliana';
+group   Monocots 'Oryza_sativa,Phoenix_dactylifera';
+group   NonAngios 'Selaginella_moellendorffii';
+
+# family parameters:
+#family_size_limit   400
+family_max_e_value  1e-10
+family_multiplicity_knee 7
+family_log10_eval_penalty 12
+family_taxon_requirement 'amposdicots,2;monocots,1' 
+
+# alignment params
+alignment_program mafft
+alignment_quality quick
+
+# alignment thinning params
+min_nongap_fraction 0.75
+
+# tree parameters
+n_multi_ft 1
