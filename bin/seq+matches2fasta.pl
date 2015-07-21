@@ -19,7 +19,7 @@ BEGIN {  # this has to go in Begin block so happens at compile time
 use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
 
-print STDERR "INC: ", join(", ", @INC), "\n";
+# print STDERR "INC: ", join(", ", @INC), "\n";
 
 use CXGN::Phylo::CladeSpecifier;
 
