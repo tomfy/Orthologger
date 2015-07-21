@@ -2,7 +2,7 @@
 use strict;
 use Getopt::Long;
 # use Devel::Cycle;
-use IPC::Run3;
+# use IPC::Run3;
 use List::Util qw (min max sum);
 
 no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';

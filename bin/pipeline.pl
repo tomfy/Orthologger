@@ -163,6 +163,7 @@ if (defined $query_id) {
    my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta";
    system "remove_short_seqs.pl $min_seq_length < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
    $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_pieces});
+   print STDERR "query part fasta files: ", join(", ", @$fasta_part_filenames), "\n";
 }
 
 
@@ -389,18 +390,20 @@ sub split_fasta{
    my $fasta_filename = shift;
    my $n_parts = shift;
 
+   my ($v, $dir, $fname) = File::Spec->splitpath($fasta_filename);
+   print STDERR "[$v], [$dir], [$fname] \n";
    my $wcout = `grep '^>' $fasta_filename | wc`;
    $wcout =~ /^\s*(\S+)/;
    my $n_seqs = $1;
    my $n_sequences_in_each_part = int($n_seqs/$n_parts) + 1;
 
-   open my $fh, "<", "$fasta_filename";
+   open my $fh, "<", "$fasta_filename" or warn "couldn't open $fasta_filename for reading.\n";
 
    my $target_sequence_count = $n_sequences_in_each_part;
    print "total number of sequences: $n_seqs ; number of parts: $n_parts approx. number of sequences per part: $target_sequence_count \n";
 
    my $i_part = 1;
-   my $output_filename_stem = $fasta_filename;
+   my $output_filename_stem = $fname;
    $output_filename_stem =~ s/[.]fasta$//;
    my $output_filename = $output_filename_stem . "_part$i_part.fasta";
    my @output_fasta_part_filenames = ($output_filename);
