@@ -155,12 +155,12 @@ if (defined $query_id) {
    $query_number = 'multiple';
    # ********* split query fasta **************
    $qfasta_filename = $param_name_val->{query_inputpath};
-   #my ($vol, $path, $fname) = File::Spec->splitpath($qfasta_filename);
+   my ($vol, $path, $qfname) = File::Spec->splitpath($qfasta_filename);
    #print "[$vol]  [$path]  [$fname]   \n";
-   my $qfname = $qfasta_filename;
+ #  my $qfname = $qfasta_filename;
    $qfname =~ s/[.]fasta//;   # remove final .fasta
    #$qfname =~ $param_name_val->{} . '/' . 
-   my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta";
+   my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta"; # just goes in cwd
    system "remove_short_seqs.pl $min_seq_length < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
    $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $param_name_val->{n_pieces});
    print STDERR "query part fasta files: ", join(", ", @$fasta_part_filenames), "\n";
@@ -231,7 +231,7 @@ for my $the_abc_part (@abc_part_filenames) {
    my ($v, $dir, $fname) = File::Spec->splitpath($the_abc_part);
    $fname =~ s/abc$/fastas/;
    my $output_fastas_filename = $fam_fastas_dir . '/' . $fname;
-   print STDERR "ZZZZ: ", `which seq+matches2fasta.pl`, "\n";
+#   print STDERR "ZZZZ: ", `which seq+matches2fasta.pl`, "\n";
  #  my $addgrpstring = "'" . 'amposdicots:Solanum_lycopersicum,Theobroma_cacao,Medicago_truncatula,Manihot_esculenta;monocots:Oryza_sativa,Phoenix_dactylifera' . "'";
    my $seqm2f_cl = "seq+matches2fasta.pl -gg $gg_filename -abc_file $the_abc_part -fasta_infile $all_species_fasta_filename -output_filename $output_fastas_filename";
    $seqm2f_cl .= " -taxon_requirement $family_taxon_requirement " if(defined $family_taxon_requirement);
@@ -390,8 +390,8 @@ sub split_fasta{
    my $fasta_filename = shift;
    my $n_parts = shift;
 
-   my ($v, $dir, $fname) = File::Spec->splitpath($fasta_filename);
-   print STDERR "[$v], [$dir], [$fname] \n";
+#   my ($v, $dir, $fname) = File::Spec->splitpath($fasta_filename);
+#   print STDERR "[$v], [$dir], [$fname] \n";
    my $wcout = `grep '^>' $fasta_filename | wc`;
    $wcout =~ /^\s*(\S+)/;
    my $n_seqs = $1;
@@ -403,7 +403,7 @@ sub split_fasta{
    print "total number of sequences: $n_seqs ; number of parts: $n_parts approx. number of sequences per part: $target_sequence_count \n";
 
    my $i_part = 1;
-   my $output_filename_stem = $fname;
+   my $output_filename_stem = $fasta_filename;
    $output_filename_stem =~ s/[.]fasta$//;
    my $output_filename = $output_filename_stem . "_part$i_part.fasta";
    my @output_fasta_part_filenames = ($output_filename);
