@@ -67,16 +67,18 @@ my $predefined_taxon_groups =
 		   'Sorghum_bicolor'         => 1,
 		   'Oryza_sativa'            => 1, # rice
 		  },
-'9_AMpositive_monocots' => {     
+'12_AMpositive_monocots' => {     
+                  'Elaeis_guineensis' => 1, # oil palm (african)
                    'Phoenix_dactylifera'     => 1, # date palm
                   'Musa_acuminata' => 1, # banana 
 #                  'Setaria_italica'         => 1, # foxtail millet
- #                  'Triticum_aestivum'       => 1, # wheat
+                   'Triticum_urartu'       => 1, # wheat ancestor, diploid
                      'Phyllostachys_heterocycla' => 1, # bamboo
                    'Hordeum_vulgare'         => 1, # barley
                    'Zea_mays'                => 1, # maize
                    'Brachypodium_distachyon' => 1, 
                   'Panicum_virgatum' => 1, # switchgrass
+                  'Panicum_hallii' => 1, # 
                    'Sorghum_bicolor'         => 1,
                    'Oryza_sativa'            => 1 # rice
                   },
@@ -321,7 +323,7 @@ my $predefined_taxon_groups =
   };
 
 my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
-	 '23_AMp_dicots,9; 9_monocots,4';  #
+	 '22_AMpositive_dicots,9; 12_AMpositive_monocots,5';  #
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
