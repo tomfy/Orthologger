@@ -227,18 +227,18 @@ my $predefined_taxon_groups =
 					 'Citrus_sinensis' => 1,
 }, 
  '9_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
-		       'Panicum_virgatum' => 1, # switchgrass
-		       'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
-		   'Phoenix_dactylifera'     => 1, # date palm
-		   'Musa_acuminata' => 1,	   # banana
+                  'Phoenix_dactylifera'     => 1, # date palm
+                  'Musa_acuminata' => 1,	   # banana
 		   'Zea_mays'                => 1, # maize
+		   'Panicum_virgatum' => 1, # switchgrass
+		   'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
 		   'Brachypodium_distachyon' => 1,
 		   'Sorghum_bicolor'         => 1,
 		   'Oryza_sativa'            => 1, # rice
-		    'Spirodela_polyrhiza' => 1, # duckweed - AM negative monocot
+                   'Hordeum_vulgare'         => 1, # barley
+	#	    'Spirodela_polyrhiza' => 1, # duckweed - AM negative monocot
     #	   'Setaria_italica'         => 1, # foxtail millet
 	#	   'Triticum_aestivum'       => 1, # wheat
-      	   #	   'Hordeum_vulgare'         => 1, # barley
 		  },
  '8_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
 		'Ostreococcus_tauri' => 1,
