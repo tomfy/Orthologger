@@ -10,6 +10,7 @@ use Getopt::Long;
 
 my $gg_filename = undef;
 my $newicks_filename = undef;
+my $output_filename = undef;
 my $id = undef;
 my $keep_branch_supports = 1; # default: keep branch supports in newick expression
 my $grps = 'AM'; # or C4
@@ -18,7 +19,7 @@ GetOptions(
 	   'newicks_file=s' => \$newicks_filename,
 	   'id=s' => \$id,
 	   'groups=s' => \$grps,
-	   
+	   'out=s' => \$output_filename,
 	  );
 
 my $figtree_block = 'begin figtree;' . "\n" . 
@@ -106,7 +107,7 @@ my $figtree_block = 'begin figtree;' . "\n" .
 
 
 my $AM_groups = {
-	      '23_AMp_dicots' => {
+	      '22_AMp_dicots' => {
 				  'Aquilegia_coerulea' => 1, # columbine
 
 				  'Solanum_lycopersicum' => 1, # tomato
@@ -135,22 +136,24 @@ my $AM_groups = {
 				  'Gossypium_raimondii' => 1,
 				  'Citrus_clementina' => 1,
 				  'Citrus_sinensis' => 1,
-				 }, 
-	      '8_AMp_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
-				   'Panicum_virgatum' => 1, # switchgrass
-				   'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
-				   'Phoenix_dactylifera'     => 1, # date palm
-				   'Musa_acuminata' => 1, # banana
-				   'Zea_mays'                => 1, # maize
-				   'Brachypodium_distachyon' => 1,
-				   'Sorghum_bicolor'         => 1,
-				   'Oryza_sativa'            => 1, # rice
-				   #	  
-				   #	   '    setaria_italica'         => 1, # foxtail millet
-				   #	   'Triticum_aestivum'       => 1, # wheat
-				   #	   'Hordeum_vulgare'         => 1, # barley
-				  },
-	      '8_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
+				 },
+  '12_AMp_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
+                        'Panicum_virgatum' => 1, # switchgrass
+                        'Panicum_hallii' => 1,
+                        'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
+                        'Zea_mays'                => 1,   # maize
+                        'Brachypodium_distachyon' => 1,
+                        'Sorghum_bicolor'         => 1,
+                        'Oryza_sativa'            => 1, # rice
+                        'Hordeum_vulgare' => 1,
+                        #	   '    setaria_italica'         => 1, # foxtail millet
+                        'Triticum_urartu'       => 1, # wheat
+
+                        'Phoenix_dactylifera'     => 1,   # date palm
+                        'Musa_acuminata' => 1,            # banana
+                        'Elaeis_guineensis' => 1,
+                       },
+	      '7_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
 			     'Ostreococcus_tauri' => 1,
 			     'Ostreococcus_lucimarinus' => 1,
 			     'Volvox_carteri' => 1,
@@ -158,21 +161,29 @@ my $AM_groups = {
 			     'Physcomitrella_patens'      => 1, 
 			     'Selaginella_moellendorffii' => 1, 
 			     'Picea_abies' => 1, # norway spruce
+},
+'Amborella' => {
 			     'Amborella_trichopoda' => 1
 			    },
-	      '11_AMnegatives' =>  {
+	      '13_AMnegatives' =>  {
 				    Brassica_rapa           => 1, # turnip
 				    Arabidopsis_thaliana    => 1,
 				    Arabidopsis_lyrata      => 1,
-				    Thellungiella_halophila => 1,
+				   Thellungiella_halophila => 1,
+                                    'Eutrema_salsugineum' => 1, # synonym for Thellungiella_halophila
 				    Capsella_rubella        => 1,
 				    Beta_vulgaris => 1,
+                                    Spinacia_oleracea => 1, 
 				    Nelumbo_nucifera => 1,
 				    Utricularia_gibba => 1,
 				    'Tarenaya_hassleriana' => 1,
 				    'Dianthus_caryophyllus' => 1,
 				    'Spirodela_polyrhiza' => 1, # duckweed - monocot
+                                    'Zostera_marina' => 1, # eelgrass - monocot
 				   },
+                 'AMp_close_to_AMn' => { 'Aquilegia_coerulea' => 1, 
+                                           'Mimulus_guttatus' => 1, 'Sesamum_indicum' => 1, 'Fraxinux_excelsior' => 1, 
+                                           'Carica_papaya' => 1}
 	     };
 
 my $C4_groups =  {  # 24 sp for C4 analysis: 
@@ -244,28 +255,35 @@ my $C4_groups =  {  # 24 sp for C4 analysis:
 
 my $groups = ($grps eq 'AM')? $AM_groups : $C4_groups;
 
-my $qcolor = '#00ff00';
-my %group_color = ('11_AMnegatives' => '#ff0000',
-		   '23_AMp_dicots' => '#000000',
-		   '8_basals' => '#0000ff',
-		   '8_AMp_monocots' => '#BB6600',
+my $qcolor = '#00ee00';
+my %group_color = ('13_AMnegatives' => '#ff0033', # red 
+		   '22_AMp_dicots' => '#0000EE', # blue  #  '#444444', # black
+		   '7_basals' => '#000000', # black
+		   '12_AMp_monocots' => '#ddc400', # yellow
+                   'AMp_close_to_AMn' => '#BB00DD', # purple
+                   'Amborella' => '#EE7700', # orange
 		   '4_basals' => '#0000ff',
-		   '4_C4_monocots' => '#000000', 
+		   '4_C4_monocots' => '#000000',
 		   '7_C3_monocots' => '#FF0000',
 		   '9_C3_dicots' => '#FF7700',
 		  );
 my %id_species = ();
 my %id_color = ();
 
-
+my @sorted_groups = ('22_AMp_dicots', '7_basals', '12_AMp_monocots', 'Amborella', 'AMp_close_to_AMn', '13_AMnegatives');
+if($grps eq 'C4'){
+@sorted_groups = ('4_basals', '4_C4_monocots', '7_C3_monocots', '9_C3_dicots');
+}
 
 my %species_color = ();
-while (my ($grp, $species) = each %$groups) {
-#  print "$grp \n";
+#while (my ($grp, $species) = each %$groups) {
+   for my $grp (@sorted_groups){
+      my $species = $groups->{$grp};
+#  print "$grp ", join(";", %$species), "\n";
+my $color = $group_color{$grp};
+#  print "color $color. \n";
   for my $sp (keys %$species) {
-
-    my $color = $group_color{$grp};
- #   print "$sp   $color \n";
+    #  print "XXXX: $sp   $color \n";
     $species_color{$sp} = "&!color=$color";
     #   print "$sp       $grp \n";
   }
@@ -287,7 +305,7 @@ if (defined $newicks_filename and -f $newicks_filename) {
     # if ($line =~ /^Id M/) {
     #   #   print "$line  $id  \n";
     # }
-    if ($line =~ /^Id (\S+)/ and $1 eq $id) {
+    if ($line =~ /^Id (\S+)/ and (!defined $id  or ($1 eq $id))) {
       #  $id_color{$id} = 
       #     print "AAA: $line \n";
       my $nwck_line = shift @newick_lines;
@@ -345,33 +363,39 @@ while (1) {
 #print "XXXXX \n";
 #exit;
 #### OUTPUT ####
-
+#my $nexus_string = '';
+if(!defined $output_filename){
+   $output_filename = $id . ".nexus";
+}
+open my $FHout, ">", "$output_filename";
 
 my $space = '    ';
-print "#NEXUS\n" , 
-  "begin taxa;\n", 
-  $space, "dimensions ntax=", $n_leaves, ";\n",
-  $space, "taxlabels\n";
+my $nexus_string = "#NEXUS\n" .
+  "begin taxa;\n" .
+  $space . "dimensions ntax=" . $n_leaves . ";\n" .
+  $space . "taxlabels\n";
 for (@ids) {
 #print STDERR "Id: $_ \n";
-  print $space, "'", $_, "'[", $id_color{$_}, "]\n";
+  $nexus_string .=  $space . "'" . $_ . "'[" . $id_color{$_} . "]\n";
 }
-print ";\n", "end;\n\n";
+$nexus_string .= ";\n" . "end;\n\n";
 
-print "begin trees; \n",
-  "$space", "tree my_tree = [&R] ";
+$nexus_string .= "begin trees; \n" .
+  "$space" . "tree my_tree = [&R] ";
 $newick_expression =~ s/\][0-9.]+:([0-9.]+)/]:$1/g; # remove branch supports for terminal branches (due to rerooting I guess).
 #print "XXXX $newick_expression;\n";
 if ($keep_branch_supports) {
-  $newick_expression =~ s/\)([0-9.]+):([0-9.]+)/)[branch_length=$1]:$2/g; # label the branch support values, i.e. like [branch_support=0.887]:0.345,
+  $newick_expression =~ s/\)([0-9.]+):([0-9.]+)/)[branch_support=$1]:$2/g; # label the branch support values, i.e. like [branch_support=0.887]:0.345,
 } else {
   $newick_expression =~ s/\)[0-9.]+:([0-9.]+)/):$1/g; # remove branch supports for other branches.
 }
 $newick_expression =~ s/\s+//g;
-print "$newick_expression;\n";
+$nexus_string .=  "$newick_expression;\n";
 #exit;
-print "end;\n\n";
+$nexus_string .=  "end;\n\n";
 
+print $FHout "$nexus_string \n";
+close $FHout;
 # open my $fh_ft, "<", "ftblock.txt" or die "XXXX\n";
 # my @ftblock = <$fh_ft>;
 # print join('', @ftblock), "\n";
