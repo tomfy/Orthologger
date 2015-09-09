@@ -9,7 +9,7 @@ use List::Util qw( min max sum );
 # also keep other matches as good as worst in fam
 #
 
-my $min_ev = 1e-180;
+my $min_ev = 1e-185; # if e-val is 0, set it to this, so it is affected by penalty
 my $max_of_a_species = 50;
 my $max_eval = 1e-4;
 my $ggfilename = undef;
@@ -17,7 +17,7 @@ my $m8_filename = undef;
 my $abc_filename = '';
 my $fam_size_limit = undef;
 my $multiplicity_knee = 6; # beyond this number of matches of a species, penalize the e-value.
-my $log10_eval_penalty = 'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
+my $log10_eval_penalty = 0; #'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
 
 my $species_list = []; # array ref
 
@@ -33,16 +33,22 @@ GetOptions(
 	  );
 
 #my @factors = (1);
-my @pows = (1);
+my @pows = (0);
+my $d2 = 4;
+my @d1s = (0);
+for my $j (1..$max_of_a_species){ push  @d1s, $d1s[-1]+$d2; }
+print "d1s: ", join(" ", @d1s), "\n";
 for my $j (1..$max_of_a_species) {
 #  $pows[$j] = ($j-1)*$log10_eval_penalty; # $log10_eval_penalty * (0,1,2,3,4,  5,6,7,8,9, ... ) 'method A'
 #  $pows[$j] = ($j <= 2)? 0: ($j-2)*($j-1) if($method eq 'AA'); # 0,0,2,6,12, 20,30,42,56,72,  ...
-$pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity_knee) : 0;
+# $pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity_knee) : 0;
+$pows[$j] = $pows[$j-1]+$d1s[$j-1];
 #  $factors[$j] = ($pows[$j] < 2000)? 10**$pows[$j] : 1e2000;
 }
 
 
-  print ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..20]) . "\n";
+  my $pow_description = ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..25]) . "\n";
+print STDERR $pow_description;
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
 open my $fh_m8_in, "<", "$m8_filename";
