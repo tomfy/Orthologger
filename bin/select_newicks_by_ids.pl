@@ -1,11 +1,11 @@
 #!/usr/bin/perl -w
 use strict;
 
-# usage select_lines_by_ids.pl idfile < unselected.newicks > selectedfile
+# usage select_newicks_by_ids.pl idfile < unselected.newicks > selected.newicks
 # given a file with ids in first col, and
 # a newicks file (with multiple newicks in it), format :
 # Id Medtr...
-# ( -- newick expresion --  )
+# ( -- newick expression --  )
 # 
 # i.e. Id line is followed by newick expression on next line
 # write out the newicks of the ids which are found in idfile
