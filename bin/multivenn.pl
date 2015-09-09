@@ -62,7 +62,8 @@ for my $id (keys %id_count){
 }
 
 my @nregion_histogram = ((0) x $n_sets);
-my @skeys = sort keys %vennregion_count;
+my @skeys = #sort keys %vennregion_count;
+  sort { sum(split(" ", $a)) <=> sum(split(" ", $b)) } keys %vennregion_count;
 for (@skeys) {
 
  my $count = $vennregion_count{$_};
