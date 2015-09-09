@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
+use List::Util qw ( min max sum );
 
 my $file1 = shift;
 my $file2 = shift;
@@ -40,7 +41,7 @@ print "\n";
 
 my ($n1, $nboth, $n2) = (scalar @only1, scalar @both, scalar @only2);
 my $n_union = $n1+$n2+$nboth;
-print "# n 1, both, 2, union:  $n1   $nboth   $n2      $n_union  ", $nboth/$n_union, "\n"; 
+print "# n 1, both, 2, union:  $n1   $nboth   $n2      $n_union  ", $nboth/$n_union, "   ", $nboth/($nboth + min($n1, $n2)), "\n"; 
 
 #print "Union: \n\n", join("\n", (@only1, @both, @only2)), "\n";
 
