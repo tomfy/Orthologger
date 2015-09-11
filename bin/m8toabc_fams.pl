@@ -37,7 +37,7 @@ my @pows = (0);
 my $d2 = 4;
 my @d1s = (0);
 for my $j (1..$max_of_a_species){ push  @d1s, $d1s[-1]+$d2; }
-print "d1s: ", join(" ", @d1s), "\n";
+# print "d1s: ", join(" ", @d1s), "\n";
 for my $j (1..$max_of_a_species) {
 #  $pows[$j] = ($j-1)*$log10_eval_penalty; # $log10_eval_penalty * (0,1,2,3,4,  5,6,7,8,9, ... ) 'method A'
 #  $pows[$j] = ($j <= 2)? 0: ($j-2)*($j-1) if($method eq 'AA'); # 0,0,2,6,12, 20,30,42,56,72,  ...
