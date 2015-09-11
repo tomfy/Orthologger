@@ -34,8 +34,9 @@ while (<$fh_newicks>) {
     my $nogenemodel_id = $id;
     $nogenemodel_id =~ s/[.]\d{1,2}\s*$//;
     print STDERR $nogenemodel_id, "\n";
-    if(exists $qids{$nogenemodel_id} or exists $qids{$id}){
-$qids{$nogenemodel_id} += 100;
+    if( # exists $qids{$nogenemodel_id} or 
+       exists $qids{$id}){
+#$qids{$nogenemodel_id} += 100;
     #print "ID $id \n";
     my $newick_line = <$fh_newicks>;
     # print $newick_line, "\n";
@@ -47,7 +48,7 @@ $qids{$nogenemodel_id} += 100;
     my $out_nexus_filename = $id . ".nexus";
     system "newicks2figtreenexus.pl -new tmp.newick -id $id -group $groups > $out_nexus_filename ";
  }else{
-    print "Id $nogenemodel_id not present in file $qids_filename \n";
+  #  print "Identifier  $nogenemodel_id not present in file $qids_filename \n";
  }
 }
 }
