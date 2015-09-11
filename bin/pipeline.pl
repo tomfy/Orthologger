@@ -8,7 +8,7 @@ use Time::Piece;
 
 my $control_filename = undef;
 my $max_eval = 1e-6;		# default.
-my $max_fam_size = 140;
+my $max_fam_size = undef;
 # my $gg_filename_cl = undef;
 # my $m8_filename = undef;
 my $fasta_infile = undef;
