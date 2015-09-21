@@ -207,6 +207,7 @@ for my $m8_filename (@blast_out_m8_filenames) {
    mkdir $fam_abcs_dir unless(-d $fam_abcs_dir); # create dir if doesn't exist.
    my $fam_abcs_filename = $fam_abcs_dir . '/' . $fname;
    my $m8tofams_cl = "m8toabc_fams.pl -input $m8_filename -max_eval $family_max_e_value -gg $gg_filename -output $fam_abcs_filename ";
+   $m8tofams_cl .= " -fam_size_limit $family_size_limit ";
    $m8tofams_cl .= "-multiplicity_knee $family_multiplicity_knee -log10penalty $family_log10_eval_penalty ";
    my $abc_filename = `$m8tofams_cl`;
    # -fam_size_limit $family_size_limit `;
