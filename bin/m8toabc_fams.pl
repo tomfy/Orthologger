@@ -16,38 +16,51 @@ my $ggfilename = undef;
 my $m8_filename = undef;
 my $abc_filename = '';
 my $fam_size_limit = undef;
-my $multiplicity_knee = 6; # beyond this number of matches of a species, penalize the e-value.
-my $log10_eval_penalty = 0; #'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
-
+my $penalty_type = 'quadratic'; # none, knee, quadratic
+my $penalty_knee = 5; # beyond this number of matches of a species, penalize the e-value.
+my $log10_eval_penalty = 10; #'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
+my $diff1 = 0;  # 
+my $diff2 = 4;
 my $species_list = []; # array ref
 
 # Process long cl options
 GetOptions(
 	   'input_filename=s' => \$m8_filename,
 	   'output_filename=s' => \$abc_filename,
-	   'fam_size_limit=i' => \$fam_size_limit, # default size limit is n_species * (multiplicity_knee+1)
-	   'log10penalty=f' => \$log10_eval_penalty,
-           'multiplicity_knee=i' => \$multiplicity_knee,
-	   'ggfilename=s' => \$ggfilename,
+           'ggfilename=s' => \$ggfilename,
+
+	   'fam_size_limit=i' => \$fam_size_limit, # default size limit is n_species * 4
+
            'max_eval=f' => \$max_eval,
+
+           'p_type=s' => \$penalty_type,
+           'p_slope=f' => \$log10_eval_penalty,
+           'p_knee=i' => \$penalty_knee,
+
+           'p_diff1=f' => \$diff1,
+           'p_diff2=f' => \$diff2,
 	  );
 
-#my @factors = (1);
 my @pows = (0);
-my $d2 = 4;
-my @d1s = (0);
-for my $j (1..$max_of_a_species){ push  @d1s, $d1s[-1]+$d2; }
-# print "d1s: ", join(" ", @d1s), "\n";
+if ($penalty_type eq 'quadratic') {
+   my @d1s = ($diff1);
+   for my $j (1..$max_of_a_species) {
+      push  @d1s, $d1s[-1]+$diff2;
+   }
+   for my $j (1..$max_of_a_species) {
+      $pows[$j] = $pows[$j-1]+$d1s[$j-1];
+   }
+} elsif ($penalty_type eq 'knee') {
+   for my $j (1..$max_of_a_species) {
+      $pows[$j] = ($j > $penalty_knee)? $log10_eval_penalty * ($j - $penalty_knee) : 0;
+   }
+} else {                        # no penalty
 for my $j (1..$max_of_a_species) {
-#  $pows[$j] = ($j-1)*$log10_eval_penalty; # $log10_eval_penalty * (0,1,2,3,4,  5,6,7,8,9, ... ) 'method A'
-#  $pows[$j] = ($j <= 2)? 0: ($j-2)*($j-1) if($method eq 'AA'); # 0,0,2,6,12, 20,30,42,56,72,  ...
-# $pows[$j] = ($j > $multiplicity_knee)? $log10_eval_penalty * ($j - $multiplicity_knee) : 0;
-$pows[$j] = $pows[$j-1]+$d1s[$j-1];
-#  $factors[$j] = ($pows[$j] < 2000)? 10**$pows[$j] : 1e2000;
+      $pows[$j] = 0;
+   }
 }
 
-
-  my $pow_description = ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..25]) . "\n";
+  my $pow_description = ($penalty_type eq 'knee' and $log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..25]) . "\n";
 print STDERR $pow_description;
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
@@ -76,7 +89,7 @@ if (defined $ggfilename  and  -f $ggfilename) { # read in id-species info
 
 my $n_species = scalar keys %species_present; # number of species in analysis (may be fewer in a family)
 if(!defined $fam_size_limit){
-   $fam_size_limit = ($multiplicity_knee+1) * $n_species;
+   $fam_size_limit = 4 * $n_species;
 }
 
 print STDERR 
@@ -187,13 +200,17 @@ sub get_fam_string{
 
   %species_count = ();
   my $qqev = (defined $id2_ev{$id1})? $id2_ev{$id1} : $min_ev;
-  $out_fam_string .= "$id1  $id1  $qqev \n"; # make the query be a match to itself, and it is first match in family 
+
+  $out_fam_string .= "$id1  $id1  $qqev  " . sprintf("%7.2f", log($qqev)/log(10.0)) . "\n"; # make the query be a match to itself, and it is first match in family 
   # even if the e-value isn't that good.
   my $fam_size_count = 1;
   for (@sorted_id2s) {
     next if($_ eq $id1); # don't put the query in again!
     my $ev = $id2_ev{$_};
-    $out_fam_string .=  "$id1  $_  $ev \n";
+    my $log10ev_eff = $id2_log10eveff{$_};
+
+    $out_fam_string .= sprintf("%24s  %24s  %8s  %7.2f\n", $id1, $_, $ev, $log10ev_eff);
+# "$id1  $_  $ev  $log10ev_eff \n";
     $fam_size_count++;
     my $species = $id_species->{$_};
     $species_count{$species}++;

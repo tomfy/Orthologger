@@ -35,8 +35,7 @@ my $columns_per_clade = 3;
 while (<>) {
 #print;
 $columns_per_clade = $1 if(/clade (\d) number[s]{0,1} are given/);
-#print "cols per clade: $columns_per_clade \n";
-#print "cols per clade: $columns_per_clade \n";
+# print "cols per clade: $columns_per_clade \n";
   next if(/^\s*#/);		# skip comment lines
   my @cols = split(" ", $_);
   $id = shift @cols;
@@ -52,10 +51,11 @@ my @sizes = ();
 my @clade_species = ();
   for(my $i=0; $i<$n_clades; $i++){
     $depths[$i] = @cols[$columns_per_clade*$i];
-    $nparalogs[$i] = @cols[$columns_per_clade*$i + 1] - 1;
-    $ndisallowed[$i] = @cols[$columns_per_clade*$i + 2];
-    $sizes[$i] = ($columns_per_clade > 3)? @cols[$columns_per_clade*$i + 3] : -1;
-    $clade_species[$i] = ($columns_per_clade > 4)? @cols[$columns_per_clade*$i + 4] : -1;
+    my $eps_prod = @cols[$columns_per_clade*$i+1]; 
+   $nparalogs[$i] = @cols[$columns_per_clade*$i + 2]; #  - 1;
+    $ndisallowed[$i] = @cols[$columns_per_clade*$i + 3];
+    $sizes[$i] = ($columns_per_clade > 3)? @cols[$columns_per_clade*$i + 4] : -1;
+#    $clade_species[$i] = ($columns_per_clade > 4)? @cols[$columns_per_clade*$i + 4] : -1;
 # print "AAA:  ", $i, "  ", $depths[$i], "  ", $nparalogs[$i], "  ", $ndisallowed[$i], "  ", $sizes[$i], "\n";
 }
 $depths[4] = 10000 if($n_clades >= 5 and $depths[4] < 0);
@@ -90,7 +90,7 @@ sub result_summary_string{
   for (@$the_types) {
     #    print "$_ \n";
     $string .=			# $_ . ",  " . 
-      sprintf("%4i  ", ((exists $type_acc_count->{$_})? $type_acc_count->{$_} : 0));;
+      sprintf("%6i  ", ((exists $type_acc_count->{$_})? $type_acc_count->{$_} : 0));;
   }
   $string .= "\n";
 }
@@ -112,9 +112,10 @@ sub check_nesting{
     my ($inner, $outer) = split(/\s*[<]\s*/, $_);
 #print "$inner,  $outer \n";
     $inner--; $outer--;
-	print "Depths: ", join("; ", @$depths), "\n";
-    return 0 if($depths->[$inner] < 0 or $depths->[$outer] < 0); # one of the relevant clades not found.
-    return 0 if($depths->[$inner] >= $depths->[$outer]); # one of the nesting conditions not met.
+#	print "Depths: ", join("; ", @$depths), "\n";
+    return 0 if($depths->[$inner] < 0); # inner clade not found.
+    
+    return 0 if($depths->[$outer] > 0  and  $depths->[$inner] >= $depths->[$outer]); # one of the nesting conditions not met.
   }
  # all nesting conditions satisfied 
   return 1;
