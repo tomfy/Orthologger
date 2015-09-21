@@ -34,7 +34,7 @@ while (<$fh_newicks>) {
     my $nogenemodel_id = $id;
     $nogenemodel_id =~ s/[.]\d{1,2}\s*$//;
     print STDERR $nogenemodel_id, "\n";
-    if( # exists $qids{$nogenemodel_id} or 
+    if( exists $qids{$nogenemodel_id} or 
        exists $qids{$id}){
 #$qids{$nogenemodel_id} += 100;
     #print "ID $id \n";
