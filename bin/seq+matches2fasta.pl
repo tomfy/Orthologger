@@ -227,15 +227,16 @@ my $predefined_taxon_groups =
    
 
    '9_monocots' => { # These are the monocots in the 50-species analysis Sept. 2014
+                    # 8 AM + nonAM Spirodela
 		    'Panicum_virgatum' => 1,		 # switchgrass
 		    'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
 		    'Phoenix_dactylifera'     => 1,   # date palm
 		    'Musa_acuminata' => 1,	      # banana
 		    'Zea_mays'                => 1,   # maize
-		    
 'Brachypodium_distachyon' => 1,
 		    'Sorghum_bicolor'         => 1,
 		    'Oryza_sativa'            => 1, # rice
+
 		    'Spirodela_polyrhiza' => 1, # duckweed - AM negative monocot
 		    #	   'Setaria_italica'         => 1, # foxtail millet
 		    #	   'Triticum_aestivum'       => 1, # wheat
@@ -323,7 +324,7 @@ my $predefined_taxon_groups =
   };
 
 my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
-	 '22_AMpositive_dicots,9; 12_AMpositive_monocots,5';  #
+	 '22_AMpositive_dicots,9; 12_AMpositive_monocots,4';  #
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
