@@ -108,7 +108,7 @@ for my $ccomponent (@connected_components) { # loop over connected components (i
   my $union_size = scalar keys %match_minev;
   
   my $cc_size_all =  scalar keys %id_in_component__q_match_count;
-  print "[ ", join(" ", sort @$ccomponent), " ]   ";
+  print "[ ", join(" ", sort @$ccomponent), " ]   "; # the queries of the nodes in connected component 
   printf("%4i %5i %4.2f %4.2f %4.2f %4.2f\n", $ccsize, $cc_size_all, $sum_id1_matches/($ccsize*$cc_size_all),
 	 $overlap90_count/$count_all, 
 #	 $overlap80_count/$count_all, 
