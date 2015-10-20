@@ -58,7 +58,8 @@ for my $id (keys %id_count){
 		$id_category_string .= (exists $_->{$id})? '1 ' : '0 ';
 	}
 	$vennregion_count{$id_category_string}++;
-	print "$id  $id_category_string \n";
+	my $n_ones = sum(split(" ", $id_category_string));
+	print "$id  $id_category_string   $n_ones\n";
 }
 
 my @nregion_histogram = ((0) x $n_sets);
