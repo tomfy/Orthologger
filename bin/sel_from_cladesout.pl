@@ -62,10 +62,12 @@ while (<>) {
   my @clade_species = ();
   for (my $i=0; $i<$n_clades; $i++) {
     $depths[$i] = $cols[$columns_per_clade*$i];
-    $nparalogs[$i] = $cols[$columns_per_clade*$i + 1] - 1;
-    $ndisallowed[$i] = $cols[$columns_per_clade*$i + 2];
-    $sizes[$i] = ($columns_per_clade > 3)? $cols[$columns_per_clade*$i + 3] : -1;
-    $clade_species[$i] = ($columns_per_clade > 4)? $cols[$columns_per_clade*$i + 4] : -1;
+    $depths[$i] = 10000 if($depths[$i] < 0); 
+my $eps_prod = $cols[$columns_per_clade*$i + 1];
+    $nparalogs[$i] = $cols[$columns_per_clade*$i + 2] - 1;
+    $ndisallowed[$i] = $cols[$columns_per_clade*$i + 3];
+    $sizes[$i] = ($columns_per_clade > 3)? $cols[$columns_per_clade*$i + 4] : -1;
+   # $clade_species[$i] = ($columns_per_clade > 4)? $cols[$columns_per_clade*$i + 4] : -1;
     # print "AAA:  ", $i, "  ", $depths[$i], "  ", $nparalogs[$i], "  ", $ndisallowed[$i], "  ", $sizes[$i], "\n";
   }
 
