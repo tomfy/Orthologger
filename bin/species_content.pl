@@ -105,7 +105,7 @@ use Getopt::Long;
             Brassica_rapa           => 1, # turnip
                Arabidopsis_thaliana    => 1,
             Arabidopsis_lyrata      => 1,
-#  Thellungiella_halophila => 1,
+  Thellungiella_halophila => 1,
             Eutrema_salsugineum => 1, 		  
             Capsella_rubella        => 1,
 
