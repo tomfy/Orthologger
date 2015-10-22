@@ -103,7 +103,7 @@ while (<$fh_in>) {
 	  if ($quality eq 'best') {
 	    $alignment_cl = "mafft --maxiterate 50 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)
 } elsif ($quality eq 'medium'){
-$alignment_cl = "mafft --auto $tmp_filename 2> $stderr_filename";  
+$alignment_cl = "mafft --retree 2 --maxiterate 2 --inputorder $tmp_filename 2> $stderr_filename"; # "mafft --auto $tmp_filename 2> $stderr_filename";  
 } else {		# ($quality eq 'quick'){
 	    $alignment_cl = "mafft --retree 2 --inputorder $tmp_filename 2> $stderr_filename"; # mafft quick
 	  }
