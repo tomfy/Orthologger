@@ -24,6 +24,7 @@ my %match_query = (); # key: match id, value: hashref of query_id:e-value pairs
 my $lines_read = 0;
 while (my $abc_line = <>) {
    $lines_read++;
+next if($abc_line =~ /^\s*$/);
    my ($id1, $id2, $e_value) = split(" ", $abc_line);
    # $e_value = 1;
    if (! exists $query_match{$id1}) {
@@ -112,10 +113,22 @@ for my $ccomponent (@connected_components) { # loop over connected components (i
    my $union_size = scalar keys %match_minev;
    my $cc_size_all =  scalar keys %id_in_component__q_match_count;
    printf("%s  ", join(";", sort @$ccomponent)); # the queries of the nodes in connected component 
-   printf("%4i %5i  %4.2f %4.2f  %4.2f %4.2f %4.2f \n", $ccsize, $cc_size_all, 
+my $cc_edge_count = 0;
+   for my $cc (@$ccomponent){
+      $cc_edge_count += $G->degree($cc);
+   }
+$cc_edge_count /= 2;
+my $max_cc_edge_count = $ccsize*($ccsize-1)/2;
+#print "$cc_edge_count  $max_cc_edge_count \n";
+   printf("%4i %5i  %4.2f %4.2f %4.2f  %4.2f %4.2f %4.2f \n", $ccsize, $cc_size_all, 
           $sum_id1_matches/($ccsize*$cc_size_all), $biggest_q_match_set_size/$union_size, 
+          ($ccsize > 1)? $cc_edge_count/$max_cc_edge_count : 1,
           $overlap90_count/$count_all, $overlap70_count/$count_all, $overlap50_count/$count_all);
+   # while(my($k, $v) = each %match_minev){
+   #    print "minev: $k  $v \n";
+   # }
    for (sort {$match_minev{$a} <=> $match_minev{$b}} keys %match_minev) {
+
       printf("    %1s  %8.3g \n", $_ , $match_minev{$_});
    }
    print "\n";
