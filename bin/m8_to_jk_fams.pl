@@ -121,7 +121,7 @@ while (my $the_line = <$fh_m8_in>) {
   print $fh_abc_out
         "$id1  $id1  $min_ev \n",
           "$top_matches_abc_string",
-            "$extra_matches_abc_string \n";
+            "$extra_matches_abc_string";
 
 
 ##################################################################################################
