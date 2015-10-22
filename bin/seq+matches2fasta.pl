@@ -162,7 +162,54 @@ my $predefined_taxon_groups =
              'Medicago_truncatula' => 1,
 	    },
 
+   '35_AM_angiosperms' => {
+                           'Amborella_trichopoda' => 1, # Amborella
 
+# 12 monocots
+                           'Panicum_virgatum' => 1, # switchgrass
+                           'Panicum_hallii' => 1,
+                           'Zea_mays'                => 1, # maize
+                           'Brachypodium_distachyon' => 1,
+                           'Triticum_urartu' => 1,
+                           'Sorghum_bicolor'         => 1,
+                           'Oryza_sativa'            => 1, # rice
+                           'Hordeum_vulgare' => 1,         # barley
+                           'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
+
+                           'Phoenix_dactylifera'     => 1, # date palm
+                           'Musa_acuminata' => 1,          # banana
+                           'Elaeis_guineensis' => 1,       # oil palm
+
+# 22 dicots
+                           'Aquilegia_coerulea' => 1, # columbine
+
+                           'Solanum_lycopersicum' => 1, # tomato
+                           'Solanum_tuberosum'    => 1, # potato
+                           'Mimulus_guttatus' => 1,     # monkeyflower
+                           'Fraxinus_excelsior' => 1,   # Ash
+                           'Sesamum_indicum' => 1,
+
+                           'Vitis_vinifera'       => 1, # grape
+
+                           'Glycine_max'          => 1, # soy
+                           'Phaseolus_vulgaris' => 1,
+                           #  'Lupinus_angustifolius' => 1,
+                           'Lotus_japonicus' => 1,
+                           'Medicago_truncatula' => 1,
+
+                           'Populus_trichocarpa'  => 1, # poplar
+                           'Ricinus_communis'     => 1, # castor
+                           'Cucumis_sativus'      => 1, # cucumber
+                           'Manihot_esculenta' => 1,
+                           'Salix_purpurea' => 1,
+
+                           'Theobroma_cacao' => 1,
+                           'Carica_papaya' => 1,
+                           'Eucalyptus_grandis' => 1,
+                           'Gossypium_raimondii' => 1,
+                           'Citrus_clementina' => 1,
+                           'Citrus_sinensis' => 1,
+                          },
 
    '23_AMp_dicots' => {
 		       'Aquilegia_coerulea' => 1, # columbine
@@ -324,7 +371,8 @@ my $predefined_taxon_groups =
   };
 
 my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
-	 '22_AMpositive_dicots,9; 12_AMpositive_monocots,4';  #
+	# '22_AMpositive_dicots,9; 12_AMpositive_monocots,4';  #
+'35_AM_angiosperms,14';
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
