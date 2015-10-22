@@ -54,7 +54,7 @@ for my $id1 (keys %query_match) {
    $count_vertices++;
    # only consider for id2 other queries which are matches of id1.
    my $conn_to_id1 = connected_queries($id1, \%query_match, \%match_query, $min_overlap_fraction, \%connected_pairs);
-   print STDERR "adding edges for queries connected to query $id1 \n"; # if($count % 512 == 0);
+   print STDERR "adding edges for queries connected to query $id1 \n"; # if($edge_count % 10000 == 0);
    for my $id2 (@$conn_to_id1) {
       $edge_count++;
       $G->add_edge($id1, $id2);
