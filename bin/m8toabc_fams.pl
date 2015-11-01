@@ -22,6 +22,7 @@ my $diff1 = 0;               #
 my $diff2 = 4;       # $diff1 = 0, $diff2 = 4 -> log10(penalty) = 0,0,
 my $species_list = [];          # array ref
 my $n_top = $default_n_top;
+my $max_eff_eval_factor = 1e200; # or set to just > 1
 
 my %species_rank = (
 # AM non-hosts:
@@ -110,7 +111,7 @@ GetOptions(
            'max_of_species=i' => \$max_of_a_species, 
            'n_top=i' => \$n_top,
            'max_eval=f' => \$max_eval,
-          
+           'max_eff_eval_factor=f' => \$max_eff_eval_factor,
 
            'p_type=s' => \$penalty_type,
            'p_slope=s' => \$log10_eval_penalty,
@@ -119,6 +120,9 @@ GetOptions(
            'p_diff1=f' => \$diff1,
            'p_diff2=f' => \$diff2,
 	  );
+
+my $log10_max_eff_eval = log($max_eval * $max_eff_eval_factor)/log(10.0);
+
 
 my @pows = (0);        # these are the logs (base10) of the penalties.
 if ($penalty_type eq 'quadratic') {
@@ -139,7 +143,7 @@ if ($penalty_type eq 'quadratic') {
    }
 }
 
-my $pow_description = ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[1..25]) . "\n";
+my $pow_description = ($log10_eval_penalty eq 'inf')? "e-value only as tie-breaker \n" : "# log_10 eval penalty factors: " . join(", ", @pows[0..25]) . "\n";
 print STDERR $pow_description;
 
 die "No input filename given. Exiting. \n" if(!defined $m8_filename);
@@ -289,7 +293,7 @@ sub get_fam_string{
       next if($_ eq $id1);      # don't put the query in again!
       my $ev = $id2_ev{$_};
       my $log10ev_eff = $id2_log10eveff{$_};
-
+      last if($log10ev_eff > $log10_max_eff_eval);
       $out_fam_string .= sprintf("%24s  %24s  %8s  %7.2f\n", $id1, $_, $ev, $log10ev_eff);
       # "$id1  $_  $ev  $log10ev_eff \n";
       $fam_size_count++;
