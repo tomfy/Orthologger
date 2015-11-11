@@ -24,7 +24,7 @@ my %match_query = (); # key: match id, value: hashref of query_id:e-value pairs
 my $lines_read = 0;
 while (my $abc_line = <>) {
    $lines_read++;
-next if($abc_line =~ /^\s*$/);
+   next if($abc_line =~ /^\s*$/);
    my ($id1, $id2, $e_value) = split(" ", $abc_line);
    # $e_value = 1;
    if (! exists $query_match{$id1}) {
@@ -60,17 +60,30 @@ for my $id1 (keys %query_match) {
       $edge_count++;
       $G->add_edge($id1, $id2);
    }
- #  $count++;
+   #  $count++;
 }
 print "# conn pairs: ", scalar keys %connected_pairs, " sum of values:  ", sum(values %connected_pairs), "\n";
 
 # Get the connected components; each of which is a set of queries which go in the same family.
 my $sum_sizes = 0;
 print STDERR "Now get connected components of graph.\n";
-my @connected_components = $G->connected_components();
+my %queries_in_biconnected_components = (); # key: core (query) id; value: number of biconn comps it belongs to.
+#my @connected_components = $G->connected_components();
+my @biconnected_components = $G->biconnected_components();
 print STDERR "Done getting connected components. \n";
-print "# Number of connected components: ", scalar @connected_components, "\n";
-for my $ccomponent (@connected_components) { # loop over connected components (i.e. families)
+#print "# Number of connected components: ", scalar @connected_components, "\n";
+print "# Number of connected components: ", scalar @biconnected_components, "\n";
+
+for my $ccomponent (@biconnected_components) { # loop over connected components (i.e. families)
+      cc_analyze($ccomponent, \%query_match);
+}                             # end of loop over connected components.
+#print "# Number of connected components: ", scalar @connected_components, "\n";
+print "# Number of biconnected components: ", scalar @biconnected_components, "\n";
+print "# vertex count: $count_vertices  edge count: $edge_count  sum of connected component sizes: $sum_sizes \n";
+
+sub cc_analyze{
+   my $ccomponent = shift;      # (bi) connected component
+   my $query_match = shift;
    my %id_in_component__q_match_count = (); # keys are ids in family (not just core ids), values are count (of queries that the id matches)
    my %match_minev = (); # keys are ids in family (not just core), values are min e-values over core ids.
    my $biggest_q_match_set_size = -1;
@@ -78,6 +91,7 @@ for my $ccomponent (@connected_components) { # loop over connected components (i
    $sum_sizes += $ccsize; # total number of queries which have been dealt with so far.
    my $sum_id1_matches = 0;
    for my $core_id (@$ccomponent) { # for each core id ...
+      $queries_in_biconnected_components{$core_id}++;
       my $q_match_set_size = scalar keys %{$query_match{$core_id}};
       $sum_id1_matches += $q_match_set_size;
       $biggest_q_match_set_size = max($q_match_set_size, $biggest_q_match_set_size);
@@ -113,13 +127,24 @@ for my $ccomponent (@connected_components) { # loop over connected components (i
    my $union_size = scalar keys %match_minev;
    my $cc_size_all =  scalar keys %id_in_component__q_match_count;
    printf("%s  ", join(";", sort @$ccomponent)); # the queries of the nodes in connected component 
-my $cc_edge_count = 0;
-   for my $cc (@$ccomponent){
-      $cc_edge_count += $G->degree($cc);
+   my $cc_edge_count = 0;
+my $max_cc_edge_count = 0; # = $ccsize*($ccsize-1)/2;
+ #   for my $cc (@$ccomponent) {
+#       $cc_edge_count += $G->degree($cc);
+# #my $pair_id = ($query le $match)? "$query $match" : "$match $query";
+#    }
+   for my $i (0..scalar @$ccomponent-2){
+      my $id_i = $ccomponent->[$i];
+      for my $j ($i+1..scalar @$ccomponent-1) {
+         my $id_j = $ccomponent->[$j];
+         my $pair_id = ($id_i le $id_j)? "$id_i $id_j" : "$id_j $id_i";
+         $max_cc_edge_count++;
+         $cc_edge_count++ if(exists $connected_pairs{$pair_id});
+      }
    }
-$cc_edge_count /= 2;
-my $max_cc_edge_count = $ccsize*($ccsize-1)/2;
-#print "$cc_edge_count  $max_cc_edge_count \n";
+ #  $cc_edge_count /= 2;
+ #  my $max_cc_edge_count = $ccsize*($ccsize-1)/2;
+   #print "$cc_edge_count  $max_cc_edge_count \n";
    printf("%4i %5i  %4.2f %4.2f %4.2f  %4.2f %4.2f %4.2f \n", $ccsize, $cc_size_all, 
           $sum_id1_matches/($ccsize*$cc_size_all), $biggest_q_match_set_size/$union_size, 
           ($ccsize > 1)? $cc_edge_count/$max_cc_edge_count : 1,
@@ -132,9 +157,7 @@ my $max_cc_edge_count = $ccsize*($ccsize-1)/2;
       printf("    %1s  %8.3g \n", $_ , $match_minev{$_});
    }
    print "\n";
-}                             # end of loop over connected components.
-print "# Number of connected components: ", scalar @connected_components, "\n";
-print "# vertex count: $count_vertices  edge count: $edge_count  sum of connected component sizes: $sum_sizes \n";
+}
 
 sub connected_queries{ # given a query id, return a array ref of other queries connected to it.
    # but only the ones which weren't previously found and stored in $connected_pairs 
