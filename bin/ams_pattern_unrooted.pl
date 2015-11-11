@@ -296,6 +296,7 @@ while (<$fh_in>) {
                $the_input_newick = taxonify_newick( $the_input_newick, $seqid_species );
                #	print STDERR "YYY \n";
             }
+	$the_input_newick =~ s/[|]/_/g; #replace pipes with underscores
             ################## CONSTRUCT TREE OBJECT #################################
             my $parser = CXGN::Phylo::Parse_newick->new( $the_input_newick, 0 );
             my $tree = $parser->parse( CXGN::Phylo::BasicTree->new() );
@@ -379,7 +380,13 @@ while (<$fh_in>) {
                   die "node: ", $next_node->get_name(), " has ", scalar @children, " children. ???.\n"
                }
             }
+            for(keys %$species_count){
+               print "$_  ", $species_count->{$_}, "\n";
+            }
             my $cat_spcount = category_count($species_count, $species_category);
+            for(keys %$cat_spcount){
+               print "$_  ", (exists $cat_spcount->{$_})? $cat_spcount->{$_} : 0, "\n";
+            }
 
             my ($Amb_count, $AM_mono_count, $AM_di_count) = (valuez($cat_spcount, 'Amborella'), valuez($cat_spcount, '12_AM_monocots'), valuez($cat_spcount, '23_AM_dicots'));
             printf "$query_sequence_id    ";
@@ -440,8 +447,9 @@ sub species_and_category_counts{
    # my $node_name = $subtree_root->get_name();
    my @ids = @{$subtree_root->get_implicit_names()};
    for my $an_id (@ids) {
+#	print "id: $an_id \n";
       my $species = $id_species->{$an_id};
-      # print "species: $species \n";
+ #     print "species: $species \n";
       my $category = $species_category->{$species};
       # print "cat: $category \n";
       if (! exists $species_count->{$species}) {
@@ -523,7 +531,9 @@ sub store_gg_info {
          $species =~ s/:$//;    # remove final colon if present.
          $species_count{$species}++;
          for (@cols) {
-            $seqid_species{$_} = $species;
+		my $id = $_;
+	$id =~ s/[|]/_/g; # change pipes to underscores.
+            $seqid_species{$id} = $species;
          }
       }
    }                # done storing gg_file info in hash %seqid_species
