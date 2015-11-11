@@ -372,7 +372,7 @@ my $predefined_taxon_groups =
 
 my $default_taxon_requirements_string = # '4_C4_monocots,4'; # 19_non_C4s, 3'; 
 	# '22_AMpositive_dicots,9; 12_AMpositive_monocots,4';  #
-'35_AM_angiosperms,14';
+'35_AM_angiosperms,10';
 my $taxon_requirements_string = $default_taxon_requirements_string;
 my $gg_filename               = undef;                                                    # genome-gene association file
 my $abc_file                  = undef;                                                    # blast output in abc format
