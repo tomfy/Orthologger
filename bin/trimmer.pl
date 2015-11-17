@@ -34,9 +34,6 @@ my ($input_fastas_file1, $input_fastas_file2);
 my ($gt, $ct) = (0.6, 0.4);
 my $output_fastas_file = 'output_fastas_file';
 
-open my $fh_cset, ">", 'comparesetfile';
-print $fh_cset "tmp1\n", "tmp2\n";
-close $fh_cset;
 
 GetOptions(
 	   'in1=s' => \$input_fastas_file1,
@@ -50,6 +47,18 @@ open my $fh1_in, "<", "$input_fastas_file1" or die "Couldn't open $input_fastas_
 open my $fh2_in, "<", "$input_fastas_file2" or die "Couldn't open $input_fastas_file2 for reading.\n";
 
 open my $fh_out, ">", "$output_fastas_file" or die "Couldn't open $output_fastas_file for writing.\n";
+
+
+my $PID = $$;
+my $comparesetfilename = 'comparesetfilename_' . $PID;
+open my $fh_cset, ">", "$comparesetfilename";
+my $tmpfile1 = $PID;
+my $tmpfile2 = $PID;
+$tmpfile1 .= '_tmp1'; # . "$input_fastas_file1";
+$tmpfile2 .= '_tmp2'; # . "$input_fastas_file2";
+print "# input alignment files:  $input_fastas_file1  $input_fastas_file2 \n";
+print $fh_cset "$tmpfile1\n", "$tmpfile2\n";
+close $fh_cset;
 
 my $output_fastas_string = '';
 while (1) {
@@ -66,8 +75,8 @@ while (1) {
    die "ids not equal; id1: $id1  id2: $id2  \n" if($id1 ne $id2);
 
    #print "id1, id2: $id1  $id2  \n";
-   open my $fh1_out, ">", 'tmp1';
-   open my $fh2_out, ">", 'tmp2';
+   open my $fh1_out, ">", "$tmpfile1";
+   open my $fh2_out, ">", "$tmpfile2";
 
    print $fh1_out "$fasta1 \n";
    print $fh2_out "$fasta2 \n";
@@ -75,12 +84,13 @@ while (1) {
    close $fh1_out;
    close $fh2_out;
 
-   my $trimal_out = `trimal -compareset comparesetfile -gt $gt -ct $ct -out tmp_out_fasta`;
+my $tmp_out_fasta_filename = $PID . "_tmp_out.fasta";
+   my $trimal_out = `trimal -compareset $comparesetfilename -gt $gt -ct $ct -out $tmp_out_fasta_filename`;
    # print "$trimal_out \n";
    $trimal_out =~ /File Selected:\s+(\S+)/;
    print STDERR $1, "\n";
-   my $fasta_out_string = `cat tmp_out_fasta`;
-   my $trimalout_idline = ($1 eq 'tmp1')? $idline1 : $idline2;
+   my $fasta_out_string = `cat $tmp_out_fasta_filename`;
+   my $trimalout_idline = ($1 eq "$tmpfile1")? $idline1 : $idline2;
    $output_fastas_string .= "$trimalout_idline" . "$fasta_out_string" . "\n";
    print $fh_out $output_fastas_string;
    $output_fastas_string = '';
