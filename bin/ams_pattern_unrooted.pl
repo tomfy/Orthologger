@@ -176,6 +176,29 @@ my $category_species =
                                'Spirodela_polyrhiza' => 1, # duckweed - monocot
                                'Zostera_marina' => 1,
                               },
+   # '20_nons' => {
+   #               'Ostreococcus_tauri' => 1,
+   #               'Ostreococcus_lucimarinus' => 1,
+   #               'Volvox_carteri' => 1,
+   #               'Chlamydomonas_reinhardtii'  => 1,
+   #               'Physcomitrella_patens'      => 1, 
+   #               'Selaginella_moellendorffii' => 1, 
+   #               'Picea_abies' => 1,             # norway spruce
+   #               'Brassica_rapa'           => 1, # turnip
+   #               'Arabidopsis_thaliana'    => 1,
+   #               'Arabidopsis_lyrata'      => 1,
+   #               'Thellungiella_halophila' => 1,
+   #               'Eutrema_salsugineum' => 1,
+   #               'Capsella_rubella'        => 1,
+   #               'Tarenaya_hassleriana' => 1,
+   #               'Beta_vulgaris' => 1,
+   #               'Spinacia_oleracea' => 1,
+   #               'Nelumbo_nucifera' => 1,
+   #               'Utricularia_gibba' => 1,
+   #               'Dianthus_caryophyllus' => 1,
+   #               'Spirodela_polyrhiza' => 1, # duckweed - monocot
+   #               'Zostera_marina' => 1,
+   #              }
   };
 
 my $species_category = {};
@@ -196,17 +219,20 @@ my $type_to_show = 'ALL';	# other possibilities: 'NJ', 'ML'
 my $species_to_show = undef; # for each clade, output the ids of this species in the clade.
 my $show_clade_species = 0;
 my $max_allowed_nonAM = 0;
+my $max_allowed_nonang = 1000;
+my $disallowed_group = '20_nons';
 # Process long cl options
 GetOptions(
 	   'input_newicks=s' => \$input_newicks_filename,
 	   'clade_specifiers=s' => \$clade_specifiers,
+           'disallowed_group=s' => \$disallowed_group, # def: '20_nons', or, e.g.: '13_nonAM_angiosperms' ...
 	   'disallowed_species=s' =>
 	   \$disallowed_species, # either: name of predefined taxon group, or comma separated taxa names:
 	   # e.g. 'Arabidopsis_thaliana, Brassica_rapa'
 	   'maxnbs=i' => \$max_nbs,
 	   # The following 3 options typically will not be used because the gene-genome association and tree rooting has already
 	   # been done at an earlier stage. One can however choose to reroot the trees in a different way at this point.
-	   'ggfile=s'        => \$gg_filename, # defines species-sequence association. Optional if these are already in newick expressions.
+	   'ggfile=s'        => \$gg_filename, # defines species-sequence association.
 	   # gg file has 1 line per species: species name followed by whitespace-separated sequence ids.
 	   'reroot=s' => \$reroot_method, # selects rerooting method. options: none, midpoint, minvar, mindl. 
 	   'speciestreefile=s'  => \$species_tree_newick_file, # to override built-in species tree with 52 species
@@ -260,8 +286,9 @@ print "# ", scalar @sspecies, " species: \n# ", join("\n# ", @sspecies), "\n";
 #exit;
 my $BS_count = 0;
 while (<$fh_in>) {
-   if (/^Id\s+(\S+)\s+(\S+)/) {
+   if (/^Id\s+(\S+)\s.*fam_size:\s+(\d+)/) {
       my $query_sequence_id = $1; # query id
+      my $family_size = $2;
       next if(defined $id_to_show and ($query_sequence_id ne $id_to_show));	
       my $next_line   = <$fh_in>;
       my $type        = undef;
@@ -314,20 +341,25 @@ while (<$fh_in>) {
 
             ##################### REROOTING ##########################################
             my @leaves = $tree->get_leaves();
-            my $query_node;
+            my $query_node = undef;
             for my $a_leaf (@leaves) {
-               # print "X: $query_sequence_id  ", $a_leaf->get_name(), "\n";
+           #    print "X: $query_sequence_id  ", $a_leaf->get_name(), "\n";
                if ($a_leaf->get_name() eq $query_sequence_id) {
                   $query_node = $a_leaf;
                   last;
                }
+            }
+           # print STDERR "fam sizes: $family_size  ", scalar @leaves, "\n";
+            if(($family_size != scalar @leaves) or (!defined $query_node)){
+               print STDERR "Query $query_sequence_id, not found in tree, or family size discrepancy: $family_size  ", scalar @leaves, ". Skipping. \n";
+               next;
             }
             $tree->reset_root_to_point_on_branch($query_node, 0.5*$query_node->get_branch_length());
             $tree->get_root()->recursive_implicit_names(); # is this needed?
 
             #   print $tree->generate_newick(), "\n";
 
-            my $species_count = {$seqid_species->{$query_sequence_id} => 1}; 
+            my $species_count = {$seqid_species->{$query_sequence_id} => 1};
             #species_and_category_counts($tree->get_root(), $seqid_species, $species_category);
             # for (keys %$species_count) {
             #    print "$query_sequence_id   $_  ", $species_count->{$_}, "\n";
@@ -352,12 +384,17 @@ while (<$fh_in>) {
                   #     print "R:  ", join(", ", keys %$Rspecies_count), "\n";
                   my $L_AM_OK = valuez($Lcat_spcount, '13_nonAM_angiosperms') <= $max_allowed_nonAM;
                   # (!exists $Lcat_spcount->{'13_nonAM_angiosperms'} or $Lcat_spcount->{'13_nonAM_angiosperms'} <= $max_allowed_nonAM)? 1 : 0;
+                  my $L_nonang_OK = valuez($Lcat_spcount, '7_nonangiosperms') <= $max_allowed_nonang;
                   my $R_AM_OK = valuez($Rcat_spcount, '13_nonAM_angiosperms') <= $max_allowed_nonAM;
+                  my $R_nonang_OK = valuez($Rcat_spcount, '7_nonangiosperms') <= $max_allowed_nonang;
                   # (!exists $Rcat_spcount->{'13_nonAM_angiosperms'} or $Rcat_spcount->{'13_nonAM_angiosperms'} <= $max_allowed_nonAM)? 1 : 0;
                   #        my $L_AMangio_count = $Lcat_spcount->{'35_AM_angiosperms'};
                   #        my $R_AMangio_count = $Lcat_spcount->{'35_AM_angiosperms'};
-                  if ($L_AM_OK) {
-                     if ($R_AM_OK) { # both subtrees have no nonAM's (whole tree has only AM's, nonangios)
+                  my $L_OK = ($L_AM_OK and $L_nonang_OK);
+                  my $R_OK = ($R_AM_OK and $R_nonang_OK);
+
+                  if ($L_OK) {
+                     if ($R_OK) { # both subtrees have no nonAM's (whole tree has only AM's, nonangios)
                         ($species_count, my $cat_spcount) = species_and_category_counts($tree->get_root(), $seqid_species, $species_category);
                         last;
                      } else {   # R subtree has nonAM's
@@ -365,14 +402,14 @@ while (<$fh_in>) {
                         $next_node = $children[1];
                      }
                   } else {      # L subtree has nonAM's
-                     if ($R_AM_OK) {
+                     if ($R_OK) {
                         $species_count = add_species_count_hashes($species_count, $Rspecies_count);
                         $next_node = $children[0];
                      } else {   # both subtrees have nonAM's -- done
                         last;
                      }
                   }
-               } elsif ($n_children == 0) { # to get here next_node must be a single nonAM leaf -- done
+               } elsif ($n_children == 0) { # to get here next_node must be a single nonAM leaf -- done                  
                   last;
                } elsif ($n_children > 2) {
                   die "node: ", $next_node->get_name(), " has ", scalar @children, " children (not binary tree).\n"
@@ -380,13 +417,13 @@ while (<$fh_in>) {
                   die "node: ", $next_node->get_name(), " has ", scalar @children, " children. ???.\n"
                }
             }
-            for(keys %$species_count){
-               print "$_  ", $species_count->{$_}, "\n";
-            }
+            # for(keys %$species_count){
+            #    print "$_  ", $species_count->{$_}, "\n";
+            # }
             my $cat_spcount = category_count($species_count, $species_category);
-            for(keys %$cat_spcount){
-               print "$_  ", (exists $cat_spcount->{$_})? $cat_spcount->{$_} : 0, "\n";
-            }
+            # for(keys %$cat_spcount){
+            #    print "$_  ", (exists $cat_spcount->{$_})? $cat_spcount->{$_} : 0, "\n";
+            # }
 
             my ($Amb_count, $AM_mono_count, $AM_di_count) = (valuez($cat_spcount, 'Amborella'), valuez($cat_spcount, '12_AM_monocots'), valuez($cat_spcount, '23_AM_dicots'));
             printf "$query_sequence_id    ";
