@@ -139,26 +139,22 @@ my $species_tree = get_species_tree($species_tree_newick_file);
 my $spnewick = $species_tree->generate_newick();
 print STDERR "Species tree to be used in rooting trees: [$spnewick]\n";
 my ($n_ft, $n_phyml) = (0, 0);
-while (<$fh_in>) {
-  if ( $state eq 'idline' ) {
-    my @cols = split( " ", $_ );
-    ( $qid, $fam_size, $taxa) = @cols[ 1, 4, 5];
-    $idline = $_;
-    $state  = 'fasta';
-    $fasta  = '';
-  } elsif ( $state eq 'fasta' ) {
-    if (/^\s*$/) { # blank line after sequence -> process the sequence.
-      chomp $idline;
-      my $string_to_print = "$idline   ";
+while (1){ #  (<$fh_in>) {
+   my ($idline, $fasta, $idline_famsize, $famsize) = next_align();
+last if($idline eq '');
+   $idline =~ /^Id\s+(\S+)/;
+   my $qid = $1;
+$idline =~ s/\n//;
+   my $string_to_print = "$idline   "; # . "$fasta";
       my $rng_seed = srand();
-      if ($fasta ne '') {
+   
 	my $overlap_obj =
 	  CXGN::Phylo::Overlap->new( $fasta, $nongap_fraction,
 				     $rng_seed );
 	my $overlap_fasta_string =
 	  $overlap_obj->overlap_fasta_string('');
 	my $overlap_length = $overlap_obj->get_overlap_length();
-	print STDERR  "$qid  $fam_size  $overlap_length.\n";
+	print STDERR  "$qid  $famsize  $overlap_length.\n";
 	$string_to_print .= "$overlap_length ";
 	if ( $overlap_length >= $min_overlap_length and $overlap_length <= $max_overlap_length) { # sufficient overlap
 	  ################## do actual data - NJ  ########################################
@@ -240,15 +236,6 @@ while (<$fh_in>) {
 	else {	     # overlap is too short - just print a blank line.
 	  print $fh_out "$string_to_print Overlap too short. \n\n";
 	}
-      }				# end of if $fasta ne '' 
-      else {			# there is no alignment.
-	print $fh_out "$string_to_print No alignment in alfastas file. \n\n";
-      }
-      $state = 'idline';
-    } else {			# not an empty line - append to $fasta
-      $fasta .= $_;
-    }
-  }
 }
 my $end_time = time();
 print STDERR "ended at: ", timestring($end_time) , ". Run time ", $end_time - $start_time, " seconds. \n";
@@ -408,4 +395,33 @@ sub put_min_branchlengths_into_newick{
   my $min_bl = shift || 0.00001;
   $newick =~ s/:0[.]0+([,)])/:$min_bl$1/g;
   return $newick;
+}
+
+
+# read in next alignment from STDIN (alfastas file format);
+# expect Id ... line, then fasta lines (w gaps),
+# then blank line (or EOF?)
+# if there is no next alignment (i.e. hit EOF before Id ... line), then returns ('', '', undef, 0)
+sub next_align{
+ #  my $fh = shift;
+   my $id_line = '';
+   my $idline_famsize;
+   my $count_famsize= 0;
+   my $fasta = '';
+   while (<>) {
+      next if(/^\s*#/);
+      if (/^Id.*fam_size:\s*(\d+)/) {
+         $id_line = $_;
+         $idline_famsize = $1;
+         last;
+      } else {
+         warn "Expected next line to start with 'Id ', but didn't.\n";
+      }
+   }
+   while (<>) {
+      last if(/^\s*$/);         # blank line - done
+      $count_famsize++ if(/^>/);
+      $fasta .= $_;
+   }
+   return ($id_line, $fasta, $idline_famsize, $count_famsize);
 }
