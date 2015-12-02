@@ -16,7 +16,7 @@ while (<>) {
       $id = $1; $fs = $2;
    } elsif (/^\s*$/) {
       my $OK = ($fs == $numb_eq);
-      print "$id  $fs  $numb_eq ", 
+      print "$id  $fs  $numb_eq    ", 
         $OK? "OK" : "XX", "\n" if($verbose or ($fs != $numb_eq));
    }
 }
