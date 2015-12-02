@@ -2,11 +2,11 @@
 use strict;
 use Getopt::Long;
 print "# select_from_cladesout.pl  ", join(" ", @ARGV), "\n";
-my $nesting_string = ''; #
+my $nesting_string = '2<3,3<4,3<5'; #
 my $min_paralogs = 0;
 my $max_paralogs_string = '';
 my $max_disallowed_string = '';
-my $clades_required_string = '';
+my $clades_required_string = '2,3';
 
 # Process long cl options
 GetOptions(
