@@ -354,6 +354,7 @@ while (<$fh_in>) {
                print STDERR "Query $query_sequence_id, not found in tree, or family size discrepancy: $family_size  ", scalar @leaves, ". Skipping. \n";
                next;
             }
+            my $seqid_presence = {$query_sequence_id => 1}; # this hash holds the ids in the maximal part of tree containing query and only AM hosts.
             $tree->reset_root_to_point_on_branch($query_node, 0.5*$query_node->get_branch_length());
             $tree->get_root()->recursive_implicit_names(); # is this needed?
 
@@ -378,11 +379,11 @@ while (<$fh_in>) {
 
                # if($n_children > 2);
                if ($n_children == 2) {
-                  my ($Lspecies_count, $Lcat_spcount) =  species_and_category_counts($children[0], $seqid_species, $species_category);
+                  my ($Lspecies_count, $Lcat_spcount, $Lid_presence) =  species_and_category_counts($children[0], $seqid_species, $species_category);
                   #     print "L:  ", join(", ", keys %$Lspecies_count), "\n";
-                  my ($Rspecies_count, $Rcat_spcount) =  species_and_category_counts($children[1], $seqid_species, $species_category);
+                  my ($Rspecies_count, $Rcat_spcount, $Rid_presence) =  species_and_category_counts($children[1], $seqid_species, $species_category);
                   #     print "R:  ", join(", ", keys %$Rspecies_count), "\n";
-                  my $L_AM_OK = valuez($Lcat_spcount, '13_nonAM_angiosperms') <= $max_allowed_nonAM;
+                  my $L_AM_OK = valuez($Lcat_spcount, '13_nonAM_angiosperms') <= $max_allowed_nonAM; # number of nonAMang species found in L subtree is <= max_allowed_nonAM
                   # (!exists $Lcat_spcount->{'13_nonAM_angiosperms'} or $Lcat_spcount->{'13_nonAM_angiosperms'} <= $max_allowed_nonAM)? 1 : 0;
                   my $L_nonang_OK = valuez($Lcat_spcount, '7_nonangiosperms') <= $max_allowed_nonang;
                   my $R_AM_OK = valuez($Rcat_spcount, '13_nonAM_angiosperms') <= $max_allowed_nonAM;
@@ -392,24 +393,27 @@ while (<$fh_in>) {
                   #        my $R_AMangio_count = $Lcat_spcount->{'35_AM_angiosperms'};
                   my $L_OK = ($L_AM_OK and $L_nonang_OK);
                   my $R_OK = ($R_AM_OK and $R_nonang_OK);
-
+              #    print "    [[", keys %$seqid_presence, "]] \n";
                   if ($L_OK) {
+                     $seqid_presence = add_hashes($seqid_presence, $Lid_presence);
                      if ($R_OK) { # both subtrees have no nonAM's (whole tree has only AM's, nonangios)
                         ($species_count, my $cat_spcount) = species_and_category_counts($tree->get_root(), $seqid_species, $species_category);
+                        $seqid_presence = add_hashes($seqid_presence, $Rid_presence);
                         last;
                      } else {   # R subtree has nonAM's
-                        $species_count = add_species_count_hashes($species_count, $Lspecies_count);
+                        $species_count = add_hashes($species_count, $Lspecies_count);
                         $next_node = $children[1];
                      }
                   } else {      # L subtree has nonAM's
                      if ($R_OK) {
-                        $species_count = add_species_count_hashes($species_count, $Rspecies_count);
+                        $species_count = add_hashes($species_count, $Rspecies_count);
+                        $seqid_presence = add_hashes($seqid_presence, $Rid_presence);
                         $next_node = $children[0];
                      } else {   # both subtrees have nonAM's -- done
                         last;
                      }
                   }
-               } elsif ($n_children == 0) { # to get here next_node must be a single nonAM leaf -- done                  
+               } elsif ($n_children == 0) { # to get here next_node must be a single nonAM leaf -- done
                   last;
                } elsif ($n_children > 2) {
                   die "node: ", $next_node->get_name(), " has ", scalar @children, " children (not binary tree).\n"
@@ -426,14 +430,13 @@ while (<$fh_in>) {
             # }
 
             my ($Amb_count, $AM_mono_count, $AM_di_count) = (valuez($cat_spcount, 'Amborella'), valuez($cat_spcount, '12_AM_monocots'), valuez($cat_spcount, '23_AM_dicots'));
+            my @ids_in_qAM_subtree = keys %$seqid_presence;
             printf "$query_sequence_id    ";
-            printf("%3i %3i %3i  %3i   %3i \n", 
+            printf("%3i %3i %3i  %3i   %3i   ", 
                    $Amb_count, $AM_mono_count, $AM_di_count, 
                    sum($Amb_count, $AM_mono_count, $AM_di_count), valuez($cat_spcount, '7_nonangiosperms'));
-            # for(sort keys %$species_count){
-            #    print "   $_  ", $species_count->{$_}, "\n";
-            # }
-
+            print "[", join(" ", @ids_in_qAM_subtree), "]", "\n";
+           
             $tree->impose_branch_length_minimum(1);
             $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
          }
@@ -465,7 +468,7 @@ sub category_count{
    return $cat_spcount;
 }
 
-sub add_species_count_hashes{
+sub add_hashes{
    my $sc1 = shift;
    my $sc2 = shift;
    while ( my ($sp, $c) = each %$sc2) {
@@ -480,13 +483,15 @@ sub species_and_category_counts{
    my $species_category = shift; # keys are species names (e.g. 'Aquilegia_coerulea'), values categories (e.g. '35_AM_angiosperms')
    my $species_count = {};
    my $category_speciescount = {};
+   my %subtree_id_presence = (); # keys: ids in subtree, values: 1
    #  my $category_count = {};
    # my $node_name = $subtree_root->get_name();
    my @ids = @{$subtree_root->get_implicit_names()};
    for my $an_id (@ids) {
+      $subtree_id_presence{$an_id} = 1;
 #	print "id: $an_id \n";
       my $species = $id_species->{$an_id};
- #     print "species: $species \n";
+ #    print "id, species: $an_id  $species \n";
       my $category = $species_category->{$species};
       # print "cat: $category \n";
       if (! exists $species_count->{$species}) {
@@ -498,7 +503,7 @@ sub species_and_category_counts{
    # for(keys %$species_count){
    #    $category_speciescount->{$species_category->{$_}}++;
    # }
-   return ($species_count, $category_speciescount); # , $category_count);
+   return ($species_count, $category_speciescount, \%subtree_id_presence); # , $category_count);
 }
 
 sub reroot {
