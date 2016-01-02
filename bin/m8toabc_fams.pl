@@ -18,11 +18,11 @@ my $fam_size_limit = undef;
 my $penalty_type = 'quadratic'; # none, knee, quadratic
 my $penalty_knee = 5; # beyond this number of matches of a species, penalize the e-value.
 my $log10_eval_penalty = 10; #'inf'; # log10_eval_penalty = 'inf' => just take top n of each species 
-my $diff1 = 0;               # 
-my $diff2 = 4;       # $diff1 = 0, $diff2 = 4 -> log10(penalty) = 0,0,
+my $diff1 = 7;               # 
+my $diff2 = 2;       # $diff1 = 0, $diff2 = 4 -> log10(penalty) = 0,0,
 my $species_list = [];          # array ref
 my $n_top = $default_n_top;
-my $max_eff_eval_factor = 1e200; # or set to just > 1
+my $max_eff_eval_factor = 1.01; # 1e200; # or set to just > 1
 
 my %species_rank = (
 # AM non-hosts:
@@ -108,7 +108,7 @@ GetOptions(
            'ggfilename=s' => \$ggfilename,
 
 	   'fam_size_limit=i' => \$fam_size_limit, # default size limit is n_species * 4
-           'max_of_species=i' => \$max_of_a_species, 
+           'max_of_species=i' => \$max_of_a_species,
            'n_top=i' => \$n_top,
            'max_eval=f' => \$max_eval,
            'max_eff_eval_factor=f' => \$max_eff_eval_factor,
@@ -272,7 +272,7 @@ sub get_fam_string{
          $species_count{$species}++;
          my $sp_count = $species_count{$species};
          my $log10ev = log($ev)/log(10.0);
-         my $log10eveff = $log10ev + $powers->[min($sp_count, $max_n_of_species)];
+         my $log10eveff = $log10ev + $powers->[min($sp_count, $max_n_of_species)-1];
          $id2_log10eveff{$id2} = $log10eveff;
       } else {
          die "Id $id2 has no species defined. \n";
