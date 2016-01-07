@@ -9,14 +9,14 @@ use strict;
 my $qids_filename_or_id = shift;	# has ids in first column
 my $newicks_filename = shift;
 my $groups = shift || 'AM';     # or C4
-my $wdotn = shift || 0;
+my $with_dotn = shift || 0;
 
 my %qids = ();
 if (open my $fh_qids, "<", "$qids_filename_or_id") { #  or die "Cant open $qids_filename_or_id for reading. \n";
    while (<$fh_qids>) {
       if (/^\s*(\S+)/) {
          my $theid = $1;
-         $theid =~ s/\.\d+\s*$// if(! $wdotn);
+         $theid =~ s/\.\d+\s*$// if(! $with_dotn);
          $qids{$theid}++;
       }
    }
