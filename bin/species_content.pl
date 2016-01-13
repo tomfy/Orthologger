@@ -91,7 +91,7 @@ use Getopt::Long;
             'Oryza_sativa'            => 1, # rice
 
          },
-         '8_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
+         '7_basals' => { # which branch off before the monocot-dicot split; Amborella & non-angiosperms.
             'Ostreococcus_tauri' => 1,
             'Ostreococcus_lucimarinus' => 1,
             'Volvox_carteri' => 1,
@@ -99,6 +99,8 @@ use Getopt::Long;
             'Physcomitrella_patens'      => 1, 
             'Selaginella_moellendorffii' => 1, 
             'Picea_abies' => 1, # norway spruce
+}, 
+'amborella' => {
                'Amborella_trichopoda' => 1
          },
          '13_AMnegatives' =>  {
@@ -135,7 +137,7 @@ my %group_speciescount = ();
 my @group_list = (
 # '23_AMp_dicots', 
       '22_AMp_dicots', 
-      '12_AMp_monocots', '8_basals', '13_AMnegatives');
+      '12_AMp_monocots', 'amborella', '7_basals', '13_AMnegatives');
 
 my @species = ();
 for my $grp (@group_list){
