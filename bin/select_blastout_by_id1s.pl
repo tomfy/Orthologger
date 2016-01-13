@@ -5,11 +5,14 @@ use strict;
 # 2nd argument: a m8 format blastout file (or abc)
 
 my $ids_filename = shift; # ids are in 1st columns, other cols ignored
-my $m8_filename = shift;
+my $m8_filename_pattern = shift;
 
 open my $fh_ids, "<", "$ids_filename" or die "couldn't open $ids_filename for reading.\n";
 
-open my $fh_m8, "<", "$m8_filename" or die "couldn't open $m8_filename for reading.\n";
+#
+my @m8_filenames = `ls $m8_filename_pattern`;
+
+
 
 my %ids = ();
 while(<$fh_ids>){
@@ -20,6 +23,8 @@ while(<$fh_ids>){
 }
 close $fh_ids;
 
+for my $m8filename (@m8_filenames){
+open my $fh_m8, "<", "$m8filename" or die "couldn't open $m8filename for reading.\n";
 my $print_this_line = 0;
 while(<$fh_m8>){
   if(/^\s*(\S+)/){
@@ -28,3 +33,4 @@ while(<$fh_m8>){
   print if($print_this_line);
 }
 close $fh_m8;
+}
