@@ -10,20 +10,27 @@ use File::Basename 'dirname';
 use Cwd 'abs_path';
 my ( $bindir, $libdir );
 
-BEGIN {
-   $bindir = dirname( abs_path(__FILE__) ); # this has to go in Begin block so happens at compile time
-   $libdir = $bindir . '/../lib';
+BEGIN {	    # this has to go in Begin block so happens at compile time
+  $bindir =
+    dirname( abs_path(__FILE__) ) ; # the directory containing this script (i.e. Orthologger/bin )
+  $libdir = $bindir . '/../lib';
+  $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
+#use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
 
-
 use Getopt::Long;
-
+use CXGN::Phylo::Overlap;
 use CXGN::Phylo::Parser;
 use CXGN::Phylo::BasicTree;
 use CXGN::Phylo::File;
 use CXGN::Phylo::Species_name_map;
-use CXGN::Phylo::CladeSpecifier;
+
+use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+
+
+
+
 
 my $default_gg_file_path           = undef;
 my $default_species_tree_file_path = undef;
@@ -50,6 +57,7 @@ my $clade_specifiers =
 
 my $category_species =
   { # hashref. keys are names of predef taxon groups; values are hashrefs (keys taxa, values 1)
+   'unknown' => {'unknown' => 1},
 
    # Amborella:
    'Amborella' => {
@@ -174,7 +182,7 @@ my $category_species =
                                Utricularia_gibba => 1,
                                'Dianthus_caryophyllus' => 1,
                                'Spirodela_polyrhiza' => 1, # duckweed - monocot
-                               'Zostera_marina' => 1,
+                               'Zostera_marina' => 1, # eelgras - monocot
                               },
    # '20_nons' => {
    #               'Ostreococcus_tauri' => 1,
@@ -489,10 +497,17 @@ sub species_and_category_counts{
    my @ids = @{$subtree_root->get_implicit_names()};
    for my $an_id (@ids) {
       $subtree_id_presence{$an_id} = 1;
-#	print "id: $an_id \n";
-      my $species = $id_species->{$an_id};
- #    print "id, species: $an_id  $species \n";
+      #	print "id: $an_id \n";
+      
+      my $species = 'unknown';
+      if (exists $id_species->{$an_id}) {
+         $species =  $id_species->{$an_id};
+      } else {
+         print STDERR "$an_id  $species \n" if(! $an_id =~ /^jgi/);
+      }
+      #    print "id, species: $an_id  $species \n";
       my $category = $species_category->{$species};
+      
       # print "cat: $category \n";
       if (! exists $species_count->{$species}) {
          $category_speciescount->{$category}++;
@@ -561,26 +576,26 @@ sub reroot {
    return $tree;
 }
 
-sub store_gg_info {
-   my $gg_filename   = shift;
-   my %seqid_species = ();
-   my %species_count = ();
-   if ( defined $gg_filename and -f $gg_filename ) {
-      open my $fh_gg, "<", "$gg_filename";
-      while (<$fh_gg>) {
-         my @cols = split( " ", $_ );
-         my $species = shift @cols;
-         $species =~ s/:$//;    # remove final colon if present.
-         $species_count{$species}++;
-         for (@cols) {
-		my $id = $_;
-	$id =~ s/[|]/_/g; # change pipes to underscores.
-            $seqid_species{$id} = $species;
-         }
-      }
-   }                # done storing gg_file info in hash %seqid_species
-   return (\%seqid_species, \%species_count);
-}
+# sub store_gg_info {
+#    my $gg_filename   = shift;
+#    my %seqid_species = ();
+#    my %species_count = ();
+#    if ( defined $gg_filename and -f $gg_filename ) {
+#       open my $fh_gg, "<", "$gg_filename";
+#       while (<$fh_gg>) {
+#          my @cols = split( " ", $_ );
+#          my $species = shift @cols;
+#          $species =~ s/:$//;    # remove final colon if present.
+#          $species_count{$species}++;
+#          for (@cols) {
+# 		my $id = $_;
+# 	$id =~ s/[|]/_/g; # change pipes to underscores.
+#             $seqid_species{$id} = $species;
+#          }
+#       }
+#    }                # done storing gg_file info in hash %seqid_species
+#    return (\%seqid_species, \%species_count);
+# }
 
 sub taxonify_newick {
    my $newick        = shift;
