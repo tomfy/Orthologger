@@ -174,7 +174,7 @@ my $predefined_taxon_groups =
                            'Sorghum_bicolor'         => 1,
                            'Oryza_sativa'            => 1, # rice
                            'Hordeum_vulgare' => 1,         # barley
-                           'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
+                           'Phyllostachys_heterocycla' => 1, # bamboo
 
                            'Phoenix_dactylifera'     => 1, # date palm
                            'Musa_acuminata' => 1,          # banana
