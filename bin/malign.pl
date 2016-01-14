@@ -101,7 +101,10 @@ while (<$fh_in>) {
 	  $alignment_cl = "muscle -in $tmp_filename -maxiters $maxiters -maxhours 0.4  2> $stderr_filename";
 	} elsif ($align_program eq 'mafft') {
 	  if ($quality eq 'best') {
-	    $alignment_cl = "mafft --maxiterate 25 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft)
+	    $alignment_cl = 
+              "mafft --maxiterate 25 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft);
+         } elsif ($quality eq 'groovy'){ # better than 'medium', not as good as 'best'
+             "mafft --retree 2 --maxiterate 25 --inputorder $tmp_filename 2> $stderr_filename";
 } elsif ($quality eq 'medium'){
 $alignment_cl = "mafft --retree 2 --maxiterate 2 --inputorder $tmp_filename 2> $stderr_filename"; # "mafft --auto $tmp_filename 2> $stderr_filename";  
 } else {		# ($quality eq 'quick'){
