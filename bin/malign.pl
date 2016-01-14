@@ -87,7 +87,7 @@ while (<$fh_in>) {
 	close $fh_temp;
 
 	my $alignment_cl;
-	if ($quality ne 'best'  and  $quality  ne  'quick' and $quality ne 'medium') {
+	if ($quality ne 'best'  and  $quality  ne  'quick' and $quality ne 'medium' and $quality ne 'groovy') {
 	  warn "Parameter quality set to $quality. Not implemented. Using default ('medium') quality.";
 	}
 	if ($align_program eq 'muscle') {
@@ -104,7 +104,7 @@ while (<$fh_in>) {
 	    $alignment_cl = 
               "mafft --maxiterate 25 --localpair  --inputorder $tmp_filename 2> $stderr_filename"; # L-INS-i (best mafft);
          } elsif ($quality eq 'groovy'){ # better than 'medium', not as good as 'best'
-             "mafft --retree 2 --maxiterate 25 --inputorder $tmp_filename 2> $stderr_filename";
+             $alignment_cl = "mafft --retree 2 --maxiterate 25 --inputorder $tmp_filename 2> $stderr_filename";
 } elsif ($quality eq 'medium'){
 $alignment_cl = "mafft --retree 2 --maxiterate 2 --inputorder $tmp_filename 2> $stderr_filename"; # "mafft --auto $tmp_filename 2> $stderr_filename";  
 } else {		# ($quality eq 'quick'){
