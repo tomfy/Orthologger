@@ -67,7 +67,7 @@ while (my $idline = <$fhin>) {
       }
 
    }                            # end loop over query ids in clump
-   print STDERR "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
+   #print STDERR "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
    $clump_id_number++;
 }
 close $fhin;
@@ -96,7 +96,7 @@ my @sorted_clump_numbers = sort { scalar keys %{$clumpidnumber_allidset{$b}} <=>
 print STDERR "# clump id, n_qids, n_all_ids: \n";
 for my $clump_id (@sorted_clump_numbers) {
    print STDERR "$clump_id  ", 
-     scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "  "
+     scalar keys %{$clumpidnumber_qidset{$clump_id}}, "  ", 
      scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";
 
    my @ids =  sort { $clumpidnumber_allidset{$clump_id}->{$b} <=> $clumpidnumber_allidset{$clump_id}->{$a} } keys %{$clumpidnumber_allidset{$clump_id}};
