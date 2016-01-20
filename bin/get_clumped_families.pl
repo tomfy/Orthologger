@@ -5,27 +5,27 @@ use Getopt::Long;
 # use IPC::Run3;
 use List::Util qw (min max sum);
 
-no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+# no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
 
-use File::Basename 'dirname';
-use Cwd 'abs_path';
-my ( $bindir, $libdir );
+# use File::Basename 'dirname';
+# use Cwd 'abs_path';
+# my ( $bindir, $libdir );
 
-BEGIN {	    # this has to go in Begin block so happens at compile time
-   $bindir =
-     dirname( abs_path(__FILE__) ) ; # the directory containing this script (i.e. Orthologger/bin )
-   $libdir = $bindir . '/../lib';
-   $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
-}
-use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
-use lib $libdir;
+# BEGIN {	    # this has to go in Begin block so happens at compile time
+#    $bindir =
+#      dirname( abs_path(__FILE__) ) ; # the directory containing this script (i.e. Orthologger/bin )
+#    $libdir = $bindir . '/../lib';
+#    $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
+# }
+# use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
+# use lib $libdir;
 
-use Phyml;
-use CXGN::Phylo::Overlap;
-use CXGN::Phylo::Parser;
-use CXGN::Phylo::BasicTree;
-use CXGN::Phylo::File;
-use CXGN::Phylo::Species_name_map;
+# use Phyml;
+# use CXGN::Phylo::Overlap;
+# use CXGN::Phylo::Parser;
+# use CXGN::Phylo::BasicTree;
+# use CXGN::Phylo::File;
+# use CXGN::Phylo::Species_name_map;
 
 #use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
@@ -72,7 +72,7 @@ while (my $idline = <$fhin>) {
 }
 
 my %clumpidnumber_allidset = (); 
-while (my($sp,$abcfilename) = each %species_abcfile) {
+while (my($sp,$abc_filename) = each %species_abcfile) {
    open my $fhabc, "<", "$abc_filename" or die "couldn't open $abc_filename for reading. \n";
    while (my $abcline = <$fhabc>) {
       my @abccols = split(" ", $abcline);
@@ -94,5 +94,5 @@ while (my($sp,$abcfilename) = each %species_abcfile) {
 my @sorted_clump_numbers = sort { scalar keys %{$clumpidnumber_allidset{$a}} <=> scalar keys %{$clumpidnumber_allidset{$b}} } keys %clumpidnumber_allidset;
 
 for my $clump_id (@sorted_clump_numbers){
- print "$clump_id  ", scalar keys %{$lcumpidnumber_allidset{$clump_id}}, "\n";  
+ print "$clump_id  ", scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";  
 }
