@@ -91,7 +91,7 @@ while (my($sp,$abc_filename) = each %species_abcfile) {
    close $fhabc;
 }
 
-my @sorted_clump_numbers = sort { scalar keys %{$clumpidnumber_allidset{$a}} <=> scalar keys %{$clumpidnumber_allidset{$b}} } keys %clumpidnumber_allidset;
+my @sorted_clump_numbers = sort { scalar keys %{$clumpidnumber_allidset{$b}} <=> scalar keys %{$clumpidnumber_allidset{$a}} } keys %clumpidnumber_allidset;
 
 for my $clump_id (@sorted_clump_numbers){
  print "$clump_id  ", scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";  
