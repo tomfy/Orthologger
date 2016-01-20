@@ -44,7 +44,7 @@ my $gg_filename = undef;
 
 GetOptions(
            'qids=s' => \$clump_qid_filename,
-#	   'gg_file=s'           => \$gg_filename, #
+           #	   'gg_file=s'           => \$gg_filename, #
           );
 
 #my $gg_hashref = store_gg_info($gg_filename);
@@ -67,7 +67,7 @@ while (my $idline = <$fhin>) {
       }
 
    }                            # end loop over query ids in clump
-   print "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
+   print STDERR "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
    $clump_id_number++;
 }
 
@@ -84,7 +84,7 @@ while (my($sp,$abc_filename) = each %species_abcfile) {
          } else {
             $clumpidnumber_allidset{$clump_id_number} = {$id2 => 1};
          }
-      }else{
+      } else {
          # this query id is not of interest, do nothing with this line
       }
    }
@@ -93,6 +93,10 @@ while (my($sp,$abc_filename) = each %species_abcfile) {
 
 my @sorted_clump_numbers = sort { scalar keys %{$clumpidnumber_allidset{$b}} <=> scalar keys %{$clumpidnumber_allidset{$a}} } keys %clumpidnumber_allidset;
 
-for my $clump_id (@sorted_clump_numbers){
- print "$clump_id  ", scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";  
+for my $clump_id (@sorted_clump_numbers) {
+   print STDERR "$clump_id  ", scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";
+   my @ids =  sort { $clumpidnumber_allidset{$clump_id}->{$b} <=> $clumpidnumber_allidset{$clump_id}->{$a} } keys %{$clumpidnumber_allidset{$clump_id}};
+   for (@ids) {
+      print "$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, "\n";
+   }
 }
