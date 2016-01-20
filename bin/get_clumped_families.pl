@@ -97,6 +97,6 @@ for my $clump_id (@sorted_clump_numbers) {
    print STDERR "$clump_id  ", scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";
    my @ids =  sort { $clumpidnumber_allidset{$clump_id}->{$b} <=> $clumpidnumber_allidset{$clump_id}->{$a} } keys %{$clumpidnumber_allidset{$clump_id}};
    for (@ids) {
-      print "$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, "\n";
+      print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, "\n";
    }
 }
