@@ -27,7 +27,7 @@ use CXGN::Phylo::BasicTree;
 use CXGN::Phylo::File;
 use CXGN::Phylo::Species_name_map;
 
-use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+#use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
 
 my %species_abcfile = (
@@ -44,10 +44,10 @@ my $gg_filename = undef;
 
 GetOptions(
            'qids=s' => \$clump_qid_filename,
-	   'gg_file=s'           => \$gg_filename, #
+#	   'gg_file=s'           => \$gg_filename, #
           );
 
-my $gg_hashref = store_gg_info($gg_filename);
+#my $gg_hashref = store_gg_info($gg_filename);
 
 open my $fhin, "<", "$clump_qid_filename" or die "couldn't open $clump_qid_filename for reading.\n";
 my %clumpidnumber_qidset = ();
