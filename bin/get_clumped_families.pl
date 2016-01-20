@@ -70,6 +70,7 @@ while (my $idline = <$fhin>) {
    print STDERR "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
    $clump_id_number++;
 }
+close $fhin;
 
 my %clumpidnumber_allidset = (); 
 while (my($sp,$abc_filename) = each %species_abcfile) {
