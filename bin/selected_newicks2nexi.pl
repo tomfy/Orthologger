@@ -8,8 +8,9 @@ use strict;
 
 my $qids_filename_or_id = shift;	# has ids in first column
 my $newicks_filename = shift;
-my $groups = shift || 'AM';     # or C4
 my $with_dotn = shift || 0;
+my $groups = shift || 'AM';     # or C4
+
 
 my %qids = ();
 if (open my $fh_qids, "<", "$qids_filename_or_id") { #  or die "Cant open $qids_filename_or_id for reading. \n";
