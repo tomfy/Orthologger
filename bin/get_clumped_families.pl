@@ -55,7 +55,7 @@ my %qid_clumpidnumber = ();
 my $clump_id_number = 1;
 while (my $idline = <$fhin>) {
    my @cols = split(" ", $idline);
-   my ($clump_id_number, $clump_qids_string) = @cols[3,9];
+   my ($n_qids_clumped, $clump_qids_string) = @cols[3,9];
    my @clump_qids = split(",", $clump_qids_string);
    $clumpidnumber_qidset{$clump_id_number} = {};
    for my $qid (@clump_qids) {
