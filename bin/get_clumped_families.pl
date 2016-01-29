@@ -5,29 +5,8 @@ use Getopt::Long;
 # use IPC::Run3;
 use List::Util qw (min max sum);
 
-# no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
-
-# use File::Basename 'dirname';
-# use Cwd 'abs_path';
-# my ( $bindir, $libdir );
-
-# BEGIN {	    # this has to go in Begin block so happens at compile time
-#    $bindir =
-#      dirname( abs_path(__FILE__) ) ; # the directory containing this script (i.e. Orthologger/bin )
-#    $libdir = $bindir . '/../lib';
-#    $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
-# }
-# use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
-# use lib $libdir;
-
-# use Phyml;
-# use CXGN::Phylo::Overlap;
-# use CXGN::Phylo::Parser;
-# use CXGN::Phylo::BasicTree;
-# use CXGN::Phylo::File;
-# use CXGN::Phylo::Species_name_map;
-
-#use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+# takes as input the output from clumper.pl
+#
 
 
 my %species_abcfile = (
@@ -41,11 +20,20 @@ my %species_abcfile = (
 
 my $clump_qid_filename = undef;
 my $gg_filename = undef;
-
+my $abcfilelist = undef;
 GetOptions(
            'qids=s' => \$clump_qid_filename,
+           'abcfilelist=s' => \$abcfilelist,
            #	   'gg_file=s'           => \$gg_filename, #
           );
+if(defined $abcfilelist){
+   open my $fhlist, "<", "$abcfilelist" or "couldn't open $abcfilelist for reading. exiting.\n";
+   %species_abcfile = ();
+   for(<$fhlist>){
+      if(/^\s*(\S+)\s+(\S+)\s*$/){
+         species_abcfile{$1} = $2;
+      }
+}
 
 #my $gg_hashref = store_gg_info($gg_filename);
 
@@ -54,6 +42,7 @@ my %clumpidnumber_qidset = ();
 my %qid_clumpidnumber = ();
 my $clump_id_number = 1;
 while (my $idline = <$fhin>) {
+   next if(/^\s*#/);
    my @cols = split(" ", $idline);
    my ($n_qids_clumped, $clump_qids_string) = @cols[3,9];
    my @clump_qids = split(",", $clump_qids_string);
