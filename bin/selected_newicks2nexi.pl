@@ -10,6 +10,7 @@ my $qids_filename_or_id = shift;	# has ids in first column
 my $newicks_filename = shift;
 my $with_dotn = shift || 0;
 my $groups = shift || 'AM';     # or C4
+my $all_trees = ($qids_filename_or_id eq 'ALL')? 1 : 0;
 
 
 my %qids = ();
@@ -41,7 +42,7 @@ while (<$fh_newicks>) {
       my $nogenemodel_id = $id;
       $nogenemodel_id =~ s/[.]\d{1,2}\s*$//;
       print STDERR $nogenemodel_id, "\n";
-      if ( exists $qids{$nogenemodel_id} or 
+      if ($all_trees or exists $qids{$nogenemodel_id} or 
            exists $qids{$id}) {
          #$qids{$nogenemodel_id} += 100;
          #print "ID $id \n";
