@@ -43,7 +43,7 @@ if(defined $abcfilelist){
    my %qid_clumpidnumber = ();
    my $clump_id_number = 1;
    while (my $idline = <$fhin>) {
-      next if(/^\s*#/);
+      next if($idline =~ /^\s*#/);
       my @cols = split(" ", $idline);
       my ($n_qids_clumped, $clump_qids_string) = @cols[3,9];
       my @clump_qids = split(",", $clump_qids_string);
