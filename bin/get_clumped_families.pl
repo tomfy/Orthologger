@@ -108,13 +108,16 @@ my $gg_hashref = store_gg_info($gg_filename);
 
    open my $fhin, "<", "$clump_qid_filename" or die "couldn't open $clump_qid_filename for reading.\n";
    my %clumpidnumber_qidset = ();
+my %clumpidnumber_clamidset = ();
    my %qid_clumpidnumber = ();
    my $clump_id_number = 1;
    while (my $idline = <$fhin>) {
       next if($idline =~ /^\s*#/);
       my @cols = split(" ", $idline);
-      my ($n_qids_clumped, $clump_qids_string) = @cols[3,9];
+      my ($n_qids_clumped, $clump_qids_string, $clump_amcladeids_string) = @cols[3,9,11];
       my @clump_qids = split(",", $clump_qids_string);
+      $clump_amcladeids_string =~ s/([|])//g;
+      my @clump_amcladeids = split(",", $clump_amcladeids_string);
       $clumpidnumber_qidset{$clump_id_number} = {};
       for my $qid (@clump_qids) {
          $clumpidnumber_qidset{$clump_id_number}->{$qid} = 1;
@@ -125,6 +128,10 @@ my $gg_hashref = store_gg_info($gg_filename);
          }
 
       }                            # end loop over query ids in clump
+ $clumpidnumber_clamidset{$clump_id_number} = {};
+      for my $clamid (@clump_amcladeids) {
+         $clumpidnumber_clamidset{$clump_id_number}->{$clamid} = 1;
+      }  
 #print STDERR "clump number:  $clump_id_number   qids in clump: ", scalar keys %{$clumpidnumber_qidset{$clump_id_number}}, "\n";
       $clump_id_number++;
    }
@@ -161,6 +168,7 @@ my $gg_hashref = store_gg_info($gg_filename);
       for (@ids) {
          my $the_sp = $gg_hashref->{$_};
          my $AM = (exists $AM35->{$the_sp})? '1' : '0';
-         print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, " $AM \n";
+         my $inclade = (exists $clumpidnumber_clamidset{$clump_id}->{$_})? '1' : '0';
+         print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, " $AM  $inclade  \n";
       }
    }
