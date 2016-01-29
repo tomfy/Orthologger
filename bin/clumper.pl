@@ -101,8 +101,8 @@ for my $ccomponent (@connected_components) { # loop over connected components (i
    }                            # print "\n";
  #  $cc_clamangids{$cc_number} = $union_clamangids;
 
-   print "conn. component size: ", scalar @$ccomponent, "  min, max degree: $min_degree $max_degree  ", join(",", @sverts), 
-     "[", join(",", keys %$union_clamangids), "]",
+   print "conn. component size: ", scalar @$ccomponent, "  min, max degree: $min_degree $max_degree  ", join(",", @sverts), " ",
+     scalar keys %$union_clamangids, " [", join(",", keys %$union_clamangids), "]",
        "\n";
    # if($min_degree < scalar @$ccomponent-1  or  $max_degree >  scalar @$ccomponent-1){
    #    print join(" ", @$ccomponent), "\n";
