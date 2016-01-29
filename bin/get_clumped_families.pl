@@ -7,6 +7,75 @@ use List::Util qw (min max sum);
 
 # takes as input the output from clumper.pl
 #
+no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+
+use File::Basename 'dirname';
+use Cwd 'abs_path';
+my ( $bindir, $libdir );
+
+BEGIN {	    # this has to go in Begin block so happens at compile time
+  $bindir =
+    dirname( abs_path(__FILE__) ) ; # the directory containing this script (i.e. Orthologger/bin )
+  $libdir = $bindir . '/../lib';
+  $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
+}
+# use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
+use lib $libdir;
+
+use Phyml;
+use CXGN::Phylo::Overlap;
+use CXGN::Phylo::Parser;
+use CXGN::Phylo::BasicTree;
+use CXGN::Phylo::File;
+use CXGN::Phylo::Species_name_map;
+
+use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+
+   my $AM35 = {
+               'Amborella_trichopoda' => 1,
+
+               'Phoenix_dactylifera'     => 1, # date palm
+                         'Musa_acuminata' => 1,          # banana
+                         'Elaeis_guineensis' => 1,       # oil palm
+
+                         'Zea_mays'                => 1, # maize
+                         'Panicum_virgatum' => 1,        # switchgrass
+                         'Panicum_hallii' => 1, 
+                         'Phyllostachys_heterocycla' => 1, # bamboo, AM ??
+                         'Brachypodium_distachyon' => 1,
+                         'Sorghum_bicolor'         => 1,
+                         'Oryza_sativa'            => 1, # rice
+                         'Hordeum_vulgare'         => 1, # barley
+                         'Triticum_urartu'       => 1, # diploid wheat relative
+
+                       'Aquilegia_coerulea' => 1, # columbine
+
+                       'Solanum_lycopersicum' => 1, # tomato
+                       'Solanum_tuberosum'    => 1, # potato
+                       'Mimulus_guttatus' => 1,     # monkeyflower
+                       'Fraxinus_excelsior' => 1,   # Ash
+                       'Sesamum_indicum' => 1,
+
+                       'Vitis_vinifera'       => 1, # grape
+
+                       'Glycine_max'          => 1, # soy
+                       'Phaseolus_vulgaris' => 1,
+                       'Lotus_japonicus' => 1,
+                       'Medicago_truncatula' => 1,
+
+                       'Populus_trichocarpa'  => 1, # poplar
+                       'Ricinus_communis'     => 1, # castor
+                       'Cucumis_sativus'      => 1, # cucumber
+                       'Manihot_esculenta' => 1,
+                       'Salix_purpurea' => 1,
+
+                       'Theobroma_cacao' => 1,
+                       'Carica_papaya' => 1,
+                       'Eucalyptus_grandis' => 1,
+                       'Gossypium_raimondii' => 1,
+                       'Citrus_clementina' => 1,
+                       'Citrus_sinensis' => 1,
+                      }, 
 
 
 my %species_abcfile = (
@@ -24,7 +93,7 @@ my $abcfilelist = undef;
 GetOptions(
       'qids=s' => \$clump_qid_filename,
       'abcfilelist=s' => \$abcfilelist,
-#	   'gg_file=s'           => \$gg_filename, #
+	   'gg_file=s'           => \$gg_filename, #
       );
 if(defined $abcfilelist){
    open my $fhlist, "<", "$abcfilelist" or warn "couldn't open $abcfilelist for reading. exiting.\n";
@@ -35,8 +104,7 @@ if(defined $abcfilelist){
       }
    }
 }
-
-#my $gg_hashref = store_gg_info($gg_filename);
+my $gg_hashref = store_gg_info($gg_filename);
 
    open my $fhin, "<", "$clump_qid_filename" or die "couldn't open $clump_qid_filename for reading.\n";
    my %clumpidnumber_qidset = ();
@@ -91,6 +159,8 @@ if(defined $abcfilelist){
 
       my @ids =  sort { $clumpidnumber_allidset{$clump_id}->{$b} <=> $clumpidnumber_allidset{$clump_id}->{$a} } keys %{$clumpidnumber_allidset{$clump_id}};
       for (@ids) {
-         print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, "\n";
+         my $the_sp = $gg_hashref->{$_};
+         my $AM = (exists $AM35->{$the_sp})? '1' : '0';
+         print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, " $AM \n";
       }
    }
