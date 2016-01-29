@@ -27,7 +27,7 @@ GetOptions(
 #	   'gg_file=s'           => \$gg_filename, #
       );
 if(defined $abcfilelist){
-   open my $fhlist, "<", "$abcfilelist" or "couldn't open $abcfilelist for reading. exiting.\n";
+   open my $fhlist, "<", "$abcfilelist" or warn "couldn't open $abcfilelist for reading. exiting.\n";
    %species_abcfile = ();
    for(<$fhlist>){
       if(/^\s*(\S+)\s+(\S+)\s*$/){
