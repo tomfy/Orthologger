@@ -161,7 +161,7 @@ my %clumpidnumber_clamidset = ();
    print STDERR "# clump id, n_qids, n_all_ids: \n";
    for my $clump_id (@sorted_clump_numbers) {
       print STDERR "$clump_id  ", 
-            scalar keys %{$clumpidnumber_qidset{$clump_id}}, "  ", 
+            scalar keys %{$clumpidnumber_qidset{$clump_id}}, "  ",
             scalar keys %{$clumpidnumber_allidset{$clump_id}}, "\n";
 
       my @ids =  sort { $clumpidnumber_allidset{$clump_id}->{$b} <=> $clumpidnumber_allidset{$clump_id}->{$a} } keys %{$clumpidnumber_allidset{$clump_id}};
