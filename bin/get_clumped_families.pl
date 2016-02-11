@@ -171,4 +171,4 @@ my %clumpidnumber_clamidset = ();
          my $inclade = (exists $clumpidnumber_clamidset{$clump_id}->{$_})? '1' : '0';
          print "clump_$clump_id  $_  ", $clumpidnumber_allidset{$clump_id}->{$_}, " $AM  $inclade  \n";
       }
-   }
+   
