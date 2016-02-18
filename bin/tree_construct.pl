@@ -234,7 +234,7 @@ $idline =~ s/\n//;
 	  } # loop over bootstraps
 	}   # overlap >= minlength
 	else {	     # overlap is too short - just print a blank line.
-	  print $fh_out "$string_to_print Overlap too short. \n\n";
+	  print $fh_out "$string_to_print Overlap too short: $overlap_length. \n\n";
 	}
 }
 my $end_time = time();
