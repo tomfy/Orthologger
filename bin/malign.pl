@@ -95,6 +95,8 @@ while (<$fh_in>) {
 	    $maxiters = 25;
 	}elsif($quality eq 'medium'){
 	$maxiters = 4;
+}elsif($quality eq 'groovy'){
+   $maxiters = 16;
 	  } else {		# ($quality eq 'quick'){
 	    $maxiters = 2;
 	  }
