@@ -13,10 +13,11 @@ for (<$fhid>) {
       $id_count{$id}++;
    }
 }
+print "$alf_filename_pattern \n";
 
 my @files = `ls $alf_filename_pattern`;
-print join("; ", @files), "\n";
-
+print STDERR join("; ", @files), "\n";
+exit;
 for my $alf_file (@files) {
    $alf_file =~ s/\s+$//;
    open my $fh_alf, "<", $alf_file or die "couldnt open $alf_file for reading. \n";
