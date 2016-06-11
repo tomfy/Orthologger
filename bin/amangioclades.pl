@@ -371,7 +371,7 @@ while (<$fh_in>) {
             #print STDERR $query_id, "\n";
             my ($query_species, 
                 $zero_nonAM_height, $amb_0, $AMm_0, $AMd_0, $zero_nonAM_ids, 
-                $one_nonAM_height, $amb_1, $AMm_1, $AMd_1, $one_nonAM_ids, $one_nonAM_sp) = 
+                $one_nonAM_height, $amb_1, $AMm_1, $AMd_1, $one_nonAM_ids, $one_nonAM_sp, $nonang_bef_nonAM, $nonang_bef_nonAM2) = 
                   get_clade(
                             $tree, 
                             $query_id, 
@@ -391,8 +391,9 @@ while (<$fh_in>) {
             }
             $one_nonAM_sp = '-' if($one_nonAM_sp eq '');
             print "$query_id   $query_species   ", 
-              "$zero_nonAM_height  $amb_0 $AMm_0 $AMd_0  [", join(",", keys %zero_nonAM_id_hash), "]  ", 
-                "$one_nonAM_height  $amb_1 $AMm_1 $AMd_1  [", join(",", keys %one_nonAM_extra_id_hash), "] $one_nonAM_sp \n";
+              "$zero_nonAM_height  $amb_0 $AMm_0 $AMd_0   $nonang_bef_nonAM  [", join(",", keys %zero_nonAM_id_hash), "]  ", 
+              "$one_nonAM_height  $amb_1 $AMm_1 $AMd_1   $nonang_bef_nonAM2  [", join(",", keys %one_nonAM_extra_id_hash), 
+                  "] $one_nonAM_sp \n";
 
             ####################################################
 
@@ -582,6 +583,7 @@ sub get_clade{
    my $node_height = 0;
    my ($amb_0, $AMm_0, $AMd_0) = (0,0,0);
    my ($amb_1, $AMm_1, $AMd_1) = (0,0,0);
+my ($nonangio_before_nonAM, $nonangio_before_2ndnonAM) = (0, 0);
    while (1) {
       #   last if ($node->is_root());
       my $node_key = $node->get_node_key();
@@ -597,21 +599,23 @@ sub get_clade{
       #         (my $parent_grp2_spcount, $x) = get_group_count($parent_node->{implicit_species_hash}, $group2);
       #    print STDERR "nonAM, nonangio sp counts: $nonAM_spcount  $nonangio_spcount \n";
       if ($nonangio_spcount == 0) {      
-         if ($nonAM_spcount == 0) {
+         if ($nonAM_spcount == 0) { # OK so far - no nonAM, no nonangio
             $zero_nonAM_ids = $node->get_implicit_names(); $max_zero_nonAM_height = $node_height;
             $one_nonAM_ids = $node->get_implicit_names(); $max_one_nonAM_height = $node_height;
             $amb_0 = $amb_spcount; $AMm_0 = $AM_monocot_spcount; $AMd_0 = $AM_dicot_spcount;
             $amb_1 = $amb_spcount; $AMm_1 = $AM_monocot_spcount; $AMd_1 = $AM_dicot_spcount;
-         } elsif ($nonAM_spcount == 1) {
-            #      print STDERR "XXXXXXXX\n";
+         } elsif ($nonAM_spcount == 1) {# no nonangio, and exactly 1 nonAM
+            #      print STDERR "XXXXXXXX\n"; 
             $one_nonAM_ids = $node->get_implicit_names(); $max_one_nonAM_height = $node_height;
             $amb_1 = $amb_spcount; $AMm_1 = $AM_monocot_spcount; $AMd_1 = $AM_dicot_spcount;
             $nonAM_sp_string = $nonAM_sp;
-         } else {
+         } else { # >1 nonAM
             #       print STDERR "nonAM sp count $nonAM_spcount \n";
             last;
          }
-      } else {
+      } else { # have a nonangio
+         $nonangio_before_nonAM = 1 if($nonAM_spcount == 0);
+         $nonangio_before_2ndnonAM = 1 if($nonAM_spcount == 1);
          #       print STDERR "nonangio sp count: $nonangio_spcount \n";
          last;
       }
@@ -624,7 +628,7 @@ sub get_clade{
    return ($query_sp, 
            $max_zero_nonAM_height, $amb_0, $AMm_0, $AMd_0, $zero_nonAM_ids, 
            $max_one_nonAM_height, $amb_1, $AMm_1, $AMd_1, $one_nonAM_ids, 
-           $nonAM_sp_string);   #
+           $nonAM_sp_string, $nonangio_before_nonAM, $nonangio_before_2ndnonAM);   #
 }
 # end get_clade.
 
