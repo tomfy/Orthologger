@@ -19,7 +19,7 @@ my $fastas_filename = shift;
 
 open my $fh_ids, "<", "$ids_filename";
 
-open my $fh_fastas, "<", $fastas_filename;
+open my $fh_fastas, "<", $fastas_filename  or  die "couldnt open $fastas_filename for reading.\n";
 
 my %ids = ();
 while(<$fh_ids>){
@@ -31,7 +31,8 @@ while(<$fh_ids>){
 
 my $print_this_line = 0;
 while(<$fh_fastas>){
-  if(/^Id (Medtr\S+)/){
+  if(/^Id\s+(\S+)/){
+#   print;
     $print_this_line = (exists $ids{$1})? 1 : 0;
   }
   print if($print_this_line);
