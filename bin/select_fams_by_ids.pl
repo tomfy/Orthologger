@@ -31,7 +31,8 @@ while(<$fh_ids>){
 
 my $print_this_line = 0;
 while(<$fh_fastas>){
-  if(/^Id (Medtr\S+)/){
+  if(/^Id\s+(\S+)/){
+   #  print "$1 \n";
     $print_this_line = (exists $ids{$1})? 1 : 0;
   }
   print if($print_this_line);
