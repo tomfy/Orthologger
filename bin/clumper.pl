@@ -19,9 +19,12 @@ my @qids = ();
 while (<>) {
    next if(/^\s*#/);
    my @cols = split(" ", $_);
-   my ($qid, $ids) = @cols[0, 6];
+   my $idcol = (scalar @cols == 13)? 6 : 7;
+  #   print "idcol: $idcol \n";
+   my ($qid, $ids) = @cols[0, $idcol];
    push @qids, $qid;
    if ( $ids =~ /(\[.*\])\s*(\d+)\s+\d/) {
+   #   print "ZZZZZ: $ids \n";
       $ids = $1;
    }
    $ids =~ s/(\[|\])//g;
@@ -53,7 +56,7 @@ for my $qid1 (@qids) {
          # in case there are multiple families with same qid (e.g. made using different alignment methods, mafft, muscle )
          # the overlap between two qids is the max overlap among their 
          $q1__q2_overlap{$qid1}->{$qid2} = (!exists $q1__q2_overlap{$qid1}->{$qid2})? $f_overlap : max($q1__q2_overlap{$qid1}->{$qid2}, $f_overlap);
-         printf("%30s %30s  %4i  %4i %4i %4i  %4.3f \n", $qid1, $qid2, $f_overlap, $n_1only, $n_both, $n_2only, $q1__q2_overlap{$qid1}->{$qid2}) if($f_overlap > $min_overlap_fraction);
+         printf("%30s %30s  %4.3f  %4i %4i %4i  %4.3f \n", $qid1, $qid2, $f_overlap, $n_1only, $n_both, $n_2only, $q1__q2_overlap{$qid1}->{$qid2}) if($f_overlap > $min_overlap_fraction);
       }
    }
    my $qid2_overlap = $q1__q2_overlap{$qid1};
@@ -124,6 +127,8 @@ sub venn2clade{
    my $clade_id_href  = shift;
    my $clade1_ids = $clade_id_href->{$qid1};
    my $clade2_ids = $clade_id_href->{$qid2};
+#print "111: ", join(";", keys %$clade1_ids), "\n";
+#print "222: ", join(";", keys %$clade2_ids), "\n";
    my $clade1_size = scalar keys %$clade1_ids;
    my $clade2_size = scalar keys %$clade2_ids;
    my $n_intersect = 0; # counts number of ids in intersection of clade1, clade2
