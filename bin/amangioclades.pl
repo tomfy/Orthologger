@@ -579,7 +579,7 @@ sub get_clade{
    }
    #  print STDERR "node name: ", $node->get_name(), "\n";
    my $query_sp = $node->get_species();
-   my $nonAM_sp_string = '';
+   my $nonAM_sp_string = '-';
    my $node_height = 0;
    my ($amb_0, $AMm_0, $AMd_0) = (0,0,0);
    my ($amb_1, $AMm_1, $AMd_1) = (0,0,0);
