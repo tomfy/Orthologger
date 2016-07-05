@@ -23,30 +23,32 @@ my $output_abc_file = part_filename($input_abc_file, $part_number);
 #print "1: $1,  2: $2,  3: $3. \n";
 my @part_filenames = ($output_abc_file);
 open my $fh_out, ">", "$output_abc_file";
- print STDERR "  $output_abc_file \n";
+print STDERR "  $output_abc_file \n";
 
 
 while (<$fh_in>) {
-  #	print $fh_out $_;
-  $linesread++;
-  my ($id1, $id2, $eval) = split(" ", $_);
-  if ($id1 ne $prev_id1) {
-    if ($linesread >= $part_number * $lines_per_part) {
-      close $fh_out;
+   #	print $fh_out $_;
+   $linesread++;
+   my @cols = split(" ", $_);
+   my $id1 = $cols[0];
+   if ($id1 ne $prev_id1) {
+      if ($linesread >= $part_number * $lines_per_part) {
+         close $fh_out;
 
-      # print "$linesread  $output_abc_file \n";
- $part_number++;
-      $output_abc_file = part_filename($input_abc_file, $part_number);
-      push @part_filenames, $output_abc_file;
-      #		$output_abc_file =~ s/(part(\d+))([.]abc)/$1.$part_number$3/; 
-      open $fh_out, ">", "$output_abc_file";
-      print STDERR "  $output_abc_file \n";
+         # print "$linesread  $output_abc_file \n";
+         $part_number++;
+         $output_abc_file = part_filename($input_abc_file, $part_number);
+         print "$output_abc_file \n";
+         push @part_filenames, $output_abc_file;
+         #		$output_abc_file =~ s/(part(\d+))([.]abc)/$1.$part_number$3/; 
+         open $fh_out, ">", "$output_abc_file";
+         print STDERR "  $output_abc_file \n";
      
-    }
-    #	print $fh_out $_;
-    $prev_id1 = $id1;
-  }
-  print $fh_out $_;
+      }
+      #	print $fh_out $_;
+      $prev_id1 = $id1;
+   }
+   print $fh_out $_;
 }
 close $fh_out;
 print STDOUT join(" ", @part_filenames), "\n";
