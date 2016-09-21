@@ -19,7 +19,7 @@ my $fastas_filename = shift;
 
 open my $fh_ids, "<", "$ids_filename";
 
-open my $fh_fastas, "<", $fastas_filename;
+open my $fh_fastas, "<", $fastas_filename  or  die "couldnt open $fastas_filename for reading.\n";
 
 my %ids = ();
 while(<$fh_ids>){
