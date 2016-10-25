@@ -84,16 +84,9 @@ while (my $line = <$fh_abc>) {
    }
    $old_id1 = $id1;
 }
-print STDERR "# Done reading in abc data.\n";
+print STDERR "# Done reading in abc data. ";
+print STDERR scalar %id1__sp_id2, "  query ids. \n";
 ####### Done reading in abc data #####
-
-# while(my ($qid, $v) = each %id1__sp_id2){
-#    print STDERR "$qid \n";
-#    while(my ($sp, $midref) = each %$v){
-#       print STDERR "   $sp  ", ${$midref}, "\n";
-#    }
-# }
-
 
 ################## add edges to the graph, joining reciprocal best matches.
 
@@ -104,7 +97,7 @@ for my $qid (@qids) {
    while (my ($sp, $id2ref) = each %$sp_id2ref) { # get the best matches of each species to $qid
       my $id2 = ${$id2ref};
       next if($id2 eq $qid); # don't add edge connecting node to itself.
-      if (exists $id1__sp_id2{$id2}->{$qsp} and ( ${$id1__sp_id2{$id2}->{$qsp}} eq $qid )) {
+      if (exists $id1__sp_id2{$id2}->{$qsp} and ( ${$id1__sp_id2{$id2}->{$qsp}} eq $qid )) { # check for a reciprocal best match
 #         print STDERR "adding edge  between $qid  and  $id2 \n";
          $G->add_edge($qid, $id2);
       }
@@ -112,6 +105,7 @@ for my $qid (@qids) {
 }
 undef %id1__sp_id2;
 print STDERR "Done adding edges to graph.\n";
+print STDERR "Graph has ", scalar $G->vertices(), " vertices, and ", scalar $G->edges(), " edges.\n";
 ###### Done adding edges to graph ###############
 
 ####################### Get biconnected components ########
