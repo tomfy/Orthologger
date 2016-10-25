@@ -1,8 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 use List::Util qw (min max sum);
-use Devel::Size qw (total_size size);
-use Time::HiRes qw (usleep);
+# use Devel::Size qw (total_size size);
+# use Time::HiRes qw (usleep);
 use Graph;
 
 use File::Basename 'dirname';
