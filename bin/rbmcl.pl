@@ -85,7 +85,7 @@ while (my $line = <$fh_abc>) {
    $old_id1 = $id1;
 }
 print STDERR "# Done reading in abc data. ";
-print STDERR scalar %id1__sp_id2, "  query ids. \n";
+print STDERR scalar keys %id1__sp_id2, "  query ids. \n";
 ####### Done reading in abc data #####
 
 ################## add edges to the graph, joining reciprocal best matches.
