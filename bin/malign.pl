@@ -51,19 +51,16 @@ my $stderr_filename = $input_filename . ".stderr";
 my $count_alignments_done = 0;
 
 while (<$fh_in>) {
-  if ($state eq 'idline') {
-    my @cols = split(" ", $_);
-    ($qid, $fam_size, $taxa) = @cols[1,4,5];
-    my @species = split(",", $taxa);
+   if ($state eq 'idline') {
+      my @cols = split(" ", $_);
+      # ($qid, $fam_size, $taxa) = @cols[1,4,5];
+      if (/^Ids?\s+(\S+)/) {
+         $qid = $1;
+      } else {
+         undef $qid;
+         warn "id line expected, but line is: $_ \n";
+      }
     $do = 1;
-    # if(scalar @species < $min_taxa){ # need to have at least 4 taxa (Medtr + 3 monocots)
-    #   $do = 0;
-    # }elsif(scalar @species >= $n_taxa-1){ # if have at least 20 out of 21, guarantees 3 monocots
-    #   $do = 1;
-    # }else{ # need to look at taxa in more detail:
-    #   my ($monocot_count, $selaginella_present) = check_taxon_list($taxa);
-    #   $do = ($monocot_count >= 3  and  $Selaginella_present)? 1 : 0;
-    # }
     $idline = $_;
     $state = 'fasta';
     $fasta = '';
@@ -74,8 +71,6 @@ while (<$fh_in>) {
       my $fasta_line = $_;
       chomp $fasta_line;
       $fasta .= $fasta_line;
-      #    print "fasta: $fasta \n";
-      #exit;
     }
     if (/^\s*$/) {		# only whitespace
       chomp $idline;
@@ -129,15 +124,3 @@ $alignment_cl = "mafft --retree 2 --maxiterate 2 --inputorder $tmp_filename 2> $
 my $end_time_seconds = time();
 print STDERR "Alignments done: $count_alignments_done in ", $end_time_seconds - $start_time_seconds, " seconds\n";
 
-
-sub check_taxon_list{ # check list of taxa to see how many monocot species are
-  # present, and whether selaginella is present.
-  my $taxa = shift;
-
-  my $monocot_count = 0;
-  $monocot_count += 1 if($taxa =~ /Oryza_sativa/);
-  $monocot_count += 1 if($taxa =~ /Sorghum_bicolor/);
-  $monocot_count += 1 if($taxa =~ /Brachypodium_distachyon/);
-  $monocot_count += 1 if($taxa =~ /Zea_mays/);
-  return ($monocot_count, $taxa =~ (/Selaginella/)? 1 : 0);
-}
