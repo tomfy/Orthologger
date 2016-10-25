@@ -43,7 +43,7 @@ my %qspecies_count =  (
 my %id1_id2ev = ();
 my %id1__sp_id2 = ();
 my %id_selfev = ();
-my %id_bccos = (); # key: id, val: array ref of refs to bcc objs it belongs to. 
+my %id_bccos = (); # key: id, val: array ref of refs to bcc (biconnected component) objs it belongs to. 
 my %id_ref = (); # key is an id (string), value is ref to scalar containing that string
 my $G = Graph::Undirected->new();
 
@@ -66,12 +66,12 @@ while (my $line = <$fh_abc>) {
 
    }
    $id1_id2ev{$id1}->{$id2} = $ev;
-   my $self_ev = undef;
-   if ($id1 eq $id2) {
-      $self_ev = $ev;
-      $id_selfev{$id1} = $self_ev;
-      next;
-   }
+   # my $self_ev = undef;
+   # if ($id1 eq $id2) {
+   #    $self_ev = $ev;
+   #    $id_selfev{$id1} = $self_ev;
+   #    next;
+   # }
    my $sp1 = $geneid_sp->{$id1};
    next if(!exists $qspecies_count{$sp1}); # skip if not one of the specified species.
    my $sp2 = $geneid_sp->{$id2};
@@ -87,6 +87,13 @@ while (my $line = <$fh_abc>) {
 print STDERR "# Done reading in abc data.\n";
 ####### Done reading in abc data #####
 
+# while(my ($qid, $v) = each %id1__sp_id2){
+#    print STDERR "$qid \n";
+#    while(my ($sp, $midref) = each %$v){
+#       print STDERR "   $sp  ", ${$midref}, "\n";
+#    }
+# }
+
 
 ################## add edges to the graph, joining reciprocal best matches.
 
@@ -94,10 +101,11 @@ my @qids = sort keys %id1__sp_id2;
 for my $qid (@qids) {
    my $sp_id2ref = $id1__sp_id2{$qid};
    my $qsp = $geneid_sp->{$qid};
-   while (my ($sp, $id2ref) = each %$sp_id2ref) {
+   while (my ($sp, $id2ref) = each %$sp_id2ref) { # get the best matches of each species to $qid
       my $id2 = ${$id2ref};
-      next if($id2 eq $qid);
+      next if($id2 eq $qid); # don't add edge connecting node to itself.
       if (exists $id1__sp_id2{$id2}->{$qsp} and ( ${$id1__sp_id2{$id2}->{$qsp}} eq $qid )) {
+#         print STDERR "adding edge  between $qid  and  $id2 \n";
          $G->add_edge($qid, $id2);
       }
    }
@@ -143,8 +151,8 @@ undef $G; # will this allow the graph object to be successfully garbage-collecte
 undef @biconnected_components;
 
 ############### Weed out 'bridge' clusters 
-my $bcc_objs_to_keep = ($weed)? weed_bridges(\@bccobjs, \%id_bccos) : \@bccobjs;
-print STDERR "After weed_bridges.\n";
+my ($bcc_objs_to_keep, $bridges) = ($weed)? weed_bridges(\@bccobjs, \%id_bccos) : (\@bccobjs, []);
+print STDERR "After weed_bridges.  ", scalar @$bridges, " found.\n";
 ############### Done weeding 'bridge' clusters
 
 ################# Output ################
@@ -161,6 +169,7 @@ close $singles_fh;
 
 print STDERR "# vertices: ", scalar keys %id_bccos, "\n";
 print STDERR "# n size>=2 ccs: $n_biconn_comps   sum cc sizes: $sum_cc_sizes \n";
+print STDERR "# n bridges weeded: ", scalar @$bridges, "\n";
 print STDERR "#  singletons:  $singleton_count \n";
 print STDERR "# avg number of clusters a seq belongs to: ", $sum_bcc_count/(scalar keys %id_bccos), "\n";
 
@@ -178,6 +187,7 @@ sub weed_bridges{
    my $bcc_objs = shift;
    my $id_bccobjs = shift;
    my @keeps = ();
+   my @bridges = ();
    while (my ($index, $bcco) = each @$bcc_objs) { # loop over connected components
       if ($bcco->{size} > 2) {
          push @keeps, $bcco;
@@ -196,10 +206,14 @@ sub weed_bridges{
                $both_also_in_big = 0;
             }
          }
-         push @keeps, $bcco if(!$both_also_in_big);
+         if($both_also_in_big){
+            push @bridges, $bcco;
+         }else{
+         push @keeps, $bcco;
+      }
       }
    }
-   return \@keeps;
+   return (\@keeps, \@bridges);
 }
 
 sub print_singles{
