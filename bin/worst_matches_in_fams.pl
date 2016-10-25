@@ -23,7 +23,7 @@ while (<>) {
   $id_eval{$id1} = $eval;
   if ($eval > $max_eval_so_far) {
     $max_eval_so_far = $eval;
- #   print "Max eval so far: $max_eval_so_far \n";
+   print "Max eval so far: $max_eval_so_far \n";
   }
 }
 
