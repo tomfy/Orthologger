@@ -154,7 +154,7 @@ $idline =~ s/\n//;
 	my $overlap_fasta_string =
 	  $overlap_obj->overlap_fasta_string('');
 	my $overlap_length = $overlap_obj->get_overlap_length();
-	print STDERR  "$qid  $famsize  $overlap_length.\n";
+	print STDERR  "qid, famsize, overlap_length: $qid  $famsize  $overlap_length.\n";
 	$string_to_print .= "$overlap_length ";
 	if ( $overlap_length >= $min_overlap_length and $overlap_length <= $max_overlap_length) { # sufficient overlap
 	  ################## do actual data - NJ  ########################################
