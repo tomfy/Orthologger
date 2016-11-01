@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
 use List::Util qw (min max sum);
+use Getopt::Long;
 use Graph;
 
 # clustering based on (approximate) reciprocal best matches
 # input is abc file (i.e. each line has id1 id2 e-value)
 # make a graph with edges joining reciprocal best matches
-# (or approximate rbms - e-value in both directions is withing $F of best)
-# cluster are the biconnected components of the graph.
+# clusters are the biconnected components of the graph.
 
 use File::Basename 'dirname';
 use Cwd 'abs_path';
@@ -22,17 +22,21 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
 use lib $libdir;
 use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
-my $logF = 1.0;
-my $max_matches = 1;
-my $min_ev = 1e-180;
-my $max_sim = 181.0;
-my $weed = 1;
+my $weed = 1; # weed out size 2 clusters if both seqs are also in bigger clusters.
 my $clusters_filename = 'clusters';
-my $singles_filename = 'singles';
+my $abc_filename = undef;
+my $gg_filename = '/home/tomfy/Aug2015multispeciesquery/55set.gg';
 # store best match of each species
 
-my $abc_filename = shift; 
-my $gg_filename = shift || '/home/tomfy/Aug2015multispeciesquery/55set.gg';
+GetOptions(
+	   'abc_filename=s'           => \$abc_filename, #
+	   'gg_filename=s'          => \$gg_filename, # 
+           'output_filename=s' => \$clusters_filename,
+           'weed!' => \$weed,
+);
+
+#my $abc_filename = shift; 
+#my $gg_filename = shift || '/home/tomfy/Aug2015multispeciesquery/55set.gg';
 my $geneid_sp = store_gg_info("$gg_filename");
 print STDERR "\n", "# Done storing gg info.\n";
 my %qspecies_count =  (
@@ -66,12 +70,6 @@ while (my $line = <$fh_abc>) {
 
    }
    $id1_id2ev{$id1}->{$id2} = $ev;
-   # my $self_ev = undef;
-   # if ($id1 eq $id2) {
-   #    $self_ev = $ev;
-   #    $id_selfev{$id1} = $self_ev;
-   #    next;
-   # }
    my $sp1 = $geneid_sp->{$id1};
    next if(!exists $qspecies_count{$sp1}); # skip if not one of the specified species.
    my $sp2 = $geneid_sp->{$id2};
@@ -95,10 +93,11 @@ for my $qid (@qids) {
    my $sp_id2ref = $id1__sp_id2{$qid};
    my $qsp = $geneid_sp->{$qid};
    while (my ($sp, $id2ref) = each %$sp_id2ref) { # get the best matches of each species to $qid
+      next if($sp eq $qsp); # don't add edges joining 2 seqs of same species.
       my $id2 = ${$id2ref};
       next if($id2 eq $qid); # don't add edge connecting node to itself.
       if (exists $id1__sp_id2{$id2}->{$qsp} and ( ${$id1__sp_id2{$id2}->{$qsp}} eq $qid )) { # check for a reciprocal best match
-#         print STDERR "adding edge  between $qid  and  $id2 \n";
+#         print  "adding edge  between $qid  and  $id2 \n";
          $G->add_edge($qid, $id2);
       }
    }
@@ -155,11 +154,12 @@ for my $bccobj (@$bcc_objs_to_keep) {
    my $idstr = join(",", @{$bccobj->{ids}});
    print $clusters_fh  "$idstr ", $bccobj->{size}, "  ", $bccobj->{min_degree}, "  ", $bccobj->{max_degree}, "\n";
 }
+my ($sum_bcc_count, $singleton_count) = print_singles(\%id_bccos, $clusters_fh);
 close $clusters_fh;
 
-open my $singles_fh, ">", "$singles_filename" or die "couldn't open $singles_filename for writing.\n";
-my ($sum_bcc_count, $singleton_count) = print_singles(\%id_bccos, $singles_fh);
-close $singles_fh;
+# open my $singles_fh, ">", "$singles_filename" or die "couldn't open $singles_filename for writing.\n";
+# my ($sum_bcc_count, $singleton_count) = print_singles(\%id_bccos, $singles_fh);
+# close $singles_fh;
 
 print STDERR "# vertices: ", scalar keys %id_bccos, "\n";
 print STDERR "# n size>=2 ccs: $n_biconn_comps   sum cc sizes: $sum_cc_sizes \n";
