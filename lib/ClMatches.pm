@@ -4,7 +4,7 @@ use List::Util qw (min max sum);
 use constant LOG10 => log(10.0);
 
 
-# ClMatch object stores the qids and their matches
+# ClMatch object stores the query ids of a cluster, and their matches.
 # then, when all have been stored, choose just the best matches
 
 sub new {
@@ -48,8 +48,6 @@ sub add_matches{
    my $self = shift;
    my $id2_ev_string = shift;
    my @id1id2evs = split("\n", $id2_ev_string);
-#   print STDERR "ZZZZ: ", $id2_ev_string, "\n";
-#   print STDERR "ZZZ, ", join(";", @id1id2evs), "\n";
    for my $id1id2ev (@id1id2evs){
       my ($qid, $id2, $ev) = split(" ", $id1id2ev);
       $self->add_match($qid, $id2, $ev)
@@ -59,14 +57,10 @@ sub add_matches{
 sub all_qids_done{ # returns 1 if matches have been stored for all qids
    my $self = shift;
    my $qids_done_count = 0;     # 
-# print STDERR "\n", "top of qll_qids_done \n";
    while (my ($qid, $count) = each %{$self->{clusterqids_matchcount}}) {
-  #    print "qid: $qid  count: $count \n";
       $qids_done_count++ if($count >= 1);
    }
-#   print STDERR "$qids_done_count   ", $self->{n_qids}, "\n";
    my $done =  $qids_done_count == $self->{n_qids};
- #   print STDERR $self->{clusterqids_str}, "   ", $qids_done_count, "  ", $self->{n_qids}, "\n" if(!$done);
    return $done;
 }
 
