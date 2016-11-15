@@ -196,8 +196,9 @@ while (wait() != -1) {
 print STDERR "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 print $fh_progress "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 
-#exit;
+exit;
 # *************** done running blast ******************
+
 
 my @abc_part_filenames = ();
 for my $m8_filename (@blast_out_m8_filenames) {
