@@ -26,12 +26,14 @@ my $weed = 1; # weed out size 2 clusters if both seqs are also in bigger cluster
 my $clusters_filename = 'clusters';
 my $abc_filename = undef;
 my $gg_filename = '/home/tomfy/Aug2015multispeciesquery/55set.gg';
+my $queryspecies_list_filename;
 # store best match of each species
 
 GetOptions(
 	   'abc_filename=s'           => \$abc_filename, #
 	   'gg_filename=s'          => \$gg_filename, # 
            'output_filename=s' => \$clusters_filename,
+           'qspecies_filename=s' => \$queryspecies_list_filename,
            'weed!' => \$weed,
 );
 
@@ -39,11 +41,19 @@ GetOptions(
 #my $gg_filename = shift || '/home/tomfy/Aug2015multispeciesquery/55set.gg';
 my $geneid_sp = store_gg_info("$gg_filename");
 print STDERR "\n", "# Done storing gg info.\n";
-my %qspecies_count =  (
-                       'Medicago_truncatula' => 0, 'Lotus_japonicus' => 0,
-                       'Carica_papaya' => 0, 'Solanum_lycopersicum' => 0,
-                       'Oryza_sativa' => 0, 'Phoenix_dactylifera' => 0,
-                      );
+my %qspecies_count =  ();
+#  'Medicago_truncatula' => 0, 'Lotus_japonicus' => 0,
+#  'Carica_papaya' => 0, 'Solanum_lycopersicum' => 0,
+#  'Oryza_sativa' => 0, 'Phoenix_dactylifera' => 0,
+# );
+open my $fh_qsp, "<", "$queryspecies_list_filename" or die "Couldn't open $queryspecies_list_filename \n";
+while (<$fh_qsp>) {
+   next if(/^\s*#/); 
+   if (/^\s*(\S+)/) {
+      $qspecies_count{$1} = 0;
+   }
+}
+
 my %id1_id2ev = ();
 my %id1__sp_id2 = ();
 my %id_selfev = ();
@@ -79,6 +89,7 @@ while (my $line = <$fh_abc>) {
       my $idref = (exists $id_ref{$id2})? $id_ref{$id2} : die "No ref to $id2 stored in id_ref hash.\n";
       $id1__sp_id2{$id1}->{$sp2} = $idref; # {evalue => $ev, id => $idref}; # "$id2 $ev";
       $qspecies_count{$sp2} = 1;
+  #    print STDERR "match: $id1  $id2 \n";
    }
    $old_id1 = $id1;
 }
@@ -90,14 +101,18 @@ print STDERR scalar keys %id1__sp_id2, "  query ids. \n";
 
 my @qids = sort keys %id1__sp_id2;
 for my $qid (@qids) {
+   print STDERR "ZZZZQ: ", $qid, "\n";
    my $sp_id2ref = $id1__sp_id2{$qid};
    my $qsp = $geneid_sp->{$qid};
    while (my ($sp, $id2ref) = each %$sp_id2ref) { # get the best matches of each species to $qid
+   #   print STDERR "AAAAA: $qsp  $sp \n";
       next if($sp eq $qsp); # don't add edges joining 2 seqs of same species.
+   #   print STDERR "ASDFGH\n";
       my $id2 = ${$id2ref};
+      print STDERR "DDDDDDDDDDD: $qsp  $qid     $sp  $id2   ", ${$id1__sp_id2{$id2}->{$qsp}}, "\n" if(exists$id1__sp_id2{$id2}->{$qsp});
       next if($id2 eq $qid); # don't add edge connecting node to itself.
       if (exists $id1__sp_id2{$id2}->{$qsp} and ( ${$id1__sp_id2{$id2}->{$qsp}} eq $qid )) { # check for a reciprocal best match
-#         print  "adding edge  between $qid  and  $id2 \n";
+        print  STDERR "adding edge  between $qid  and  $id2 \n";
          $G->add_edge($qid, $id2);
       }
    }
