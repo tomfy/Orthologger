@@ -18,7 +18,7 @@ use lib $libdir;
 
 use ClMatches;
 
-# clustering based on (approximate) reciprocal best matches
+# clustering based on reciprocal best matches
 # input is abc file (i.e. each line has id1 id2 e-value)
 # make a graph with edges joining reciprocal best matches
 # (or approximate rbms - e-value in both directions is withing $F of best)
@@ -38,10 +38,10 @@ my $clusters_filename = undef;
 my $output_filename = undef;
 
 GetOptions(
-	   'abc_filename=s'           => \$abc_filename, #
-	   'clusters_filename=s'          => \$clusters_filename, # 
+	   'abc_filename=s'           => \$abc_filename,      #
+	   'clusters_filename=s'      => \$clusters_filename, # 
            'output_filename=s' => \$output_filename,
-);
+          );
 
 my %qid_clusterobjs = ();
 my $count_cluster_objs = 0;
