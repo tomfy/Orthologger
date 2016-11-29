@@ -18,11 +18,13 @@ use lib $libdir;
 
 use ClMatches;
 
-# clustering based on reciprocal best matches
-# input is abc file (i.e. each line has id1 id2 e-value)
-# make a graph with edges joining reciprocal best matches
-# (or approximate rbms - e-value in both directions is withing $F of best)
-# cluster are the biconnected components of the graph.
+# read clustered qids (output from rbmcl.pl) and create cluster object for each cluster,
+# and for each qid store a list of clusters it belongs to (most only belong to 1, but some 
+# belong to 2 or more).
+# Then for each query id, store matches (id2 and ev) in the cluster obj of each
+# cluster the qid is in.
+# For each cluster, get the best matches, defined as matches with best average similarity,
+# averaged over the qids in cluster
 
 #use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
@@ -33,14 +35,15 @@ my $min_sim = 0;
 #my $clusters_filename = 'clusters';
 # store best match of each species
 
-my $abc_filename = undef;
+my $input_filename = undef;
 my $clusters_filename = undef;
 my $output_filename = undef;
 
 GetOptions(
-	   'abc_filename=s'           => \$abc_filename,      #
+	   'input_filename=s'           => \$input_filename,  #
 	   'clusters_filename=s'      => \$clusters_filename, # 
            'output_filename=s' => \$output_filename,
+           'max_fam_size=i' => \$max_fam_size,
           );
 
 my %qid_clusterobjs = ();
@@ -66,57 +69,83 @@ while ( my $line = <$fh_clust>) {
 close $fh_clust;
 
 print STDERR "number of cluster objects: ", $count_cluster_objs, "    ", scalar keys %qid_clusterobjs, "\n";
-#exit;
 
-
-### read in blast match info from abc file:
-my $id_counter = 0;
-open my $fh_abc, "<", "$abc_filename" or die "Couldn't open $abc_filename for reading. Exiting. \n";
-my $old_id1 = NOTANID;
-my $count_matches = 0;
-my $matches_string = '';
-my %id2_ev = ();
-my $count_lines_read = 0;
 my $count_qids_processed = 0;
-open my $fh_output, ">", "$output_filename" or die "Couldn't open $output_filename for writing.\n";
-while (my $line = <$fh_abc>) {
-   $count_lines_read++; print STDERR "abc lines read: $count_lines_read \n" if($count_lines_read % 3000000 == 0);
-   my ($id1, $id2, $ev) = split(" ", $line);
-   if (($id1 ne $old_id1) and ($old_id1 ne NOTANID)) {
-      if (exists $qid_clusterobjs{$old_id1}) { # this qid belongs to one of the clusters, so process its matches:
-         process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
-         $count_qids_processed++;
-      }
-      $matches_string = $line;
-      %id2_ev = ();
-   } else {
-      next if(exists $id2_ev{$id2});
-      $id2_ev{$id2} = 1;
-      $matches_string .= $line;
-   }
-   $old_id1 = $id1;
-}
-if (exists $qid_clusterobjs{$old_id1}) {
-   process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
-   $count_qids_processed++;
-}
-if($count_qids_processed % 1000000 == 0){
-  my %clustobjs = ();
-         while(my($k, $v) = each %qid_clusterobjs){
-            for(@$v){
-               $clustobjs{$_->{clusterqids_str}}++;
-            }
+### read in blast match info from abc file:
+if (file_format_is_abc($input_filename)) {
+   open my $fh_in, "<", "$input_filename" or die "Couldn't open $input_filename for reading. Exiting. \n";
+   my $old_id1 = NOTANID;
+   my $count_matches = 0;
+   my $matches_string = '';
+   my %id2_ev = ();
+   my $count_lines_read = 0;
+   $count_qids_processed = 0;
+   open my $fh_output, ">", "$output_filename" or die "Couldn't open $output_filename for writing.\n";
+   while (my $line = <$fh_in>) {
+      $count_lines_read++; print STDERR "abc lines read: $count_lines_read \n" if($count_lines_read % 3000000 == 0);
+      my ($id1, $id2, $ev) = split(" ", $line);
+      if (($id1 ne $old_id1) and ($old_id1 ne NOTANID)) {
+         if (exists $qid_clusterobjs{$old_id1}) { # this qid belongs to one of the clusters, so process its matches:
+            process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
+            $count_qids_processed++;
          }
-         print STDERR "Xnumber of cluster objects remaining: ", scalar keys %clustobjs, "\n";
+         $matches_string = $line;
+         %id2_ev = ();
+      } else {
+         next if(exists $id2_ev{$id2});
+         $id2_ev{$id2} = 1;
+         $matches_string .= $line;
+      }
+      $old_id1 = $id1;
+   }
+   if (exists $qid_clusterobjs{$old_id1}) {
+      process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
+      $count_qids_processed++;
+   }
+} elsif (file_format_is_iie($input_filename)) { # iie
+   open my $fh_in, "<", "$input_filename" or die "Couldn't open $input_filename for reading. Exiting. \n";
+   my $old_id1 = NOTANID;
+   my $count_matches = 0;
+   my $matches_string = '';
+   my %id2_ev = ();
+   my $count_lines_read = 0;
+   $count_qids_processed = 0;
+   my $id1;
+   open my $fh_output, ">", "$output_filename" or die "Couldn't open $output_filename for writing.\n";
+   while (my $line = <$fh_in>) {
+      $count_lines_read++; print STDERR "iie lines read: $count_lines_read \n" if($count_lines_read % 3000000 == 0);
+      if ($line =~ /^(\S+)/) {  # first line of family
+         $id1 = $1;
+         #  my ($id1, $id2, $ev) = split(" ", $line);
+         if ($old_id1 ne NOTANID) {
+            if (exists $qid_clusterobjs{$old_id1}) { # this qid belongs to one of the clusters, so process its matches:
+               process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
+               $count_qids_processed++;
+            }
+            $matches_string = ''; # $line;
+            %id2_ev = ();
+         }
+      } elsif ($line =~ /^\s+(\S+)\s+(\S+)/) {
+         my ($id2, $ev) = ($1, $2);
+         next if(exists $id2_ev{$id2});
+         $id2_ev{$id2} = 1;
+         $matches_string .= "$id1 $line";
+      }
+      $old_id1 = $id1;
+   }
+   if (exists $qid_clusterobjs{$old_id1}) {
+      process_matches(\%qid_clusterobjs, $old_id1, $matches_string, $max_fam_size, $fh_output);
+      $count_qids_processed++;
+   }
+} else {
+   die "input file $input_filename has unrecognized format.\n";
 }
-$matches_string = '';
-print STDERR "# Done reading in abc data.\n";
+
+print STDERR "# Done reading in blast match data.\n";
 print STDERR "# qids in clusters processed: ", $count_qids_processed, "\n";
 print STDERR "# qids in clusters yet to do: ", scalar keys %qid_clusterobjs, "\n";
-while(my($k, $v) = each %qid_clusterobjs){
-   print STDERR $k, "    ", scalar @$v,  "\n";
-}
-####### Done reading in abc data #####
+
+####### Done reading in blast match data (abc or iie) #####
 
 
 sub process_matches{
@@ -135,4 +164,30 @@ sub process_matches{
       }
    }
    delete $qid_clobjs->{$qid};
+}
+
+sub file_format_is_abc{
+   my $filename = shift;
+   my $ok_line_count = 0;
+   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
+   for (1..3) {
+      my $line = <$fh>;
+      last unless($line =~ /^\S+\s+\S+\s+\S+/);
+      $ok_line_count++;
+   }
+   close $fh;
+   return ($ok_line_count == 3);
+}
+
+sub file_format_is_iie{
+   my $filename = shift;
+   my $ok_line_count = 0;
+   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
+   my $line = <$fh>;
+   $ok_line_count++ if($line =~ /^\S+/);
+   $line = <$fh>;
+   last unless($line =~ /^\s+\S+\s+\S+/);
+   $ok_line_count++;
+   close $fh;
+   return ($ok_line_count == 2);
 }
