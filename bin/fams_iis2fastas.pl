@@ -13,7 +13,7 @@ BEGIN {     # this has to go in Begin block so happens at compile time
    $libdir = $bindir . '/../lib'; 
    $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
-use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
+#use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
 
 # read in file with similarity info for families (iis format)
@@ -59,11 +59,19 @@ while ( my $line = <$fh_iis> ) {
       %id_present = ();
       for my $qid (@cluster_qids) {
          $id_present{$qid} = 1;
-         $fam_string_fasta .= ">$qid\n" . $id_sequence_all->{$qid} . "\n";
+         if (exists $id_sequence_all->{$qid}) {
+            $fam_string_fasta .= ">$qid\n" . $id_sequence_all->{$qid} . "\n";
+         } else {
+            warn "No sequence found for id: $qid.\n";
+         }
       }
    } elsif ($line =~ /^\s+(\S+)\s+(\S+)\s*$/) {
       my ($id2, $sim) = ($1, $2);
-      $fam_string_fasta .= ">$id2\n" . $id_sequence_all->{$id2} . "\n" unless(exists $id_present{$id2});
+      if (exists $id_sequence_all->{$id2}) {
+         $fam_string_fasta .= ">$id2\n" . $id_sequence_all->{$id2} . "\n" unless(exists $id_present{$id2});
+      } else {
+         warn "No  sequence found for id: $id2.\n";
+      }
    } else {
       warn "line has unexpected format: $line \n";
    }
