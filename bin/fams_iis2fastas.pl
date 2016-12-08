@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use Getopt::Long;
-no lib '/home/tomfy/cxgn/cxgn-corelibs/lib';
+use Pod::Usage;
 
 use File::Basename 'dirname';
 use Cwd 'abs_path';
@@ -13,44 +13,43 @@ BEGIN {     # this has to go in Begin block so happens at compile time
    $libdir = $bindir . '/../lib'; 
    $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
-#use lib '/home/tomfy/Orthologger_2014_11_28/lib/';
 use lib $libdir;
 
 # read in file with similarity info for families (iis format)
-# for each id get the corresponding sequence (fasta)
+# for each id get the corresponding sequence (fasta) from file with all sequences in fasta format.
 # usage example:
-#  fam_iis2fasta.pl  -iis_file Mv21_1000.iis -fasta_in ../new21species-pep.fasta
-# output (fasta sequences for each family) would be file:  Mv21_fam_1000.fastas if not specified with -out option
+#  fam_iis2fasta.pl  -iis_in Mv21_1000.iis -fasta_in ../new21species-pep.fasta
+# output (fasta sequences for each family) would be file:  Mv21_1000.fastas if not specified with -out option
 
-my $iis_file                  = undef; # blast output in iis format
-my $input_fasta_filename      = undef; # fasta for all sequences
+my $iis_input_filename                  = undef; # blast output in iis format
+my $fasta_input_filename      = undef; # fasta for all sequences
 my $output_filename = undef;
 
 # Process long cl options
 GetOptions(
-           'iis_file=s'          => \$iis_file,
-           'fasta_infile=s'      => \$input_fasta_filename,
-           'output_filename=s' => \$output_filename,
+           'iis_input_filename=s'        => \$iis_input_filename,
+           'fasta_input_filename=s'      => \$fasta_input_filename,
+           'output_filename=s'           => \$output_filename,
           );
 
 if (!defined $output_filename) { # if no output filename specified on CL, make a file name
-   $output_filename = $iis_file; # from $iis_file by replacing .iis with .fastas
+   $output_filename = $iis_input_filename; # from $iis_input_filename by replacing .iis with .fastas
    $output_filename =~ s/[.]iis$//;
    $output_filename .= '.fastas';
 }
 print STDERR "fams_iis2fasta.pl OUTPUT FILENAME: $output_filename \n";
 ########
 
-my $id_sequence_all = store_fasta_sequences($input_fasta_filename);
+my $id_sequence_all = store_fasta_sequences($fasta_input_filename);
 
-open my $fh_iis, "<", "$iis_file" or die "couldnt open $iis_file for reading. \n";
+open my $fh_iis, "<", "$iis_input_filename" or die "couldnt open $iis_input_filename for reading. \n";
 open my $fh_out, ">", "$output_filename" or die "Failed to open $output_filename for writing.\n";
-my ( $fam_size, $fam_string_head, $fam_string_fasta ) = ( 0, '', '' );
+my ( $fam_string_head, $fam_string_fasta ) = ('', '' );
 my %taxon_count = ();
 my %id_present = ();            #
 while ( my $line = <$fh_iis> ) {
    next if($line =~ /^\s*#/);   # skip comment lines
-   next if($line =~ /^\s*$/);   # skip all whitespace lines
+   next if($line =~ /^\s*$/);   # skip all-whitespace lines
    if ($line =~ /^(\S+)\s*$/) {
       my @cluster_qids = split(",", $1);
       print $fh_out $fam_string_fasta, "\n" if($fam_string_fasta ne '');
