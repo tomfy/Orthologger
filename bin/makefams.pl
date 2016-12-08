@@ -27,7 +27,7 @@ use ClMatches;
 # For each cluster, get the best matches, defined as matches with best average similarity,
 # averaged over the qids in cluster
 
-#use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+use TomfyMisc qw 'file_format_is_abc_iie'; # file_format_is_abc file_format_is_iie'; # 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
 my $clusters_printed = 0;
 my $max_fam_size = 400;
@@ -40,11 +40,9 @@ my $matches_filename = undef;
 my $clusters_filename = undef;
 my $output_filename = undef;
 my $help = undef;
-#my $verbosity = 1;
 
 GetOptions(
            'help|?:i' => \$help, # sub {my ($optname, $optval) = @_, return ($optval == 0}, # \$help,
-#           'verbosity=i' => \$verbosity,
 	   'matches_filename=s'           => \$matches_filename,  #
 	   'clusters_filename=s'      => \$clusters_filename, # 
            'output_filename=s' => \$output_filename,
@@ -72,7 +70,10 @@ if (defined $help) {
    pod2usage($help);
    exit;
 }
-#exit;
+if (!defined $output_filename) {
+   $output_filename = $matches_filename;
+   $output_filename =~ s/([.]iie|[.]abc)/_fams.iis/; # X.iie -> X.qclusters
+}
 
 my %qid_clusterobjs = ();
 my $count_cluster_objs = 0;
@@ -198,43 +199,6 @@ $clusters_printed++;
    return $s;
 }
 
-sub file_format_is_abc{
-   my $filename = shift;
-   my $ok_line_count = 0;
-   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
-   for (1..3) {
-      my $line = <$fh>;
-      last unless($line =~ /^\S+\s+\S+\s+\S+/);
-      $ok_line_count++;
-   }
-   close $fh;
-   return ($ok_line_count == 3);
-}
-
-sub file_format_is_iie{
-   my $filename = shift;
-   my $ok_line_count = 0;
-   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
-   my $line = <$fh>;
-   $ok_line_count++ if($line =~ /^\S+/);
-   $line = <$fh>;
-   last unless($line =~ /^\s+\S+\s+\S+/);
-   $ok_line_count++;
-   close $fh;
-   return ($ok_line_count == 2);
-}
-
-sub file_format_is_abc_iie{
-   my $filename = shift;
-   my $format = 'other';
-   if (file_format_is_abc($filename)) {
-      $format = 'abc';
-   } elsif (file_format_is_iie($filename)) {
-      $format = 'iie';
-   }
-   return $format;
-}
-
 sub check_filename{ # check that filename is defined, and that file exists.
 my $fn = shift;
 my ($OK, $msg) = (1, '');
@@ -295,3 +259,7 @@ B<makefams.pl> Each cluster has 1 or more associated query ids. Read the top bla
       Output in iis format i.e. query ids on first line of family, then lines with initial space, id2, and similarity.
 
 =cut
+
+
+
+
