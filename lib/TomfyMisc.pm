@@ -1,6 +1,6 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring file_format_is_abc_iie';
 use strict;
 
 sub timestring{
@@ -151,6 +151,43 @@ sub run_phyml{
   my $phyml_newick_out = $phyml_obj->{newick_out};
   my $phyml_cpu_time = $phyml_obj->{cpu_time};
   return ( $phyml_obj->{phyml_command_line}, $phyml_newick_out, $phyml_loglikelihood, $phyml_cpu_time );
+}
+
+sub file_format_is_abc{
+   my $filename = shift;
+   my $ok_line_count = 0;
+   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
+   for (1..3) {
+      my $line = <$fh>;
+      last unless($line =~ /^\S+\s+\S+\s+\S+/);
+      $ok_line_count++;
+   }
+   close $fh;
+   return ($ok_line_count == 3);
+}
+
+sub file_format_is_iie{
+   my $filename = shift;
+   my $ok_line_count = 0;
+   open my $fh, "<", "$filename" or die "couldn't open $filename for reading.\n";
+   my $line = <$fh>;
+   $ok_line_count++ if($line =~ /^\S+/);
+   $line = <$fh>;
+   last unless($line =~ /^\s+\S+\s+\S+/);
+   $ok_line_count++;
+   close $fh;
+   return ($ok_line_count == 2);
+}
+
+sub file_format_is_abc_iie{
+   my $filename = shift;
+   my $format = 'other';
+   if (file_format_is_abc($filename)) {
+      $format = 'abc';
+   } elsif (file_format_is_iie($filename)) {
+      $format = 'iie';
+   }
+   return $format;
 }
 
 1;
