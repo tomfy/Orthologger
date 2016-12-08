@@ -2,6 +2,7 @@
 use strict;
 use List::Util qw (min max sum);
 use Getopt::Long;
+use Pod::Usage;
 use Graph;
 
 # clustering based on (approximate) reciprocal best matches
@@ -20,19 +21,20 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
    $libdir = abs_path($libdir);	# collapses the bin/../lib to just lib
 }
 use lib $libdir;
-use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
+use TomfyMisc qw 'file_format_is_abc_iie run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
 my $weed = 1; # weed out size 2 clusters if both seqs are also in bigger clusters.
-my $clusters_filename = 'clusters';
-my $abc_filename = undef;
-my $iie_filename = undef;
+my $clusters_filename = undef;
+my $matches_filename = undef;
 my $gg_filename = '/home/tomfy/Aug2015multispeciesquery/55set.gg';
 my $queryspecies_list_filename;
+my $help = undef;
 # store best match of each species
 
 GetOptions(
-	   'abc_filename=s'           => \$abc_filename, #
-           'iie_filename=s' => \$iie_filename,
+           'help|?:i' => \$help, # sub {my ($optname, $optval) = @_, return ($optval == 0}, # \$help,
+	   'matches_filename=s'           => \$matches_filename, #
+           #     'iie_filename=s' => \$iie_filename,
 	   'gg_filename=s'          => \$gg_filename, # 
            'output_filename=s' => \$clusters_filename,
            'qspecies_filename=s' => \$queryspecies_list_filename,
@@ -50,11 +52,18 @@ while (<$fh_qsp>) {
       $qspecies_count{$1} = 0;
    }
 }
+if (!defined $clusters_filename) {
+   $clusters_filename = $matches_filename;
+   $clusters_filename =~ s/([.]iie|[.]abc)/.qclusters/; # X.iie -> X.qclusters
+}
 my ($id1__sp_id2, $id_bccos);
-if (defined $iie_filename) {
-   ($id1__sp_id2, $id_bccos) = read_iie($iie_filename);
-} elsif (defined $abc_filename) {
-   ($id1__sp_id2, $id_bccos) = read_abc($abc_filename);
+my $matches_format = file_format_is_abc_iie($matches_filename);
+if ($matches_format eq 'iie') {
+   ($id1__sp_id2, $id_bccos) = read_iie($matches_filename);
+} elsif ($matches_format eq 'abc') {
+   ($id1__sp_id2, $id_bccos) = read_abc($matches_filename);
+} else {
+   die "matches file $matches_filename has unrecognized format.\n";
 }
 ################## add edges to the graph, joining reciprocal best matches.
 my $G = Graph::Undirected->new();
@@ -67,7 +76,6 @@ for my $qid (@qids) {
    my $qsp = $geneid_sp->{$qid};
    while (my ($sp, $id2) = each %$sp_id2) { # get the best matches of each species to $qid
       next if($sp eq $qsp); # don't add edges joining 2 seqs of same species.
- #     next if($id2 eq $qid); # don't add edge connecting node to itself.
       if (exists $id1__sp_id2->{$id2}->{$qsp}) {
          if ($id1__sp_id2->{$id2}->{$qsp} eq $qid ) { # check for a reciprocal best match
             $G->add_edge($qid, $id2);
@@ -115,20 +123,22 @@ while (my ($index, $ccomponent) = each @biconnected_components) { # loop over co
 # the graph object itself anymore
 undef $G; # will this allow the graph object to be successfully garbage-collected?
 undef @biconnected_components;
-
 ############### Weed out 'bridge' clusters 
 my ($bcc_objs_to_keep, $bridges) = ($weed)? weed_bridges(\@bccobjs, $id_bccos) : (\@bccobjs, []);
 print STDERR "After weed_bridges.  ", scalar @$bridges, " found.\n";
 ############### Done weeding 'bridge' clusters
 
 ################# Output ################
-open my $clusters_fh, ">", "$clusters_filename" or die "couldn't open $clusters_filename for writing.\n";
+my @out_lines = ();
 for my $bccobj (@$bcc_objs_to_keep) {
    my $idstr = join(",", @{$bccobj->{ids}});
-   print $clusters_fh  "$idstr ", $bccobj->{size}, "  ", $bccobj->{min_degree}, "  ", $bccobj->{max_degree}, "\n";
+   push @out_lines, "$idstr ". $bccobj->{size} . "  " . $bccobj->{min_degree} . "  " . $bccobj->{max_degree} . "\n";
 }
-my ($singles_string, $singleton_count) = singles_string($id_bccos);
-print $clusters_fh $singles_string;
+my ($singles_aref, $singleton_count) = singles_string($id_bccos);
+push @out_lines, @{$singles_aref};
+
+open my $clusters_fh, ">", "$clusters_filename" or die "couldn't open $clusters_filename for writing.\n";
+print $clusters_fh join("", sort @out_lines);
 close $clusters_fh;
 
 print STDERR "# vertices: ", scalar keys %$id_bccos, "\n";
@@ -178,69 +188,54 @@ sub weed_bridges{
    return (\@keeps, \@bridges);
 }
 
-# sub print_singles{
-#    my $id_bccos = shift;
-#    my $fh = shift;
-#    my $sum_bcc_count = 0;
-#    while (my ($i, $bccos) = each %$id_bccos) {
-#       my $bcc_count = scalar @$bccos;
-#       $sum_bcc_count += ($bcc_count > 0)? $bcc_count : 1;
-#       if ($bcc_count == 0) {
-#          print $fh "$i \n";
-#          $singleton_count++;
-#       }
-#    }
-#    return ($sum_bcc_count, $singleton_count);
-# }
+sub singles_string{
+   my $id_bccos = shift;
+   my @singles = ();
+   while (my ($i, $bccos) = each %$id_bccos) {
+      my $bcc_count = scalar @$bccos;
+      if ($bcc_count == 0) {
+         push @singles, sprintf("%s\n", $i);
+         $singleton_count++;
+      }
+   }
+   return (\@singles, $singleton_count);
+}
 
-  sub singles_string{
-     my $id_bccos = shift;
-     my $string = '';
-     while (my ($i, $bccos) = each %$id_bccos) {
-        my $bcc_count = scalar @$bccos;
-        if ($bcc_count == 0) {
-           $string .= sprintf("%s\n", $i);
-           $singleton_count++;
-        }
-     }
-     return ($string, $singleton_count);
-  }
+sub read_abc{
+   my $abc_filename = shift;
 
-  sub read_abc{
-     my $abc_filename = shift;
+   my $id1__sp_id2 = {};
+   my $id_bccos = {}; # key: id, val: array ref of refs to bcc (biconnected component) objs it belongs to. 
 
-     my $id1__sp_id2 = {};
-     my $id_bccos = {}; # key: id, val: array ref of refs to bcc (biconnected component) objs it belongs to. 
+   ### read in blast match info from abc file:
 
-     ### read in blast match info from abc file:
+   open my $fh_abc, "<", "$abc_filename" or die "Couldn't open $abc_filename for reading. Exiting. \n";
+   my $old_id1 = 'not_an_actual_id';
+   while (my $line = <$fh_abc>) {
+      my ($id1, $id2, $ev) = split(" ", $line);
+      if ($id1 ne $old_id1) {
+         $id_bccos->{$id1} = [];
+         for my $sp (keys %qspecies_count) {
+            $qspecies_count{$sp} = 0;
+         }
+      }
 
-     open my $fh_abc, "<", "$abc_filename" or die "Couldn't open $abc_filename for reading. Exiting. \n";
-     my $old_id1 = 'not_an_actual_id';
-     while (my $line = <$fh_abc>) {
-        my ($id1, $id2, $ev) = split(" ", $line);
-        if ($id1 ne $old_id1) {
-           $id_bccos->{$id1} = [];
-           for my $sp (keys %qspecies_count) {
-              $qspecies_count{$sp} = 0;
-           }
-        }
+      my $sp1 = $geneid_sp->{$id1};
+      next if(!exists $qspecies_count{$sp1}); # skip if not one of the specified species.
+      my $sp2 = $geneid_sp->{$id2};
+      next if(!exists $qspecies_count{$sp2}); # skip if not one of the specified species.
 
-        my $sp1 = $geneid_sp->{$id1};
-        next if(!exists $qspecies_count{$sp1}); # skip if not one of the specified species.
-        my $sp2 = $geneid_sp->{$id2};
-        next if(!exists $qspecies_count{$sp2}); # skip if not one of the specified species.
-
-        if ($qspecies_count{$sp2} == 0) { # skip all but first (best) match.
-           $id1__sp_id2->{$id1}->{$sp2} = $id2;  # $idref; # {evalue => $ev, id => $idref}; # "$id2 $ev";
-           $qspecies_count{$sp2} = 1;
-        }
-        $old_id1 = $id1;
-     }
-     print STDERR "# Done reading in abc data. ";
-     print STDERR scalar keys %$id1__sp_id2, "  query ids. \n";
-     ####### Done reading in abc data #####
-     return ($id1__sp_id2, $id_bccos);
-  }
+      if ($qspecies_count{$sp2} == 0) { # skip all but first (best) match.
+         $id1__sp_id2->{$id1}->{$sp2} = $id2; # $idref; # {evalue => $ev, id => $idref}; # "$id2 $ev";
+         $qspecies_count{$sp2} = 1;
+      }
+      $old_id1 = $id1;
+   }
+   print STDERR "# Done reading in abc data. ";
+   print STDERR scalar keys %$id1__sp_id2, "  query ids. \n";
+   ####### Done reading in abc data #####
+   return ($id1__sp_id2, $id_bccos);
+}
 
 
 sub read_iie{
@@ -278,4 +273,68 @@ sub read_iie{
    ####### Done reading in iie data #####
    return ($id1__sp_id2, $id_bccos);
 }
+
+
+__END__
+
+
+=head1 NAME
+
+    rbmcl.pl - cluster query ids, by constructing graph with reciprocal best matches joined
+                  by edges. clusters are biconnected components of graph.
+
+=head1 SYNOPSIS
+
+    rbmcl.pl  -gg_filename <filename> -matches_filename <filename> -qspecies_filename <filename> [options]
+     Options:
+       -gg_filename  gene-genome association file; specifies genes in each genome.
+       -matches_filename  blast results in abc or iie format. Required - no default.
+       -qspecies_filename  file specifying the query species, 1 species per line. Required - no default.
+       -output_filename Default: construct from input filename, with form *_fams.iis
+       -weed  maximum number of matches to include. Default: 400
+
+=head1 OPTIONS
+
+=over 2
+
+=item B<-gg_filename> 
+
+             gene-genome association file. 1 genome per line; e.g. 
+              'Amborella_trichopoda: evm_27.model.AmTr_v1.0_scaffold00001.498 evm_27.model.AmTr_v1.0_scaffold00001.491 (etc.)' 
+
+=item B<-matches_filename>
+
+    File with blast output information. Format is either abc (id1 id2 e-value on each line), or
+     iie (id1 on first line of family, then ' id2 e-value' (with initial space) on each line
+     for matches to id1.)
+
+=item B<-qspecies_filename>
+
+    File specifying which species are query species. 1 species name per line (e.g. Arabidopsis_thaliana)
+
+=item B<-output_filename>
+
+    Name to use for output file. Default is to truncate '.abc' or '.iie' from input filename,
+     and append '.qclusters'.
+
+=item B<-max_fam_size>
+
+    -weed or -noweed . Default is weed, meaning that size 2 clusters with both members also belonging
+              to larger clusters are eliminated. 
+
+=back
+
+=head1 DESCRIPTION
+
+B<rbmcl.pl> Given matches from blast, and a list of query species, looks for reciprocal best matches among
+  the query sequences, constructs a graph whose nodes are query sequences, and with edges joining pairs of 
+  nodes which are reciprocal best matches, and then finds the biconnected components of the graph. A biconnected
+  component is a set of nodes which is connected, and which remains connected if any ONE of its nodes is deleted.
+  (I.e. the remaining nodes are connected.)
+  A node can belong to > 1 biconnected component. E.g. imagine two triangles which share a vertex. Each triangle
+  is a biconnected component, and the shared vertex belongs to both; the whole (5 vertices) is connected, but 
+  not biconnected, because the deletion of the shared vertex results in two separate connected components.
+
+
+=cut
 
