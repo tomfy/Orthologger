@@ -62,11 +62,11 @@ while (<$fh_fams>) {
          }
          while (my($id2, $sim) = each %id2_sim) {
             my $sp = (exists $geneid_sp->{$id2})? $geneid_sp->{$id2} : undef;
-            if(defined $sp){
-            $reqsp_present{$sp}++ if(exists $reqsp{$sp});
-         }else{
-            warn "species of seq $id2 is unknown.\n";
-         }
+            if (defined $sp) {
+               $reqsp_present{$sp}++ if(exists $reqsp{$sp});
+            } else {
+               warn "species of seq $id2 is unknown.\n";
+            }
          }
          if (scalar keys %reqsp_present >= $n_sp_required) {
             print $out_string;
@@ -83,4 +83,25 @@ while (<$fh_fams>) {
          warn "line has unexpected format: [[$_]] \n";
       }
    }
+}
+my %reqsp_present = ();
+my @qids = split(',', $old_ids);
+for my $qid (@qids) {
+   my $sp = (exists $geneid_sp->{$qid})? $geneid_sp->{$qid} : undef;
+   if (defined $sp) {
+      $reqsp_present{$sp}++ if(exists $reqsp{$sp});
+   } else {
+      warn "species of seq $qid is unknown.\n";
+   }
+}
+while (my($id2, $sim) = each %id2_sim) {
+   my $sp = (exists $geneid_sp->{$id2})? $geneid_sp->{$id2} : undef;
+   if (defined $sp) {
+      $reqsp_present{$sp}++ if(exists $reqsp{$sp});
+   } else {
+      warn "species of seq $id2 is unknown.\n";
+   }
+}
+if (scalar keys %reqsp_present >= $n_sp_required) {
+   print $out_string;
 }
