@@ -69,7 +69,7 @@ while ( my $line = <$fh_iis> ) {
       if (exists $id_sequence_all->{$id2}) {
          $fam_string_fasta .= ">$id2\n" . $id_sequence_all->{$id2} . "\n" unless(exists $id_present{$id2});
       } else {
-         warn "No  sequence found for id: $id2.\n";
+         warn " No sequence found for id: $id2.\n";
       }
    } else {
       warn "line has unexpected format: $line \n";
