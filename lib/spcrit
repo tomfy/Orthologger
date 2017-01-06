@@ -1,0 +1,13 @@
+AMd  Medicago_truncatula,Phaseolus_vulgaris,Gossypium_raimondii,Carica_papaya,Solanum_lycopersicum
+AMm  Oryza_sativa,Zea_mays,Brachypodium_distachyon,Phoenix_dactylifera
+Ambtr Amborella_trichopoda
+nonAM Arabidopsis_thaliana,Capsella_rubella,Beta_vulgaris,Nelumbo_nucifera
+
+(AMd+Ambtr)(2,1000);(AMm)(2,1000);(nonAM)(0,1)
+(AMd)(2,1000);(AMm+Ambtr)(2,1000);(nonAM)(0,1)
+(AMd+Ambtr)(13,1000);(AMm)(4,1000);(nonAM)(0,1)
+(AMd)(13,1000);(AMm+Ambtr)(4,1000);(nonAM)(0,1)
+(AMd+Ambtr)(16,1000);(AMm)(3,1000);(nonAM)(0,1)
+(AMd)(16,1000);(AMm+Ambtr)(3,1000);(nonAM)(0,1)
+(AMd+Ambtr)(19,1000);(AMm)(2,1000);(nonAM)(0,1)
+(AMd)(1,1000);(AMm+Ambtr)(1,1000);(nonAM)(0,1)
