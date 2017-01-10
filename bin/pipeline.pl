@@ -100,7 +100,7 @@ my $family_max_e_value = (exists $param_name_val->{family_max_e_value})? $param_
 my $family_multiplicity_knee =  (exists $param_name_val->{family_multiplicity_knee})? $param_name_val->{family_multiplicity_knee} : 6;
 my $family_log10_eval_penalty = (exists $param_name_val->{family_log10_eval_penalty})? $param_name_val->{family_log10_eval_penalty} : 12;
 my $family_taxon_requirement = (exists $param_name_val->{family_taxon_requirement})? 
-  $param_name_val->{family_taxon_requirement} : '7dicots,6; 4monocots,3';
+  $param_name_val->{family_taxon_requirement} : undef;
 my $added_groups_string = (exists $param_name_val->{added_groups_string})?  $param_name_val->{added_groups_string} : undef;
 
 my $alignment_program = (exists $param_name_val->{alignment_program})? $param_name_val->{alignment_program} : 'both'; # muscle, mafft, or both.
@@ -126,6 +126,7 @@ for my $filename (values %$taxon_file) {
    $fasta_files .= "$filename ";
 }
 
+               # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************
 my $asff = $all_species_fasta_filename . "_x";
 system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
 my $min_seq_length = (defined $param_name_val->{min_sequence_length})? $param_name_val->{min_sequence_length} :  $default_min_sequence_length;
@@ -134,6 +135,8 @@ system "remove_short_seqs.pl $min_seq_length < $asff > $all_species_fasta_filena
 system "formatdb -p T -i $all_species_fasta_filename ";
 print STDERR "blast db created for $all_species_fasta_filename.\n";
 print $fh_progress "blast db created for $all_species_fasta_filename.\n";
+# ******** Done making blast db ***************
+
 
 my $qfasta_filename;
 my $fasta_part_filenames;
