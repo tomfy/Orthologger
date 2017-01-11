@@ -27,17 +27,17 @@ my $query_id = undef;
 my $default_min_sequence_length = 20;
 my $query_number;               # either 'single' or 'multiple'
 # my $added_groups_string = '';
-
-# define some abbreviations for species names, for use in file names
-my %species_long_short = ('Medicago_truncatula' => 'Med.tr',
-			  'Arabidopsis_thaliana' => 'A.th',
-			  'Solanum_lycopersicum' => 'Sol.lyc',
-			  'Solanum_tuberosum' => 'Sol.tub',
-			  'Brachypodium_distachyon' => 'Brachy.dist',
-			  'Sorghum_bicolor' => 'Sorg.bi',
-			  'Oryza_sativa' => 'Oryza.sat',
-			  'Selaginella_moellendorffii' => 'Sel.mo',
-			 );
+my @pipeline_sections = ('top', 'blast', 'make_family', 'align', 'make_tree', 'end');
+my %section_number = ();
+my $i = 0;
+for(@pipeline_sections){
+    $section_number{$_} = $i;
+    $i++;
+}$section_number{'end'} = 100000;
+my $start = undef;
+my $last = undef;
+my $default_start = 'blast';
+    my $default_last = 'end';
 
 # Process long cl options
 GetOptions(
@@ -49,8 +49,10 @@ GetOptions(
            'n_multi_ft=i' => \$n_multi_ft,
            'query_id=s' => \$query_id,
            'query_taxon=s' => \$cl_query_taxon, # if specified on command line, overrides control file
-           
+           'start=s' => \$start, # 'blast', 'make_family', etc. 
+    'last=s' => \$last,
 	  );
+
 
 
 my ($taxon_file, $param_name_val) = get_params_from_control_file($control_filename);
@@ -58,8 +60,28 @@ if (defined $cl_query_taxon) {
    $param_name_val->{query_taxon} = $cl_query_taxon;
    $param_name_val->{query_taxon_file} = $taxon_file->{$param_name_val->{query_taxon}};
 }
+if(!defined $start){
+    if(defined $param_name_val->{start}){
+	$start = $param_name_val->{start};
+    }else{
+	$start = $default_start;
+    }
+}
+if(!defined $last){
+    if(defined $param_name_val->{'last'}){
+	$last = $param_name_val->{'last'};
+    }else{
+	$last = $default_last;
+    }
+}
+print STDERR "$start   $last \n";
+die "problem with start or last: $start, $last \n" 
+    if(!exists $section_number{$start} or !exists $section_number{$last} or ($section_number{$start}>$section_number{$last}));
+#exit;
 
-print STDERR "species, file: \n";
+print STDERR "species, file: \n"; 
+# exit;
+
 while (my ($s, $f) = each %$taxon_file) {
    printf STDERR ("%30s     %50s \n", $s, $f);
 }
@@ -81,6 +103,7 @@ my $time = $ltobj->hms;
 print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n";
 #exit;
 
+
 my $qspecies = $param_name_val->{query_taxon};
 # $qspecies = $species_long_short{$qspecies} if(exists $species_long_short{$qspecies});
 print STDERR "qspecies: $qspecies \n";
@@ -90,6 +113,11 @@ print STDERR "filename head: $filename_head \n";
 my $progress_filename = $filename_head . '.progress';
 open my $fh_progress, ">", "$progress_filename";
 
+
+my $gg_filename = "$filename_head.gg";
+my $all_species_fasta_filename = "all_" . $n_species . "_species_" . $date . ".fasta";
+my @blast_out_m8_filenames = ();
+my @fastas_filenames = ();
 
 
 my $blast_max_matches = (exists $param_name_val->{blast_max_matches})? $param_name_val->{blast_max_matches} : 2500;
@@ -107,12 +135,16 @@ my $alignment_program = (exists $param_name_val->{alignment_program})? $param_na
 my $alignment_quality = (exists $param_name_val->{alignment_quality})? $param_name_val->{alignment_quality} : 'best'; # quick or best.
 
 my $min_nongap_fraction = (exists $param_name_val->{min_nongap_fraction})? $param_name_val->{min_nongap_fraction} : 0.15;
+my $min_seq_length = (defined $param_name_val->{min_sequence_length})? $param_name_val->{min_sequence_length} :  $default_min_sequence_length;
 
 $n_multi_ft = $param_name_val->{n_multi_ft} if(defined $param_name_val->{n_multi_ft});
 $n_multi_ft = ($n_multi_ft > 1)? $n_multi_ft : 1;
 my $n_bs = ($n_multi_ft >= 1)? $n_multi_ft - 1 : 0;
+
+exit if($section_number{$last} < $section_number{'blast'});
+if($section_number{$start} <= $section_number{'blast'}){
 # ********** make gg string and file (gene-genome association)
-my $gg_filename = "$filename_head.gg";
+
 my ($gg_string, $species_seqcount) = make_gg($taxon_file, $gg_filename);
 my $gg_summary = gg_summary_string($species_seqcount);
 print STDERR $gg_summary;
@@ -120,7 +152,6 @@ print $fh_progress $gg_summary;
 print $fh_progress "gg file: $gg_filename \n";
 
 # ********** make blast db ****************
-my $all_species_fasta_filename = "all_" . $n_species . "_species_" . $date . ".fasta";
 my $fasta_files = '';
 for my $filename (values %$taxon_file) {
    $fasta_files .= "$filename ";
@@ -129,7 +160,7 @@ for my $filename (values %$taxon_file) {
                # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************
 my $asff = $all_species_fasta_filename . "_x";
 system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
-my $min_seq_length = (defined $param_name_val->{min_sequence_length})? $param_name_val->{min_sequence_length} :  $default_min_sequence_length;
+
 print STDERR "About to call remove_short_seqs.pl with min_seq_length = $min_seq_length \n";
 system "remove_short_seqs.pl $min_seq_length < $asff > $all_species_fasta_filename";
 system "formatdb -p T -i $all_species_fasta_filename ";
@@ -171,7 +202,6 @@ if (defined $query_id) {
 
 
 # ********** run blast *********************
-my @blast_out_m8_filenames = ();
 for my $q_fasta_part_filename (@$fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
    my $blast_out_filename = $q_fasta_part_filename;
    $blast_out_filename =~ s/fasta$/m8/;
@@ -199,11 +229,15 @@ while (wait() != -1) {
 print STDERR "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 print $fh_progress "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
 
-exit;
+#exit;
 # *************** done running blast ******************
-
-
+}
+print STDERR $section_number{$start}, " ", $section_number{'make_family'}, " ", $section_number{$last}, "\n";
+exit if($section_number{$last} < $section_number{'make_family'});
+if($section_number{$start} <= $section_number{'make_family'}){
+# *************** make family (abc) files *********************
 my @abc_part_filenames = ();
+print STDERR "blastout m8 filenames: ", join("; ", @blast_out_m8_filenames), "\n";
 for my $m8_filename (@blast_out_m8_filenames) {
    my ($v, $dir, $fname) = File::Spec->splitpath($m8_filename);
    $fname =~ s/m8$/abc/;
@@ -213,10 +247,11 @@ for my $m8_filename (@blast_out_m8_filenames) {
    my $m8tofams_cl = "m8toabc_fams.pl -input $m8_filename -max_eval $family_max_e_value -gg $gg_filename -output $fam_abcs_filename ";
    $m8tofams_cl .= " -fam_size_limit $family_size_limit ";
    $m8tofams_cl .= "-multiplicity_knee $family_multiplicity_knee -log10penalty $family_log10_eval_penalty ";
+   print STDERR "m8tofams_cl: $m8tofams_cl \n";
    my $abc_filename = `$m8tofams_cl`;
    # -fam_size_limit $family_size_limit `;
    $abc_filename =~ s/\s+$//; 
-   print STDERR "[$abc_filename]\n";
+   print STDERR "abc_filename: [$abc_filename]\n";
    push @abc_part_filenames, $abc_filename;
 }
 #my $abc_part_filenames = `split_abc.pl $abc_filename $n_pieces`;
@@ -226,9 +261,11 @@ for my $m8_filename (@blast_out_m8_filenames) {
 print "[" ,join("][", @abc_part_filenames), "]\n";
 print $fh_progress "abc family filenames: \n", join("\n", @abc_part_filenames), "\n";
 
-# ************** done making abc files *******************
+# ************** done making family (abc) files *******************
 # exit;
-my @fastas_filenames = ();
+
+# ************* make family (fastas)
+
 die "fasta input file undefined or file does not exist.\n" unless(defined $all_species_fasta_filename and -f $all_species_fasta_filename);
 my $fam_fastas_dir = $param_name_val->{fam_fastas_dir};
 mkdir $fam_fastas_dir unless(-d $fam_fastas_dir);
@@ -250,7 +287,7 @@ for my $the_abc_part (@abc_part_filenames) {
 print STDERR "Family fastas file ready to align: \n", join("\n", @fastas_filenames), "\n";
 
 print $fh_progress "Family_fastas_files: " , join("  ", @fastas_filenames), "\n";
-# exit;
+}
 
 # fork processes to do alignment, tree finding.
 my @alignment_programs = ('muscle', 'mafft'); # i.e. default is do both
