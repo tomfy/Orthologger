@@ -86,13 +86,13 @@ sub summary{
    my $self = shift;
    my $summary_string = '';
    my @gg_lines = split("\n", $self->get('gg_string'));
-my $total = 0;
+   my $total = 0;
    for (@gg_lines) {
-   #   print $_, "\n";
+      #   print $_, "\n";
       my @xs = split(" ", $_);
       my $n_sequences = scalar @xs - 1;
- #     $summary_string .= $xs[0] . "  " . (scalar @xs - 1) . "  sequences.\n";
-$summary_string .= sprintf("%30s  %8i  sequences\n", $xs[0], $n_sequences);
+      #     $summary_string .= $xs[0] . "  " . (scalar @xs - 1) . "  sequences.\n";
+      $summary_string .= sprintf("%30s  %8i  sequences\n", $xs[0], $n_sequences);
       $total += $n_sequences;
    }
    $summary_string .= sprintf("%30s  %8i  sequences\n", 'total', $total);

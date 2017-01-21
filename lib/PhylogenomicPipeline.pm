@@ -18,7 +18,7 @@ sub initialize{
    my $self = shift;
    my $control_filename = shift;
    my $defaults = shift;
-   while (my($k,$v) = each %$defaults) { 
+   while (my($k,$v) = each %$defaults) {
       $self->{$k} = $v;
    }
    open my $fh_ctrl, "<", "$control_filename" or die "Could not open $control_filename for reading; exiting.";
@@ -41,6 +41,7 @@ sub initialize{
          warn "Unexpected line in control_file: $_";
       }
    }
+   $self->set('n_species', scalar keys %{$self->get('taxon_inputpath')});
    #   print STDERR 'Added groups String: ' . "$added_groups_string \n";
    $added_groups_string =~ s/;\s*$//; # remove final ;
    $added_groups_string = "'" . $added_groups_string . "'";

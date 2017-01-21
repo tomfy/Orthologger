@@ -23,4 +23,10 @@ sub set{
    $self->{$attr} = $value;
 }
 
+sub get_plattr{
+   my $self = shift;
+   my $attr = shift;
+   return $self->get('pipeline')->get($attr);
+}
+
 1;
