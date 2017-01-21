@@ -15,8 +15,10 @@ BEGIN {     # this has to go in Begin block so happens at compile time
 }
 use lib $libdir;
 
+use TomfyMisc qw(date_time);
 use PhylogenomicPipeline;
 use PipeSegGG;
+use PipeSegBlast;
 
 
 my %default_parameters = ( blast_max_matches => 2500, blast_max_e_value => 1e-6,
@@ -115,7 +117,9 @@ my $time = $ltobj->hms;
 #print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n\n";
 print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n";
 #exit;
-
+my ($date, $time) = date_time();
+print STDERR "Pipeline start date, time: $date, ", $ltobj->hms, "\n";
+#exit;
 
 my $qspecies = get_qspecies($pl_obj);
 die "query files not specified.\n" if(!defined $qspecies);
@@ -127,8 +131,9 @@ print STDERR "filename head: $filename_head \n";
 my $progress_filename = $filename_head . '.progress';
 print STDERR "progress_filename: $progress_filename \n";
 open my $fh_progress, ">", "$progress_filename";
+$pl_obj->set('fh_prog', $fh_progress);
 
-my $gg_filename = $n_species . "species_" . $date . ".gg";
+my $gg_filename = $pl_obj->get('n_species') . "species_" . $date . ".gg";
 my $all_species_fasta_filename = "all_" . $n_species . "_species_" . $date . ".fasta";
 my @blast_out_m8_filenames = ();
 my @fastas_filenames = ();
@@ -176,97 +181,11 @@ print STDERR $gg_summary;
 print $fh_progress $gg_summary;
 
 #######################################################################################################
-#if (do_this_section('blast', $start, $last, \%section_number)) { # **********  Blast section *********
-
- # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************  
-   my $fasta_files = '';
-   for my $filename (values %{$pl_obj->get('taxon_inputpath')}) {
-      $fasta_files .= "$filename ";
-   }
-   my $asff = $all_species_fasta_filename . "_x";
-   system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
-   print STDERR "About to call remove_short_seqs.pl with min_seq_length = $min_seq_length \n";
-   system "remove_short_seqs.pl $min_seq_length < $asff > $all_species_fasta_filename";
-
- # ********** make blast db ****************
-   system "formatdb -p T -i $all_species_fasta_filename ";
-   print STDERR "blast db created for $all_species_fasta_filename.\n";
-   print $fh_progress "blast db created for $all_species_fasta_filename.\n";
- # ******** Done making blast db ***************
-
-
-   my $qfasta_filename;
-   my $fasta_part_filenames;
-   # if doing single sequence:
-   if (defined $query_id) {
-      $query_number = 'single';
-      my $query_fasta_string = get_1sequence_fasta_string($query_id, $pl_obj->get('query_inputpath'));
-      print STDERR "AAAAAAAAAAAAa: [[$query_fasta_string]]\n";
-      my @lines = split("\n", $query_fasta_string);
-      my $id_line = shift @lines;
-      my $id = ($id_line =~ /^>(\S+)/)? $1 : 'XXX_';
-      my $query_filename = $id . ".fasta";
-      $fasta_part_filenames = [$query_filename];
-      open my $FHqff, ">", "$query_filename";
-      $query_fasta_string = $id_line . "\n" . join("", @lines) . "\n";
-      print $FHqff $query_fasta_string, "\n";
-   } else {
-      # else doing whole genome ('all'):
-      $query_number = 'multiple';
-      # ********* split query fasta **************
-      my @qts = ();
-my @qtpaths = ();
-      while(my($qt, $qtpath) = each %{$pl_obj->get('query_taxon_inputpath')}){
-         push @qts, $qt;
-         push @qtpaths, $qtpath;
-      }
-      my $qfasta_filename = join(".", @qts) . ".fasta";
-my $qtpaths_str = join(" ", @qtpaths);
-      system "cat $qtpaths_str > $qfasta_filename";
-$pl_obj->set('query_inputpath');
-      my ($vol, $path, $qfname) = File::Spec->splitpath($qfasta_filename);
-      $qfname =~ s/[.]fasta//;  # remove final .fasta
-      my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta"; # just goes in cwd
-      system "remove_short_seqs.pl $min_seq_length < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
-      $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $pl_obj->get('n_pieces'));
-      print STDERR "query part fasta files: ", join(", ", @$fasta_part_filenames), "\n";
-   }
-
-
-   # ********** run blast *********************
-   for my $q_fasta_part_filename (@$fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
-      my $blast_out_filename = $q_fasta_part_filename;
-      $blast_out_filename =~ s/fasta$/m8/;
-      my ($v, $dir, $fname) = File::Spec->splitpath($blast_out_filename);
-      my $blastout_dir = $pl_obj->get('blast_output_dir');
-      mkdir $blastout_dir unless(-d $blastout_dir);
-      $blast_out_filename = $blastout_dir . '/' . $fname;
-      print "blastout path: $blast_out_filename \n";
-      push @blast_out_m8_filenames, $blast_out_filename;
-      my $pid = fork(); # returns 0 to child process, pid of child to parent process.
-      if ($pid == 0) {  # child process
-   
-         # blastall -p blastp -d dbfilename -i queryfilename -e ‘1e-6’ -m 8 -a 4 >  xx_blastout.m8
-         my $blast_max_matches = $pl_obj->get('blast_max_matches');
-         my $blast_max_e_value = $pl_obj->get('blast_max_e_value');
-         my $blast_cl = "nohup blastall -p blastp -d $all_species_fasta_filename -i $q_fasta_part_filename -e $blast_max_e_value -b $blast_max_matches -m 8 -o $blast_out_filename";
-         print "blast cl: $blast_cl \n";
-         my $blast_stdout = `$blast_cl`;
-         print "blast finished analyzing $q_fasta_part_filename; output file: $blast_out_filename. \n";
-         exit(0);
-      }
-   }				# end loop over parts
-   my $children_done = 0;
-   while (wait() != -1) {
-      $children_done++; print "Number of files finished analyzing with blast: $children_done. \n";
-   }
-   print STDERR "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
-   print $fh_progress "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
-
-   # *************** done running blast ******************
-#}
-##########################################################################################
+my $blast_obj = PipeSegBlast->new($pl_obj);
+$blast_obj->run();
 # die "exiting after blast.\n";
+##########################################################################################
+
 
 ##########################################################################################
 print STDERR $section_number{$start}, " ", $section_number{'make_families'}, " ", $section_number{$last}, "\n";
