@@ -8,14 +8,14 @@ sub new {
    my $class = shift;
    my $pl_obj = shift;          #
    #   my $input_filenames = shift; # whitespace separated .m8 filenames
-   my $args  = {  #  defaults 
+   my $args  = {                #  defaults 
                 output_dir => 'families',
                 size_limit => '500',
                 max_e_value => 1e-6,
                 multiplicity_knee => 1000,
                 log10_eval_penalty => 0,
                 #  fastas_output_dir => 'family_fastas',
-                input_filename_pattern => '../*.m8',     # by default (if no predecessor segment output file defined), look in ../
+                input_filename_pattern => '../*.m8', # by default (if no predecessor segment output file defined), look in ../
                };
    my $self  = bless $args, $class;
    $self->set('pipeline', $pl_obj); # store the pipeline obj to which this segment belongs.
@@ -26,12 +26,14 @@ sub new {
 sub run{
    my $self = shift;
 
+   my $pl_obj = $self->get('pipeline');
+   my $gg_filename =  $pl_obj->get('gg_filename');
+   my $fh_progress = $pl_obj->get('fh_progress');
+
    my $family_max_e_value = $self->get('max_e_value');
-   my $gg_filename =  $self->get_plattr('gg_filename');
    my $family_size_limit = $self->get('size_limit');
    my $family_multiplicity_knee = $self->get('multiplicity_knee');
    my $family_log10_eval_penalty = $self->get('log10_eval_penalty');
-   my $fh_progress = $self->get_plattr('fh_progress');
 
    print STDERR "top of PipeSegFamilies->run; ", getcwd(), " ", abs_path(getcwd()), "\n";
    my $fam_abcs_dir;
@@ -43,9 +45,7 @@ sub run{
    } else { # should be in dir (created by hand) which is subdir of blast output dir. should have *.m8 files
       $fam_abcs_dir = getcwd();
    }
-   print STDERR "top of PipeSegFamilies->run; ", getcwd(), " ", abs_path(getcwd()), "\n";
-   print STDERR "top of PipeSegFamilies->run; ", $fam_abcs_dir, , " ", abs_path($fam_abcs_dir), "\n";
- #  exit;
+
    # *************** make family (abc) files *********************
    my $m8_filename_str = `ls ../*.m8`;
    die "ls ../*.m8 finds no files.\n" if($m8_filename_str =~ /No such file or directory/);
@@ -63,7 +63,7 @@ sub run{
       $m8tofams_cl .= "-multiplicity_knee $family_multiplicity_knee -log10penalty $family_log10_eval_penalty ";
 
       print STDERR "m8tofams_cl: $m8tofams_cl \n";
-# exit;
+      # exit;
       my $abc_filename = `$m8tofams_cl`;
       # -fam_size_limit $family_size_limit `;
       $abc_filename =~ s/\s+$//; 
@@ -81,12 +81,12 @@ sub run{
    die "exiting after making family (abc)files.\n";
    # ************* make family (fastas)
 
-   my $family_taxon_requirement = $self->get_plattr('family_taxon_requirement');
-   my $added_groups_string = $self->get_plattr('added_groups_string');
+   my $family_taxon_requirement = $pl_obj->get('family_taxon_requirement');
+   my $added_groups_string = $pl_obj->get('added_groups_string');
 
-   my $all_species_fasta_filename = $self->get_plattr('all_species_fasta_filename');
+   my $all_species_fasta_filename = $pl_obj->get('all_species_fasta_filename');
    die "fasta input file undefined or file does not exist.\n" unless(defined $all_species_fasta_filename and -f $all_species_fasta_filename);
-   my $fam_fastas_dir = $self->get_plattr('families_output_dir');
+   my $fam_fastas_dir = $pl_obj->get('families_output_dir');
    mkdir $fam_fastas_dir unless(-d $fam_fastas_dir);
    my @fastas_filenames = ();
    for my $the_abc_part (@abc_part_filenames) {
@@ -110,6 +110,8 @@ sub run{
 
    print $fh_progress "Family_fastas_files: " , $fastas_filenames_str, "\n";
 }                               # end of make_families section
+
+
 
 
 

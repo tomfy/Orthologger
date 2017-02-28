@@ -2,33 +2,40 @@ package PipeSegBlast;
 use strict;
 use base 'PipelineSegment';
 use List::Util qw (min max sum);
-use TomfyMisc qw (date_time split_fasta);
+use TomfyMisc qw (date_time split_fasta_file split_fasta_string fix_fasta_files);
+use Cwd qw (getcwd abs_path);
+
 
 sub new {
    my $class = shift;
-   my $pl_obj = shift;          # 
-   my $args  = {};
-   my $self  = bless $args, $class;
-   $self->set('pipeline', $pl_obj); # store the pipeline obj to which this segment belongs.
+   my $pl_obj = shift;
+   print STDERR "top of pipesegblast constructor.\n";
+   my $self  = $class->SUPER::new($pl_obj); # bless $args, $class;
+   $self->init({
+                output_dir => 'blast_out',
+                max_matches => 2500,
+                max_e_value => 1e-6,
+               });
+   print STDERR "bottom of pipesegblast constructor.\n";
    return $self;
 }
 
+
+
 sub run{
    my $self = shift;
-   # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************  
-   my $fasta_files = '';
-   for my $filename (values %{$self->get('pipeline')->get('taxon_inputpath')}) {
-      $fasta_files .= "$filename ";
-   }
 
+   my $pl_obj = $self->get('pipeline');
    my ($date, $time) = date_time();
-my $min_seq_length = $self->get_plattr('min_sequence_length');
-my $fh_progress = $self->get_plattr('fh_prog');
-   my $all_species_fasta_filename = "all_" . $self->get('pipeline')->get('n_species') . "_species_" . $date . ".fasta";
-   my $asff = $all_species_fasta_filename . "_x";
-   system "cat $fasta_files | clean_fasta_idlines.pl > $asff";
-   print STDERR "About to call remove_short_seqs.pl with min_seq_length = $min_seq_length \n";
-   system "remove_short_seqs.pl $min_seq_length < $asff > $all_species_fasta_filename";
+   my $min_seq_length = $self->get('min_sequence_length');
+   my $fh_progress = $pl_obj->get('fh_progress');
+   my $all_species_fasta_filename = abs_path( "all_" . $pl_obj->get('n_species') . "_species_" . $date . ".fasta" );
+
+   # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************  
+   my @fasta_files = $pl_obj->get('taxon_inputpath')->values();
+   open my $fhout, ">", "$all_species_fasta_filename" or die "Couldn't open $all_species_fasta_filename for writing.\n";
+   print $fhout fix_fasta_files($min_seq_length, @fasta_files);
+   close $fhout;
 
    # ********** make blast db ****************
    system "formatdb -p T -i $all_species_fasta_filename ";
@@ -36,63 +43,40 @@ my $fh_progress = $self->get_plattr('fh_prog');
    print $fh_progress "blast db created for $all_species_fasta_filename.\n";
    # ******** Done making blast db ***************
 
-
-#   my $qfasta_filename;
-   my $fasta_part_filenames;
-   # if doing single sequence:
-   my $query_id = undef;
-   if (defined $query_id) {
-      die "single query option not implemented.\n";
-      # $query_number = 'single';
-      # my $query_fasta_string = get_1sequence_fasta_string($query_id, $pl_obj->get('query_inputpath'));
-      # print STDERR "AAAAAAAAAAAAa: [[$query_fasta_string]]\n";
-      # my @lines = split("\n", $query_fasta_string);
-      # my $id_line = shift @lines;
-      # my $id = ($id_line =~ /^>(\S+)/)? $1 : 'XXX_';
-      # my $query_filename = $id . ".fasta";
-      # $fasta_part_filenames = [$query_filename];
-      # open my $FHqff, ">", "$query_filename";
-      # $query_fasta_string = $id_line . "\n" . join("", @lines) . "\n";
-      # print $FHqff $query_fasta_string, "\n";
-   } else {
-      # else doing whole genome ('all'):
-    #  $query_number = 'multiple';
-      # ********* split query fasta **************
-      my @qts = ();
-      my @qtpaths = ();
-      while (my($qt, $qtpath) = each %{$self->get_plattr('query_taxon_inputpath')}) {
-         push @qts, $qt;
-         push @qtpaths, $qtpath;
-      }
-      my $qfasta_filename = join(".", @qts) . ".fasta";
-      my $qtpaths_str = join(" ", @qtpaths);
-      system "cat $qtpaths_str > $qfasta_filename";
-      $self->set('query_inputpath'); # not needed?
-      my ($vol, $path, $qfname) = File::Spec->splitpath($qfasta_filename);
-      $qfname =~ s/[.]fasta//;  # remove final .fasta
-      my $qfasta_filename_noshortseqs = $qfname . "_nss.fasta"; # just goes in cwd
-      system "remove_short_seqs.pl $min_seq_length < $qfasta_filename > $qfasta_filename_noshortseqs"; # remove short sequences 
-      $fasta_part_filenames = split_fasta($qfasta_filename_noshortseqs, $self->get_plattr('n_pieces'));
-      print STDERR "query part fasta files: ", join(", ", @$fasta_part_filenames), "\n";
+   # ********* split query fasta **************
+   my @q_fasta_part_filenames = ();
+   my $query_fasta_string = fix_fasta_files($min_seq_length, $pl_obj->get('querytaxon_inputpath')->values());
+   my $q_fasta_strings = split_fasta_string($query_fasta_string, $pl_obj->get('n_pieces'));
+   while (my ($i, $v) = each @$q_fasta_strings) {
+      my $part_filename = abs_path(join('', @{$pl_obj->get('querytaxa_short')}) . "_" . $date . "_" . 'part' . ($i+1) . ".fasta");
+      push @q_fasta_part_filenames, $part_filename;
+      open $fhout, ">", "$part_filename" or die "Couldn't open $part_filename for writing.\n";
+      print $fhout $v;
+      close $fhout;
    }
+#print join("\n", @q_fasta_part_filenames), "\n"; exit;
 
-my @blast_out_m8_filenames = ();
+   my $blastout_dir = $self->get('output_dir');
+   mkdir $blastout_dir unless(-d $blastout_dir);
+chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
+   my @blast_out_m8_filenames = ();
    # ********** run blast *********************
-   for my $q_fasta_part_filename (@$fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
-      my $blast_out_filename = $q_fasta_part_filename;
-      $blast_out_filename =~ s/fasta$/m8/;
-      my ($v, $dir, $fname) = File::Spec->splitpath($blast_out_filename);
-      my $blastout_dir = $self->get_plattr('blast_output_dir');
-      mkdir $blastout_dir unless(-d $blastout_dir);
-      $blast_out_filename = $blastout_dir . '/' . $fname;
+   for my $q_fasta_part_filename (@q_fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
+      my ($v, $dir, $blast_out_filename) = File::Spec->splitpath($q_fasta_part_filename);
+      $blast_out_filename =~ s/^[^_]+//;
+      $blast_out_filename =~ s/[.]fasta/.m8/;
+      $blast_out_filename = 
+      join('', @{$pl_obj->get('querytaxa_short')}) . "_v_" . $pl_obj->get('n_pieces') . $blast_out_filename; # "_" . $date . 'part' . "_" . ($i+1) . ".fasta"
+      $blast_out_filename = abs_path($blast_out_filename);
+ print "$q_fasta_part_filename $all_species_fasta_filename \n";
       print "blastout path: $blast_out_filename \n";
       push @blast_out_m8_filenames, $blast_out_filename;
       my $pid = fork(); # returns 0 to child process, pid of child to parent process.
       if ($pid == 0) {  # child process
    
          # blastall -p blastp -d dbfilename -i queryfilename -e ‘1e-6’ -m 8 -a 4 >  xx_blastout.m8
-         my $blast_max_matches = $self->get_plattr('blast_max_matches');
-         my $blast_max_e_value = $self->get_plattr('blast_max_e_value');
+         my $blast_max_matches = $self->get('max_matches');
+         my $blast_max_e_value = $self->get('max_e_value');
          my $blast_cl = "nohup blastall -p blastp -d $all_species_fasta_filename -i $q_fasta_part_filename -e $blast_max_e_value -b $blast_max_matches -m 8 -o $blast_out_filename";
          print "blast cl: $blast_cl \n";
          my $blast_stdout = `$blast_cl`;
@@ -104,13 +88,19 @@ my @blast_out_m8_filenames = ();
    while (wait() != -1) {
       $children_done++; print "Number of files finished analyzing with blast: $children_done. \n";
    }
-   print STDERR "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
-   print $fh_progress "blast finished. blast output filenames: \n", join("\n", @blast_out_m8_filenames), "\n";
+   my $blastout_filenames = join(" ", @blast_out_m8_filenames);
+   $self->set('blast_out_m8_filenames', $blastout_filenames);
+   print STDERR "blast finished. blast output filenames: \n", $self->get('blast_out_m8_filenames'), "\n";
+   print $fh_progress "blast finished. blast output filenames: \n", $self->get('blast_out_m8_filenames'), "\n";
 
+ #  chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
+
+   my $state_filename = 'pipeline_state';
+   open my $fh, ">", "$state_filename" or die "couldn't open $state_filename for writing.\n";
+   print $fh $pl_obj->stringify();
    # *************** done running blast ******************
 
 }
-
 
 
 1;

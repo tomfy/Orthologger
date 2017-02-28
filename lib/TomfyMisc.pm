@@ -1,6 +1,6 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name';
 use strict;
 
 sub timestring{
@@ -198,7 +198,7 @@ sub file_format_is_abc_iie{
    return $format;
 }
 
-sub split_fasta{
+sub split_fasta_file{
    my $fasta_filename = shift;
    my $n_parts = shift;
 
@@ -242,5 +242,93 @@ sub split_fasta{
    return \@output_fasta_part_filenames;
 }
 
+sub split_fasta_string{
+   my $fasta_string = shift;
+   my $n_parts = shift;
+
+   my @lines = split("\n", $fasta_string);
+   my $n_lines = scalar @lines;
+   my $lines_so_far_this_part = 0;
+   my $lines_per_part = 1 + int ($n_lines/$n_parts);
+   my @parts = ();
+   my $part_string = '';
+   for my $a_line (@lines) {
+   #   print "n parts: $n_parts  n_lines: $n_lines lines per part: $lines_per_part  $lines_so_far_this_part \n";
+      if ($a_line =~ /^>/) {
+         if ($lines_so_far_this_part >= $lines_per_part) {
+            print STDERR "lines in this part: $lines_so_far_this_part.\n";
+
+         #   print "\n\n", $part_string, "\n\n";
+            push @parts, $part_string;
+            $part_string = '';
+            $lines_so_far_this_part = 0;
+         }
+      }
+      $part_string .= $a_line . "\n"; #print $part_string;
+      $lines_so_far_this_part++;
+   }
+# print "\n\n", $part_string, "\n\n";
+   push @parts, $part_string;
+   print STDERR "lines in this part: $lines_so_far_this_part. RETURNING FROM split_fasta_string.\n";
+   return \@parts;
+}
+
+sub fix_fasta_files{ #
+   my $min_seqlength = shift;
+   my @fasta_files = @_;
+   my $fasta_output_string = '';
+  # my $min_seqlength = $self->get('min_sequence_length');
+   my ($count, $short_count) = (0, 0);
+
+   for my $fasta_file (@fasta_files) {
+      open my $fh, "<", glob($fasta_file) or die "Couldn't open $fasta_file for reading.\n";
+      my $idline;
+      while ($idline = <$fh>) {
+         if ($idline =~ /^>\s*(\S+)/) {
+            $idline = ">$1\n";
+            last;
+         }
+      }
+      my $sequence = '';
+      while (my $the_line = <$fh>) {
+         if ($the_line =~ /^>\s*(\S+)/) {
+            my $new_idline = ">$1\n";  # remove any stuff after id. 
+            $count++;
+            if (length $sequence >= $min_seqlength) { # keep only sequences which are long enough.
+               $fasta_output_string .= $idline . $sequence . "\n";
+            } else {
+               $short_count++;
+            }
+            if ($count % 100000 == 0) {
+               print STDERR "$count  $short_count \n";
+            }
+            $sequence = ''; # done with one sequence; reset to start next sequence.
+            $idline =  $new_idline;
+         } else {                     # sequence line
+            $the_line =~ s/[*\s]+$//; # remove final * and whitespaces
+            $sequence .= $the_line;
+         }
+
+      }
+      if (length $sequence >= $min_seqlength) {
+         $fasta_output_string .= $idline . $sequence . "\n";
+      } else {
+         $short_count++;
+      }
+      close $fh;
+      print STDERR "all sequences: $count  short sequences: $short_count \n";
+
+   }                            # end of loop over files
+   return $fasta_output_string;
+}
+
+sub short_species_name{ # return abbreviated form of name: First letter of genus and 2 first letters of species
+   my $genus_species = shift;
+   if ($genus_species =~ /^(\S)\S+_(\S{2})/) {
+      return $1 . $2;
+   } else {
+      return $genus_species;
+   }
+}
 
 1;

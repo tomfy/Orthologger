@@ -35,7 +35,7 @@ GetOptions(
            'help|?:i' => \$help, # sub {my ($optname, $optval) = @_, return ($optval == 0}, # \$help,
 	   'matches_filename=s'           => \$matches_filename, #
            #     'iie_filename=s' => \$iie_filename,
-	   'gg_filename=s'          => \$gg_filename, # 
+	   'gg_filename=s'          => \$gg_filename, #
            'output_filename=s' => \$clusters_filename,
            'qspecies_filename=s' => \$queryspecies_list_filename,
            'weed!' => \$weed,
@@ -51,6 +51,10 @@ while (<$fh_qsp>) {
    if (/^\s*(\S+)/) {
       $qspecies_count{$1} = 0;
    }
+}
+
+while(my($k, $v) = each %qspecies_count){
+   print STDERR "ABCDEF: $k $v \n";
 }
 if (!defined $clusters_filename) {
    $clusters_filename = $matches_filename;
@@ -74,11 +78,14 @@ for my $qid (@qids) {
 for my $qid (@qids) {
    my $sp_id2 = $id1__sp_id2->{$qid};
    my $qsp = $geneid_sp->{$qid};
+   print STDERR "$qsp  $qid.\n";
    while (my ($sp, $id2) = each %$sp_id2) { # get the best matches of each species to $qid
+      print STDERR "$qsp  $sp $id2 \n";
       next if($sp eq $qsp); # don't add edges joining 2 seqs of same species.
       if (exists $id1__sp_id2->{$id2}->{$qsp}) {
          if ($id1__sp_id2->{$id2}->{$qsp} eq $qid ) { # check for a reciprocal best match
             $G->add_edge($qid, $id2);
+            print STDERR "add edge between: $qid, $id2!!!!\n";
          }
       }
    }
@@ -245,7 +252,7 @@ sub read_iie{
    my $id_bccos = {}; # key: id, val: array ref of refs to bcc (biconnected component) objs it belongs to. 
 
    ### read in blast match info from iie file:
-
+   print STDERR "$iie_filename \n";
    open my $fh_iie, "<", "$iie_filename" or die "Couldn't open $iie_filename for reading. Exiting. \n";
    my ($id1, $id2, $ev);
    while (my $line = <$fh_iie>) {
