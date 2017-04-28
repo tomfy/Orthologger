@@ -1,7 +1,8 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify';
 use strict;
+use Scalar::Util qw(blessed);
 
 sub timestring{
    my $s_time = shift;          # time in seconds (e.g. from time() )
@@ -15,7 +16,7 @@ sub timestring{
 sub date_time{
    my @ltime = split(" ", localtime);
    my $date = join('', @ltime[4,1,2]); # year month day e.g. 2017Jan21
-   my $time = $ltime[3]; # hour:min:sec
+   my $time = $ltime[3];               # hour:min:sec
 
    return ($date, $time);
 }
@@ -24,9 +25,10 @@ sub store_gg_info {	 #xx    # read in gene-genome association file
    # store in hash (keys: seqids, values: species). e.g. ('ATxxxx' => Arabidopsis_thaliana');
    my $gg_filename   = shift;
    my %seqid_species = ();
+my %species_count = ();
    if ( defined $gg_filename ) {
       if ( -f $gg_filename ) {
-         open my $fh_gg, "<", "$gg_filename";
+         open my $fh_gg, "<", "$gg_filename" or die "Couldn't open $gg_filename for reading.\n";
          while (<$fh_gg>) {
             my @cols = split( " ", $_ );
             my $species = shift @cols;
@@ -37,17 +39,18 @@ sub store_gg_info {	 #xx    # read in gene-genome association file
                     $seqid_species{$_}, "\n";
                } else {
                   $seqid_species{$_} = $species;
+                  $species_count{$species}++;
                }
             }
          }
-         close $fh_gg;
-      } else {	    # done storing gg_file info in hash %seqid_species
+         close $fh_gg; # done storing gg_file info in hash %seqid_species
+      } else { # 
          die "$gg_filename: no such file.\n";
       }
    } else {
       die "gg filename undefined. \n";
    }
-   return \%seqid_species;
+   return (\%seqid_species, \%species_count);
 }
 
 sub run_quicktree {
@@ -253,12 +256,12 @@ sub split_fasta_string{
    my @parts = ();
    my $part_string = '';
    for my $a_line (@lines) {
-   #   print "n parts: $n_parts  n_lines: $n_lines lines per part: $lines_per_part  $lines_so_far_this_part \n";
+      #   print "n parts: $n_parts  n_lines: $n_lines lines per part: $lines_per_part  $lines_so_far_this_part \n";
       if ($a_line =~ /^>/) {
          if ($lines_so_far_this_part >= $lines_per_part) {
             print STDERR "lines in this part: $lines_so_far_this_part.\n";
 
-         #   print "\n\n", $part_string, "\n\n";
+            #   print "\n\n", $part_string, "\n\n";
             push @parts, $part_string;
             $part_string = '';
             $lines_so_far_this_part = 0;
@@ -267,17 +270,17 @@ sub split_fasta_string{
       $part_string .= $a_line . "\n"; #print $part_string;
       $lines_so_far_this_part++;
    }
-# print "\n\n", $part_string, "\n\n";
+   # print "\n\n", $part_string, "\n\n";
    push @parts, $part_string;
    print STDERR "lines in this part: $lines_so_far_this_part. RETURNING FROM split_fasta_string.\n";
    return \@parts;
 }
 
-sub fix_fasta_files{ #
+sub fix_fasta_files{            #
    my $min_seqlength = shift;
    my @fasta_files = @_;
    my $fasta_output_string = '';
-  # my $min_seqlength = $self->get('min_sequence_length');
+   # my $min_seqlength = $self->get('min_sequence_length');
    my ($count, $short_count) = (0, 0);
 
    for my $fasta_file (@fasta_files) {
@@ -292,7 +295,7 @@ sub fix_fasta_files{ #
       my $sequence = '';
       while (my $the_line = <$fh>) {
          if ($the_line =~ /^>\s*(\S+)/) {
-            my $new_idline = ">$1\n";  # remove any stuff after id. 
+            my $new_idline = ">$1\n"; # remove any stuff after id. 
             $count++;
             if (length $sequence >= $min_seqlength) { # keep only sequences which are long enough.
                $fasta_output_string .= $idline . $sequence . "\n";
@@ -330,5 +333,155 @@ sub short_species_name{ # return abbreviated form of name: First letter of genus
       return $genus_species;
    }
 }
+
+sub read_block{                # read a block defined by { and }
+   # other {} blocks can be nested inside.
+   # returns a string containing the block, starting with {, ending with }
+   my $fh = shift;
+
+   my $string = '';
+   my $curly_count = 0;
+   $_ = <$fh>;
+   if (s/^\s*{/{/) {
+      $curly_count += tr/{// - tr/}//;
+      $string .= $_;
+   } else {
+      die "In read_block, first line: $_, is not start of block.\n";
+   }
+   while (<$fh>) {
+      $string .= $_;
+      $curly_count += tr/{// - tr/}//;
+      last if($curly_count == 0);
+   }
+   print "read_block return value [$string]\n";
+   return $string;
+}
+
+sub clean{                      # remove comments and blank lines.
+   my $string = shift;
+   my @lines = split("\n", $string);
+   $string = '';
+   for (@lines) {
+      s/#.*$//;                 #delete from first # to end of line
+      $string .= "$_\n" if(/\S/); # include lines with at least one non-whitespace character.
+   }
+   return $string;
+}
+
+# sub decomment{ # for each line, remove from first # to end of line.
+#    my $string = shift;
+#    my @lines = split("\n", $string);
+#    for (@lines) {
+#       s/#.*$//;                 #delete from first # to end of line
+#    }
+#    return join("\n", @lines);
+# }
+
+# sub dewhitespace{ # remove lines which contain only whitespace
+#    my $string = shift;
+#    my @lines = split("\n", $string);
+#    $string = '';
+#    for (@lines) {
+#       $string .= "$_\n" if(/\S/); # include lines with at least one non-whitespace character.
+#    }
+#    return $string;
+# }
+
+sub _destringify{
+   my $string = shift;
+   my $obj = shift || undef;
+   my $result;
+#   print STDERR "TOP of _destringify. string: [|$string|} \n"; #
+   if ($string =~ s/^\s*{//) {  # hash (Hash::Ordered)
+      my $curly_count = 1;
+      $result = (defined $obj)? $obj : Hash::Ordered->new();
+      die "In {} block. obj should be a Hash::Ordered, but is ", ref $result, ".\n" if(! $result->isa('Hash::Ordered'));
+      while ($curly_count > 0) {
+#         print STDERR "in _destringify; string: $string \n";
+         if ($string =~ s/^\s*[}]//) {
+            $string =~ s/^\s*,//;
+            $curly_count--;
+         } elsif ($string =~ s/^\s*([^\s=>]+)(\s*=>\s*|\s+)([^\s=>]+)//) {
+            my $key = $1;
+            my $value = $3;
+            $value =~ s/,\s*$//;  # remove final comma if present
+            $string =~ s/^\s*,//; #remove initial comma if present
+            if ($value =~ /^\s*[{[]/) {
+               $string = $value . $string;
+               ($value, $string) = _destringify($string);
+            }
+            $result->set($key, $value);
+         } else {
+            die "problem in _destringify {}: $string \n";
+         }
+      }  # end while loop
+   } elsif ($string =~ s/^\s*[[]//) { # array ref.
+      my $square_count = 1;
+      die "In [] block. Object should be undefined or array ref, but is ", ref $obj, ".\n" if(defined $obj and (ref $obj ne 'ARRAY'));
+      $result = [];
+      while ($square_count > 0) {
+         if ($string =~ s/^\s*(\S+)//) {
+            my $value = $1;
+            $value =~ s/,\s*$//;  # remove final comma if present
+            $string =~ s/^\s*,//; # remove initial comma if present
+            if ($value =~ /^\s*[]]/) {
+               $square_count--;
+            } else {
+               if ($value =~ /^\s*[{[]/) {
+                  $string = $value . $string;
+                  ($value, $string) = _destringify($string);
+               }
+               push @$result, $value;
+            }
+         } else {
+            die "problem in _destringify []: $string \n";
+         }
+      }
+   }
+#   print STDERR "In _destringify, [$string] \n"; #exit;
+   return ($result, $string);
+}
+
+sub _stringify{
+   my $x = shift;      #  Hash::Ordered, hashref, arrayref, or scalar;
+   my $indent = shift;
+   my $spacer1 = shift || ' ';  # between key and value
+   my $spacer2 = shift || "\n"; # between key/value pairs of hash, or between elements of array
+   my $str = '';
+   if ((blessed $x) and $x->isa('Hash::Ordered')) {
+  #    print STDERR "hash::ordered branch.\n";
+      $str .= "{\n";
+      for my $k ($x->keys()) {
+         my $v = $x->get($k);
+         $str .= $indent . $k . $spacer1 . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2"; # "$spacer2\n";
+      }
+      $str =~ s/$spacer2$/\n$indent}/;
+   } elsif (ref $x eq 'HASH') {
+  #    print STDERR "hashref branch.\n";
+      $str .= "{\n";
+      for my $k (keys %$x) {
+         my $v = $x->{$k};
+         my $xxx = $indent . $k . $spacer1 . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2"; # \n";
+         $str.= $xxx; # $indent . $k . $spacer1 . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2\n";
+     #    print STDERR "v: $v, xxx: $xxx";
+      }
+      $str =~ s/$spacer2$/\n$indent}/;
+   } elsif (ref $x eq 'ARRAY') {
+   #   print STDERR "arrayref branch.\n";
+      $str .= "[\n";
+      for my $v (@$x) {
+         $str .= $indent . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2";
+      }
+      $str =~ s/$spacer2$/\n$indent]/;
+   } elsif ((ref $x) eq '') {   # not a ref
+   #   print STDERR "not a ref branch. x: ", $x // 'undef', "\n";
+      $str .= (defined $x)? sprintf("%s", $x) : 'undef' . "\n";
+   } else {
+   #   print STDERR "other ref branch\n";
+      $str .= ref $x . "\n";
+   }
+   return $str;
+}
+
 
 1;

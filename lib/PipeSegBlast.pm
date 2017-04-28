@@ -5,30 +5,39 @@ use List::Util qw (min max sum);
 use TomfyMisc qw (date_time split_fasta_file split_fasta_string fix_fasta_files);
 use Cwd qw (getcwd abs_path);
 
-
 sub new {
    my $class = shift;
+   my $segment_name = shift;
    my $pl_obj = shift;
-   print STDERR "top of pipesegblast constructor.\n";
-   my $self  = $class->SUPER::new($pl_obj); # bless $args, $class;
-   $self->init({
-                output_dir => 'blast_out',
-                max_matches => 2500,
-                max_e_value => 1e-6,
-               });
-   print STDERR "bottom of pipesegblast constructor.\n";
+   print STDERR "Top of PipeSegBlast constructor. class: $class \n";
+   my $self  = $class->SUPER::new();
+   $self->init(
+               segment_name => $segment_name,
+               pipeline => $pl_obj,
+               output_dir => $segment_name . '_out',
+
+               max_matches => 2500,
+               max_e_value => 1e-6,
+               # hidden => {},
+              );
+   
+   print STDERR "Bottom of PipeSegBlast constructor. class: $class output_dir ", $self->get('output_dir'), "\n";
    return $self;
 }
 
-
-
 sub run{
    my $self = shift;
-
    my $pl_obj = $self->get('pipeline');
+
    my ($date, $time) = date_time();
    my $min_seq_length = $self->get('min_sequence_length');
    my $fh_progress = $pl_obj->get('fh_progress');
+
+   my $blastout_dir = $self->get('output_dir');
+   print "in blast run. blastout_dir: ", $blastout_dir, "\n"; exit;
+   mkdir $blastout_dir unless(-d $blastout_dir);
+   chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
+
    my $all_species_fasta_filename = abs_path( "all_" . $pl_obj->get('n_species') . "_species_" . $date . ".fasta" );
 
    # **************** concatenate all target fasta files, 'clean' id lines, and remove short sequences *************  
@@ -54,11 +63,9 @@ sub run{
       print $fhout $v;
       close $fhout;
    }
-#print join("\n", @q_fasta_part_filenames), "\n"; exit;
+   #print join("\n", @q_fasta_part_filenames), "\n"; exit;
 
-   my $blastout_dir = $self->get('output_dir');
-   mkdir $blastout_dir unless(-d $blastout_dir);
-chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
+  
    my @blast_out_m8_filenames = ();
    # ********** run blast *********************
    for my $q_fasta_part_filename (@q_fasta_part_filenames) { # loop over the parts which the set of queries has been divided into.
@@ -66,9 +73,9 @@ chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
       $blast_out_filename =~ s/^[^_]+//;
       $blast_out_filename =~ s/[.]fasta/.m8/;
       $blast_out_filename = 
-      join('', @{$pl_obj->get('querytaxa_short')}) . "_v_" . $pl_obj->get('n_pieces') . $blast_out_filename; # "_" . $date . 'part' . "_" . ($i+1) . ".fasta"
+        join('', @{$pl_obj->get('querytaxa_short')}) . "_v_" . $pl_obj->get('n_pieces') . $blast_out_filename; # "_" . $date . 'part' . "_" . ($i+1) . ".fasta"
       $blast_out_filename = abs_path($blast_out_filename);
- print "$q_fasta_part_filename $all_species_fasta_filename \n";
+      print "$q_fasta_part_filename $all_species_fasta_filename \n";
       print "blastout path: $blast_out_filename \n";
       push @blast_out_m8_filenames, $blast_out_filename;
       my $pid = fork(); # returns 0 to child process, pid of child to parent process.
@@ -93,13 +100,9 @@ chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
    print STDERR "blast finished. blast output filenames: \n", $self->get('blast_out_m8_filenames'), "\n";
    print $fh_progress "blast finished. blast output filenames: \n", $self->get('blast_out_m8_filenames'), "\n";
 
- #  chdir($blastout_dir) or die "Couldn't chdir to $blastout_dir.\n";
-
-   my $state_filename = 'pipeline_state';
-   open my $fh, ">", "$state_filename" or die "couldn't open $state_filename for writing.\n";
-   print $fh $pl_obj->stringify();
    # *************** done running blast ******************
-
+   $self->set(state => 'complete');
+ #  $self->set_successor_state('next');
 }
 
 
