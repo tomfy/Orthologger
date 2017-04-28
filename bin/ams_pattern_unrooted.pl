@@ -228,12 +228,12 @@ my $species_to_show = undef; # for each clade, output the ids of this species in
 my $show_clade_species = 0;
 my $max_allowed_nonAM = 0;
 my $max_allowed_nonang = 1000;
-my $disallowed_group = '20_nons';
+my $disallowed_group = '13_nonAM_angiosperms'; # '20_nons';
 # Process long cl options
 GetOptions(
 	   'input_newicks=s' => \$input_newicks_filename,
 	   'clade_specifiers=s' => \$clade_specifiers,
-           'disallowed_group=s' => \$disallowed_group, # def: '20_nons', or, e.g.: '13_nonAM_angiosperms' ...
+           'disallowed_group=s' => \$disallowed_group, # default:  '13_nonAM_angiosperms' ...
 	   'disallowed_species=s' =>
 	   \$disallowed_species, # either: name of predefined taxon group, or comma separated taxa names:
 	   # e.g. 'Arabidopsis_thaliana, Brassica_rapa'
@@ -291,7 +291,7 @@ open my $fh_in, "<", "$input_newicks_filename"
 my ($seqid_species, $species_count) = store_gg_info($gg_filename);
 my @sspecies = sort {$a cmp $b}  keys %$species_count; # sorted species
 print "# ", scalar @sspecies, " species: \n# ", join("\n# ", @sspecies), "\n";
-#exit;
+
 my $BS_count = 0;
 while (<$fh_in>) {
    if (/^Id\s+(\S+)\s.*fam_size:\s+(\d+)/) {
