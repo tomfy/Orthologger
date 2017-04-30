@@ -284,9 +284,8 @@ sub species_category_id_info_string{
          push @group_ids, $an_id
       }
    }
-   $output_string .= sprintf("  %3i", scalar keys %groupspecies_counts); # number of species in group present in subtree
+   $output_string .= sprintf("  %2i %2i  ", scalar keys %groupspecies_counts, scalar @group_ids); # number of species in group present in subtree
    my @sorted_psp_counts = map($groupspecies_counts{$_} // 0, $group->keys());
-   $output_string .= sprintf (" %2i ", scalar @group_ids);
    for my $count (@sorted_psp_counts) {
       $output_string .= sprintf("%1i ", $count);
    }
