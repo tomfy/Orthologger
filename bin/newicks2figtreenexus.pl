@@ -275,19 +275,31 @@ if($grps eq 'C4'){
 @sorted_groups = ('4_basals', '4_C4_monocots', '7_C3_monocots', '9_C3_dicots');
 }
 
-my %species_color = ();
-#while (my ($grp, $species) = each %$groups) {
-   for my $grp (@sorted_groups){
-      my $species = $groups->{$grp};
-#  print "$grp ", join(";", %$species), "\n";
-my $color = $group_color{$grp};
-#  print "color $color. \n";
-  for my $sp (keys %$species) {
-    #  print "XXXX: $sp   $color \n";
-    $species_color{$sp} = "&!color=$color";
-    #   print "$sp       $grp \n";
-  }
-}
+my ($yellow, $blue, $red, $green, $black) = ('#ddc400', '#0000EE', '#ff0033', '#00ee00', '#000000');
+
+my %species_color = (
+                     Oryza_sativa => '&!color=' . $yellow,
+                     Arabidopsis_thaliana => '&!color=' . $blue,
+                     Vitis_vinifera => '&!color=' . $blue,
+                     Solanum_lycopersicum => '&!color=' . $black,
+                     Catharanthus_roseus => '&!color=' . $green,
+                     Coffea_arabica => '&!color=' . $red,
+                     Coffea_canephora => '&!color=' . $red,
+                     Coffea_eugenioides => '&!color=' . $red
+                    );
+
+# #while (my ($grp, $species) = each %$groups) {
+#    for my $grp (@sorted_groups){
+#       my $species = $groups->{$grp};
+# #  print "$grp ", join(";", %$species), "\n";
+# my $color = $group_color{$grp};
+# #  print "color $color. \n";
+#   for my $sp (keys %$species) {
+#     #  print "XXXX: $sp   $color \n";
+#     $species_color{$sp} = "&!color=$color";
+#     #   print "$sp       $grp \n";
+#   }
+# }
 #exit;
 # if (defined $gg_filename and -f $gg_filename) {
 #   my $id_species = store_gg_info($gg_filename)
@@ -390,7 +402,8 @@ if ($keep_branch_supports) {
   $newick_expression =~ s/\)[0-9.]+:([0-9.]+)/):$1/g; # remove branch supports for other branches.
 }
 $newick_expression =~ s/\s+//g;
-$nexus_string .=  "$newick_expression;\n";
+$newick_expression =~ s/[;\s]+\s*$//; # remove any ; and whitespace at end.
+$nexus_string .=  "$newick_expression;\n"; # so has exactly 1 ; at end.
 #exit;
 $nexus_string .=  "end;\n\n";
 

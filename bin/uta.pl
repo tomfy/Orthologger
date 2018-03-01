@@ -67,7 +67,7 @@ die "No files found matching pattern: $input_pattern \n" if($input_filenames_str
 my @input_filenames = split(" ", $input_filenames_str);
 
 ######  store the gene-genome information  ######
-my ($seqid_species, $species_count) = store_gg_info($gg_filename);
+my ($seqid_species, $species_count) = (defined $gg_filename)? store_gg_info($gg_filename) : (undef, {});
 my @sspecies = sort {$a cmp $b}  keys %$species_count; # sorted species
 
 ######  get the groups of positive species  ######
@@ -141,6 +141,7 @@ for my $a_cat ($category_species->keys()) {
    my $species = $category_species->get($a_cat);
 }
 
+print STDERR "# Will analyze ", scalar @input_filenames, " files.\n";
 for my $input_filename (@input_filenames) {
    print STDERR "# Starting analysis of $input_filename.\n";
    open my $fh_in, "<", "$input_filename" or die "Couldn't open $input_filename for reading.\n";
@@ -151,18 +152,34 @@ for my $input_filename (@input_filenames) {
    $the_input_newick =~ s/\s//g;
    $the_input_newick =~ s/;?\s*$//; # remove final ; and whitespace if present
 
-   if($the_input_newick){
-   if ((! ($the_input_newick =~ /\[species=[a-zA-Z_]+\]/)) and (scalar keys %$seqid_species > 0)) {
-     $the_input_newick = taxonify_newick( $the_input_newick, $seqid_species );
+   if ($the_input_newick) {
+      if ($the_input_newick =~ /\[species=[a-zA-Z_]+\]/) {
+         my $wrk = $the_input_newick;
+         while ($wrk =~ s/([(,])([^(,:[]+)\[species=([^\]]+)\][:]/$1:/) {
+            $seqid_species->{$2} = $3;
+           # print "AAA: $wrk \n";
+         #   print "id: $2,  species: $3 \n";
+         }
+      } else {
+         if (scalar keys %$seqid_species > 0) { # use info from ggfile
+            $the_input_newick = taxonify_newick( $the_input_newick, $seqid_species );
+         } else {
+         #   print $the_input_newick, "\n";
+            $the_input_newick =~ s/([(,])(\S+)__([^:]+)/$1 $2 [species=$3]/g; # from id __genus_species: to id[species=genus_species]:
+            $seqid_species->{$2} = $3;
+            $the_input_newick =~ s/\s+//g;
+         #   print $the_input_newick, "\n";
+         }
+         
+      }
+   #   print "XXXXX: $the_input_newick \n";
+      my $the_tree = make_tree($the_input_newick);
+      my $output_string = analyze_tree($the_tree, $group1, $group2, $seqid_species, $species_category);
+      print "$input_filename\n", "$output_string\n";
+   } else {                     # the newick string is empty
+      print STDERR "File $input_filename does not contain a newick string.\n";
    }
-
-   my $the_tree = make_tree($the_input_newick);
-   my $output_string = analyze_tree($the_tree, $group1, $group2, $seqid_species, $species_category);
-   print "$input_filename\n", "$output_string\n";
-}else{ # the newick string is empty
-   print STDERR "File $input_filename does not contain a newick string.\n";
-}
-}                               # end of loop over input files
+}                            # end of loop over input files
 print STDERR "# Done.\n";
 # end of main
 
@@ -313,7 +330,7 @@ sub species_and_category_counts{
       if (exists $id_species->{$an_id}) {
          $species =  $id_species->{$an_id};
       } else {
-         print STDERR "[$an_id]; species is unknown.\n"; exit;
+         print STDERR "id: [$an_id]; species is unknown.\n"; exit;
       }
 
       my $category = $species_category->{$species} // 'other';
@@ -365,7 +382,7 @@ sub store_gg_info {	 #xx    # read in gene-genome association file
             for (@cols) {
                if ( exists $seqid_species{$_} ) {
                   warn "key $_ already stored with species: ",
-                    $seqid_species{$_}, "\n";
+                    $seqid_species{$_}, ", new species would be $species.\n";
                } else {
                   $seqid_species{$_} = $species;
                   $species_count{$species}++;
