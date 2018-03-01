@@ -1,8 +1,11 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify  newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species  read_in_group_color ';
 use strict;
 use Scalar::Util qw(blessed);
+
+
+
 
 sub timestring{
    my $s_time = shift;          # time in seconds (e.g. from time() )
@@ -481,6 +484,135 @@ sub _stringify{
       $str .= ref $x . "\n";
    }
    return $str;
+}
+
+## subroutines for changing newick format
+# each of these takes a newick string with the species information
+# formatted one way, and converts it to having the species info
+# formatted one of the other ways, while adding the sequence_id and species 
+# as key/value pair of a hash, and counting the number of leaves.
+
+sub newick_genspid2idgensp{ # change format of species and id in newick expression, e.g.:
+   # Arabidopsis_thaliana_AT1g123456.3  ->  AT1g123456.1[species=Arabidopsis_thaliana]
+   my $newick_string = shift;
+   my $id_genusspecies = shift; # hashref
+   my $ids = shift;             # array ref
+   my $leaf_count = 0;
+   while ( $newick_string =~ /([(,])([A-Z][a-zA-Z]*_[a-zA-Z]+)_([^\s:]+)/ ) {
+      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+      push @$ids, $id;
+      $id =~ s/_/X___X/g;
+      $newick_string =~ s/[(,][A-Z][a-zA-Z]*_[a-zA-Z]+_[^\s:]+/$lparenorcomma$id [species= $genus_species ]/;
+      $leaf_count++;
+   }
+   $newick_string =~ s/X___X/_/g; # put the underscores back in the ids
+   $newick_string =~ s/\s+//g;
+   return ($newick_string, $leaf_count);
+}
+
+
+sub newick_genspid2id__gensp{ # the output format here is the one that figtree likes
+#  Arabidopsis_thaliana_AT1g123456.3 -> AT1g123456.3__Arabidopsis_thaliana
+   my $newick_string = shift;
+   my $id_genusspecies = shift; # hashref
+   my $ids = shift;             # array ref
+   my $leaf_count = 0;
+   my $newick_copy = $newick_string;
+   while ( $newick_copy =~ s/([(,])([A-Z][a-zA-Z]*_[a-zA-Z]+)_([^\s:,)]+)/$1 $3 __ $2/) {
+      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+      push @$ids, $id;
+      $leaf_count++;
+   }
+   $newick_copy =~ s/\s+//g;
+   return ($newick_copy, $leaf_count);
+}
+
+sub newick_idgensp2id__gensp{ # change format of species and id in newick expression, e.g.:
+   #  AT1g123456.1[species=Arabidopsis_thaliana] -> AT1g123456.3__Arabidopsis_thaliana
+   my $newick_string = shift;
+   my $id_genusspecies = shift; # hashref
+   my $ids = shift;             # array ref
+   my $leaf_count = 0;
+   while ( $newick_string =~ s/([(,])([^[:,(\s]+)\[species=([^]]+)\]/$1 $2 __ $3/) {
+      my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3); 
+      $id_genusspecies->{$id} = $genus_species;
+      push @$ids, $id;
+      $leaf_count++;
+   }
+   $newick_string =~ s/\s+//g;
+   return ($newick_string, $leaf_count);
+}
+
+
+sub newick_idgensp2genspid{ # change format of species and id in newick expression, e.g.:
+   #  AT1g123456.1[species=Arabidopsis_thaliana] -> Arabidopsis_thaliana_AT1g123456.3
+   my $newick_string = shift;
+   my $id_genusspecies = shift; # hashref
+   my $ids = shift;             # array ref
+   my $leaf_count = 0;
+   while ( $newick_string =~ s/([(,])([^[]+)\[species=([^]]+)\]/$1$3_$2/) {
+      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+      push @$ids, $id;
+      $leaf_count++;
+   }
+   return ($newick_string, $leaf_count);
+}
+
+sub read_in_group_species{
+   my $group_species_filename = shift;
+   my %species_group = ();
+   if (defined $group_species_filename and -f $group_species_filename) {
+      open my $fhin, "<", $group_species_filename or die "Couldn't open $group_species_filename for reading.\n";
+      my $state = 0;
+      my $group = 'unknown';
+      my $species_in_group = '';
+
+      while (<$fhin>) {
+         $_ =~ s/[#].*$//;      # remove comments
+         if ($state == 0) {
+            if (s/^\s*\[//) {   # start of list of species
+               $state = 1;
+               $species_in_group .= $_; # anything after [ on the line goes into species_in_group
+            } elsif (/^\s*(\S+)/) {
+               $group = $1;
+            }
+         } elsif (/^\s*\]/) {
+            $state = 0;
+            $species_in_group =~ s/^\s+//;
+            $species_in_group =~ s/\s+$//;
+            my @species = split(/[,\s]+/, $species_in_group);
+            for my $sp (@species) {
+               $species_group{$sp} = $group;
+            }
+            $species_in_group = '';
+            $group = 'unknown';
+
+         } else {
+            $species_in_group .= $_;
+         }
+      }
+      close $fhin;
+   }
+   return \%species_group;
+}
+
+
+sub read_in_group_color{
+   my $group_color_filename = shift;
+   my %group_color = ();
+   if (defined $group_color_filename and -f $group_color_filename) {
+      open my $fhin, "<", $group_color_filename or die "Couldn't open $group_color_filename for reading.\n";
+      while (<$fhin>) {
+         next if(/^\s*#/);
+         /^\s*(\S+)\s+(\S+)/;
+         $group_color{$1} = $2;
+      }
+      close $fhin;
+   }
+   return \%group_color;
 }
 
 
