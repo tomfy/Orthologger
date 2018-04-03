@@ -1,6 +1,6 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify  newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species  read_in_group_color ';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify  newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species  read_in_group_color newick_1to2 newick_1to3 newick_2to1 newick_3to1 newick_1to1 newick_2to2 newick_3to3 increment_hash add_hashes  format_newick_species_info  median ';
 use strict;
 use Scalar::Util qw(blessed);
 
@@ -486,80 +486,6 @@ sub _stringify{
    return $str;
 }
 
-## subroutines for changing newick format
-# each of these takes a newick string with the species information
-# formatted one way, and converts it to having the species info
-# formatted one of the other ways, while adding the sequence_id and species 
-# as key/value pair of a hash, and counting the number of leaves.
-
-sub newick_genspid2idgensp{ # change format of species and id in newick expression, e.g.:
-   # Arabidopsis_thaliana_AT1g123456.3  ->  AT1g123456.1[species=Arabidopsis_thaliana]
-   my $newick_string = shift;
-   my $id_genusspecies = shift; # hashref
-   my $ids = shift;             # array ref
-   my $leaf_count = 0;
-   while ( $newick_string =~ /([(,])([A-Z][a-zA-Z]*_[a-zA-Z]+)_([^\s:]+)/ ) {
-      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
-      $id_genusspecies->{$id} = $genus_species;
-      push @$ids, $id;
-      $id =~ s/_/X___X/g;
-      $newick_string =~ s/[(,][A-Z][a-zA-Z]*_[a-zA-Z]+_[^\s:]+/$lparenorcomma$id [species= $genus_species ]/;
-      $leaf_count++;
-   }
-   $newick_string =~ s/X___X/_/g; # put the underscores back in the ids
-   $newick_string =~ s/\s+//g;
-   return ($newick_string, $leaf_count);
-}
-
-
-sub newick_genspid2id__gensp{ # the output format here is the one that figtree likes
-#  Arabidopsis_thaliana_AT1g123456.3 -> AT1g123456.3__Arabidopsis_thaliana
-   my $newick_string = shift;
-   my $id_genusspecies = shift; # hashref
-   my $ids = shift;             # array ref
-   my $leaf_count = 0;
-   my $newick_copy = $newick_string;
-   while ( $newick_copy =~ s/([(,])([A-Z][a-zA-Z]*_[a-zA-Z]+)_([^\s:,)]+)/$1 $3 __ $2/) {
-      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
-      $id_genusspecies->{$id} = $genus_species;
-      push @$ids, $id;
-      $leaf_count++;
-   }
-   $newick_copy =~ s/\s+//g;
-   return ($newick_copy, $leaf_count);
-}
-
-sub newick_idgensp2id__gensp{ # change format of species and id in newick expression, e.g.:
-   #  AT1g123456.1[species=Arabidopsis_thaliana] -> AT1g123456.3__Arabidopsis_thaliana
-   my $newick_string = shift;
-   my $id_genusspecies = shift; # hashref
-   my $ids = shift;             # array ref
-   my $leaf_count = 0;
-   while ( $newick_string =~ s/([(,])([^[:,(\s]+)\[species=([^]]+)\]/$1 $2 __ $3/) {
-      my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3); 
-      $id_genusspecies->{$id} = $genus_species;
-      push @$ids, $id;
-      $leaf_count++;
-   }
-   $newick_string =~ s/\s+//g;
-   return ($newick_string, $leaf_count);
-}
-
-
-sub newick_idgensp2genspid{ # change format of species and id in newick expression, e.g.:
-   #  AT1g123456.1[species=Arabidopsis_thaliana] -> Arabidopsis_thaliana_AT1g123456.3
-   my $newick_string = shift;
-   my $id_genusspecies = shift; # hashref
-   my $ids = shift;             # array ref
-   my $leaf_count = 0;
-   while ( $newick_string =~ s/([(,])([^[]+)\[species=([^]]+)\]/$1$3_$2/) {
-      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
-      $id_genusspecies->{$id} = $genus_species;
-      push @$ids, $id;
-      $leaf_count++;
-   }
-   return ($newick_string, $leaf_count);
-}
 
 sub read_in_group_species{
    my $group_species_filename = shift;
@@ -614,6 +540,232 @@ sub read_in_group_color{
    }
    return \%group_color;
 }
+
+
+# make a general subroutine for transforming between different species information formats
+# first detect what the format is and (if it is not the desired one)
+# transform from that one to seqid[species=Genus_species] format,
+# then transform to desired one.
+# known formats:
+#  1: ATxxxx[species=Arabidopsis_thaliana]
+#  2: Arabidopsis_thaliana_ATxxxx
+#  3: ATxxxx__Arabidopsis_thaliana
+
+sub format_newick_species_info{
+   my $newick = shift;
+   my $target_format = shift || 1; # 1, 2, or 3.
+   my $input_format = undef;
+
+   #  print STDERR "\n\n", $newick_expression, "\n\n";
+   if ($newick =~ /\[species=([^]]+)\]/) { # [species=Genus_species] format;
+      $input_format = 1;
+   } elsif ($newick =~ /[(,]([A-Z][a-z]*_[a-z0-9]+)_[^:,)]+[:,)]/) { # Genus_species_seqid format
+      $input_format = 2;
+   } elsif ($newick =~ /[(,](\S+)__([^:,)]+)/) { # seqid__Genus_species format.
+      $input_format = 3;
+   } else {
+      warn "Unknown format for species info in newick. newick string: [$newick]\n";
+   }
+#   print STDERR "input format: $input_format , target format: $target_format \n";
+   my ($intermediate_newick, $id_sp);
+   if ($input_format eq $target_format) { # it is already what we want.
+      if($input_format == 1){ 
+         return ($newick, newick_1to1($newick));
+      } elsif ($input_format == 2) {
+         return ($newick, newick_2to2($newick));
+      } elsif ($input_format == 3) {
+         return ($newick, newick_3to3($newick));
+      }else{
+         die "newick species-info input format unknown: $input_format\n";
+      }
+   } else {                     # -> format 1
+      if($input_format == 1){
+         ($intermediate_newick, $id_sp) = ($newick, newick_1to1($newick));
+      }elsif ($input_format == 2){
+         ($intermediate_newick, $id_sp) = newick_2to1($newick);
+      } elsif ($input_format == 3){
+         ($intermediate_newick, $id_sp) = newick_3to1($newick);
+      } else {
+         die "Input format: [$input_format] is unknown. Bye.\n";
+      }
+   }
+
+   # now 1 -> target format
+   if($target_format == 1){
+      return ($intermediate_newick, $id_sp);
+   }elsif($target_format == 2){
+      return newick_1to2($intermediate_newick);
+   }elsif($target_format == 3){
+      return newick_1to3($intermediate_newick);
+   }else{
+      die "Target format unknown: $target_format \n";
+   }
+}
+
+
+## subroutines for changing newick format
+# each of these takes a newick string with the species information
+# formatted one way, and converts it to having the species info
+# formatted one of the other ways, while adding the sequence_id and species 
+# as key/value pair of a hash, and counting the number of leaves.
+
+# alias for newick_genspid2idgensp
+sub newick_2to1{
+   my $newick = shift;
+   return newick_genspid2idgensp($newick);
+}
+sub newick_genspid2idgensp{ # change format of species and id in newick expression, e.g.:
+   # Arabidopsis_thaliana_AT1g123456.3  ->  AT1g123456.1[species=Arabidopsis_thaliana]
+   my $newick = shift;
+   my $id_genusspecies = {};
+   while ( $newick =~ /([(,])([A-Z][a-zA-Z]*_[a-zA-Z0-9]+)_([^\s:]+)/ ) {
+      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+      $id =~ s/_/X___X/g;
+      $newick =~ s/[(,][A-Z][a-zA-Z]*_[a-zA-Z0-9]+_[^\s:]+/$lparenorcomma$id [species= $genus_species ]/;
+   }
+   $newick =~ s/X___X/_/g;      # put the underscores back in the ids
+   $newick =~ s/\s+//g;
+   return ($newick, $id_genusspecies);
+}
+
+sub newick_3to1{
+   # AT1g123456.3__Arabidopsis_thaliana  -> AT1g123456.3[species=Arabidopsis_thaliana]
+   my $newick = shift;
+   my $id_genusspecies = {};
+   while ($newick =~ /__/) {
+      $newick =~ s/([(,])([^,:()]+)__([A-Z][a-z]*_[a-z0-9]+)/$1 $2 [species= $3 ]/;
+      $id_genusspecies->{$2} = $3;
+   }
+   $newick =~ s/\s+//g;
+   return ($newick, $id_genusspecies);
+}
+
+
+# 2 to 3
+sub newick_genspid2id__gensp{ # the output format here is the one that figtree likes
+   #  Arabidopsis_thaliana_AT1g123456.3 -> AT1g123456.3__Arabidopsis_thaliana
+   my $newick = shift;
+   my $id_genusspecies = {};
+   my $newick_copy = $newick;
+   while ( $newick =~ s/([(,])([A-Z][a-zA-Z]*_[a-zA-Z0-9]+)_([^\s:,)]+)/$1 $3 __ $2/) {
+      my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+   }
+   $newick =~ s/\s+//g;
+   return ($newick, $id_genusspecies);
+}
+
+# alias for newick_idgensp2id__gensp
+sub newick_1to3{
+   my $newick = shift;
+   return newick_idgensp2id__gensp($newick);
+}
+sub newick_idgensp2id__gensp{ # change format of species and id in newick expression, e.g.:
+   #  AT1g123456.1[species=Arabidopsis_thaliana] -> AT1g123456.3__Arabidopsis_thaliana
+   my $newick = shift;
+   my $id_genusspecies = {};    #shift; # hashref;
+   while ( $newick =~ s/([(,])([^[:,(\s]+)\[species=([^]]+)\]/$1 $2 __ $3/) {
+      my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3); 
+      $id_genusspecies->{$id} = $genus_species;
+   }
+   $newick =~ s/\s+//g;
+   return ($newick, $id_genusspecies);
+}
+
+# alias for newick_idgensp2genspid
+sub newick_1to2{
+   my $newick_string = shift;
+   return newick_idgensp2genspid($newick_string);
+}
+
+sub newick_idgensp2genspid{ # change format of species and id in newick expression, e.g.:
+   #  AT1g123456.1[species=Arabidopsis_thaliana] -> Arabidopsis_thaliana_AT1g123456.3
+   my $newick = shift;
+   my $id_genusspecies = {};    # hashref
+   while ( $newick =~ s/([(,])([^[,:()]+)\[species=([^]]+)\]/$1$3_$2/) {
+      my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3);
+      $id_genusspecies->{$id} = $genus_species;
+   }
+   return ($newick, $id_genusspecies);
+}
+
+
+
+################################
+
+sub median{
+   my @numbers = sort @_;
+   return undef if(scalar @numbers == 0);
+   my $size = scalar @numbers // 0;
+   return ($size % 2 == 0)?
+      0.5*($numbers[$size/2] + $numbers[$size/2 - 1]) :
+        $numbers[int($size/2)];
+   my $result;
+   if ($size % 2 == 0) {
+      $result = 0.5*($numbers[$size/2] + $numbers[$size/2 - 1]);
+   } else {
+      $result = $numbers[int(0.1 + $size/2)];
+   }
+   return $result;
+}
+
+
+sub increment_hash{
+# increment each value of first hash by corresponding value
+# in other hash.
+   my $kv1 = shift;
+   my $kv2 = shift;
+   while ( my ($k, $v) = each %$kv2) {
+      $kv1->{$k} += $v;
+   }
+   return $kv1;
+}
+
+sub add_hashes{
+# add values of two hashes; values must be numerical, !exists -> 0
+# return ref to a new hash which is sum of the two input hashes.
+   my $hr1 = shift;
+   my $hr2 = shift;
+   my %sumhash = ();
+   while (my($k,$v) = each %$hr1) {
+      $sumhash{$k} += $v;
+   }
+   while (my($k,$v) = each %$hr2) {
+      $sumhash{$k} += $v;
+   }
+   return \%sumhash;
+}
+
+sub newick_1to1{
+   my $newick = shift;
+   my $id_sp = {};
+   while ($newick =~ s/([(,])([^[]+)\[species=([^]]+)/$1$2 [ sp = $3 /) {
+      $id_sp->{$2} = $3;
+   }
+   return $id_sp; 
+}
+
+sub newick_2to2{
+   my $newick = shift;
+   my $id_sp = {};
+   while ($newick =~ s/([(,])([A-Z][a-z]*_[a-z0-9]+)_([^,:()]+)/$1 $2 $3/) {
+      $id_sp->{$3} = $2;
+   }
+   return $id_sp;
+}
+
+sub newick_3to3{
+   my $newick = shift;
+   my $id_sp = {};
+   while ($newick =~ s/([(,])([^,:()]+)__([^,:()]+)/$1 $2 $3/) {
+      $id_sp->{$2} = $3;
+   }
+   return $id_sp;
+
+}
+
+
 
 
 1;
