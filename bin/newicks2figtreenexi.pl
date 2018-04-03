@@ -35,8 +35,8 @@ my $keep_branch_supports = 1; # default: keep branch supports in newick expressi
 GetOptions(
 	   'gg_file=s'      => \$gg_filename, # not needed if species info present in newicks file.
 	   'pattern=s' => \$newick_filename_pattern,
-           'group_species_file=s' => \$group_species_file,
-           'color_file=s' => \$group_color_file,
+           'groups=s' => \$group_species_file,
+           'colors=s' => \$group_color_file,
 	  );
 
 my $newick_filenames_str = `ls $newick_filename_pattern`;
@@ -138,21 +138,24 @@ while (my($sp, $grp) = each %$species_group) {
 }
 
 for my $newickfile (@newick_filenames) {
-   my @ids = ();
+#   my @ids = ();
    open my $fh_newick, "<", "$newickfile" or die "couldn't open $newickfile for reading.\n";
    my $newick_expression = <$fh_newick>;
    while(<$fh_newick>){ $newick_expression = $_; }
    close $fh_newick;
+
+#    transform newick expression
    $newick_expression =~ s/\s//g; # remove whitespace from newick expression.
 
    my @x = ($newick_expression =~ /\[species/g);
    my $n_leaves = scalar @x;
    if ($n_leaves == 0) { # not [species= ]format, convert to id__gensp format.
-      ($newick_expression, $n_leaves) = newick_genspid2id__gensp($newick_expression, $id_species, \@ids);
+      ($newick_expression, $id_species) = newick_genspid2id__gensp($newick_expression); #, $id_species, \@ids);
    } else { # format is [species= ], convert to id__gensp format.
-      ($newick_expression, $n_leaves) = newick_idgensp2id__gensp($newick_expression, $id_species, \@ids);
+      ($newick_expression, $id_species) = newick_idgensp2id__gensp($newick_expression); #, $id_species, \@ids);
    }
-
+   $n_leaves = scalar keys %$id_species;
+#
    my ($v, $path, $output_filename) = File::Spec->splitpath($newickfile);
    $output_filename =~ s/(txt|newick)\s*$//;
    $output_filename .= 'nexus';
@@ -164,7 +167,8 @@ for my $newickfile (@newick_filenames) {
        $space . "dimensions ntax=" . $n_leaves . ";\n" .
          $space . "taxlabels\n";
 
-   for my $id (@ids) {
+   
+   for my $id (keys %$id_species) {
       my $species = $id_species->{$id};
       my $xid = $id .  "__" . $species; # . "[species=$species]";
       $nexus_string .=  $space . "'" . $xid . "'[" . '&!color=' 
