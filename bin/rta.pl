@@ -122,12 +122,12 @@ for my $input_filename (@input_filenames) {
       my $grouper = Grouper->new($category_species);
 
       # whole tree:
-      $grouper->group_species_leafcounts($the_tree->get_root());
+      $grouper->group_species_counts($the_tree->get_root());
       my ($nsppres, $med_nseq, $max_nseq, $total_nseq) = $grouper->get_group_summary_info('group1');
       if ( ($nsppres >= 1) and ($max_nseq >= $min_max_grp1_sequences)  and  ($max_nseq >= $expansion_relative_to_median * $med_nseq) ) {
          print "$input_filename    ";
          for ('group1', 'group2') {
-            printf("%2i ", scalar $category_species->get($_)->keys() );
+            printf("%1i ", scalar $category_species->get($_)->keys() );
             print join("  ", $grouper->group_speciescount_strings($_)), "     ";
          }
          # print $grouper->get_group_sequences_string($the_tree->get_root(), 'group1', $seqid_species);
@@ -350,80 +350,6 @@ sub select_interesting_subtree{
       }
    }
 }
-
-# sub analyze_tree_old{
-#    my $tree = shift;
-#    my $group1 = shift;          # Hash::Ordered of a group of species
-#    my $group2 = shift;
-#    my $sequenceid_species = shift;
-#    my $species_category = shift;
-#    my $done_ids = {};        # keys are ids which are already analyzed
-#    my $output_string = '';
-
-#    my $leaves_to_analyze = get_species_group_leaves($tree, $group1);
-#    push @$leaves_to_analyze, @{get_species_group_leaves($tree, $group2)};
-#    for my $the_leaf (@$leaves_to_analyze) { # loop over leaves of interest
-
-#       ######  Reroot near the leaf  ######
-#       my $sequence_id = $the_leaf->get_name();
-#       next if($done_ids->{$sequence_id}); # the subtree containing this one has already been found - skip.
-#       my $seqid_presence = {$sequence_id => 1}; # this hash holds the ids in the maximal part of tree containing query and only AM hosts.
-
-#       $tree->reset_root_to_point_on_branch($the_leaf, 0.5*$the_leaf->get_branch_length());
-#       $tree->get_root()->recursive_implicit_names(); # 
-
-#       my @children = $tree->get_root()->get_children();
-
-#       my $next_node = $children[1];
-#       while (1) {
-#          @children = $next_node->get_children();
-#          my $n_children = scalar @children;
-
-#          if ($n_children == 2) {
-#             my ($Lspecies_count, $Lcat_spcount, $Lid_presence) =  species_and_category_counts($children[0], $sequenceid_species, $species_category);
-#             my ($Rspecies_count, $Rcat_spcount, $Rid_presence) =  species_and_category_counts($children[1], $sequenceid_species, $species_category);
-#             my $L_OK = valuez($Lcat_spcount, 'disallowed') == 0; # number of disallowed species found in L subtree is zero
-#             my $R_OK = valuez($Rcat_spcount, 'disallowed') == 0; # number of disallowed species found in R subtree is zero
-#             if ($L_OK) {
-#                $seqid_presence = increment_hash($seqid_presence, $Lid_presence);
-#                if ($R_OK) { # both subtrees have no negatives (whole tree has no negatives)
-#                   $seqid_presence = increment_hash($seqid_presence, $Rid_presence);
-#                   last;
-#                } else {         # R subtree has negatives
-#                   $next_node = $children[1];
-#                }
-#             } else {            # L subtree has negatives
-#                if ($R_OK) {
-#                   $seqid_presence = increment_hash($seqid_presence, $Rid_presence);
-#                   $next_node = $children[0];
-#                } else {         # both subtrees have negatives -- done
-#                   last;
-#                }
-#             }
-#          } elsif ($n_children == 0) { # to get here next_node must be a single nonAM leaf -- done
-#             last;
-#          } elsif ($n_children > 2) {
-#             die "node: ", $next_node->get_name(), " has ", scalar @children, " children (not binary tree).\n"
-#          } else {
-#             die "node: ", $next_node->get_name(), " has ", scalar @children, " children. ???.\n"
-#          }
-#       }                         # end of while(1) loop
-
-#       for my $k (keys %$seqid_presence) {
-#          $done_ids->{$k} = 1;
-#       }
-
-#       my @ids_in_subtree = keys %$seqid_presence;
-#       $output_string .= species_category_id_info_string(\@ids_in_subtree, $sequenceid_species, $group1);
-#       if (scalar $group2->keys() > 0) {
-#          $output_string .= species_category_id_info_string(\@ids_in_subtree, $sequenceid_species, $group2);
-#       }
-#       $output_string .= "\n";
-#    }                            # loop over leaves to analyze
-#    $tree->impose_branch_length_minimum(1);
-#    $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
-#    return $output_string;
-# }
 
 sub species_category_id_info_string{
    my $ids_in_subtree = shift ;
