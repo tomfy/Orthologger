@@ -34,13 +34,14 @@ my $default_color = '#444444';
 my $keep_branch_supports = 1; # default: keep branch supports in newick expression
 GetOptions(
 	   'gg_file=s'      => \$gg_filename, # not needed if species info present in newicks file.
-	   'pattern=s' => \$newick_filename_pattern,
+	   'input_pattern=s' => \$newick_filename_pattern,
            'groups=s' => \$group_species_file,
            'colors=s' => \$group_color_file,
 	  );
 
 my $newick_filenames_str = `ls $newick_filename_pattern`;
 my @newick_filenames = split(" ", $newick_filenames_str);
+# print STDERR join("\n", @newick_filenames), "\n";
 
 my $figtree_block = 'begin figtree;' . "\n" . 
   '    set appearance.backgroundColorAttribute="Default";' . "\n" .
@@ -141,16 +142,18 @@ for my $newickfile (@newick_filenames) {
 #   my @ids = ();
    open my $fh_newick, "<", "$newickfile" or die "couldn't open $newickfile for reading.\n";
    my $newick_expression = <$fh_newick>;
-   while(<$fh_newick>){ $newick_expression = $_; }
+   #print STDERR "A: $newick_expression\n";
+   while(<$fh_newick>){ $newick_expression .= $_; }
    close $fh_newick;
 
 #    transform newick expression
    $newick_expression =~ s/\s//g; # remove whitespace from newick expression.
-
+#print STDERR "AAA: $newick_expression \n";
    my @x = ($newick_expression =~ /\[species/g);
    my $n_leaves = scalar @x;
    if ($n_leaves == 0) { # not [species= ]format, convert to id__gensp format.
       ($newick_expression, $id_species) = newick_genspid2id__gensp($newick_expression); #, $id_species, \@ids);
+   #   print STDERR "BBB: $newick_expression \n";
    } else { # format is [species= ], convert to id__gensp format.
       ($newick_expression, $id_species) = newick_idgensp2id__gensp($newick_expression); #, $id_species, \@ids);
    }
