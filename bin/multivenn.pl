@@ -51,7 +51,7 @@ my $n_sets = scalar @files;
 # i.e. which venn diagram region it belongs in.
 # and number of ids in each of these regions.
 
-print "Input files: \n", join("\n", @files), "\n";
+print "# Input files: \n# ", join("\n# ", @files), "\n";
 my %id_count = ();
 my @file_id_hashes = ();
 for my $the_file (@files){ # for each input file, store id:count key:value pairs
