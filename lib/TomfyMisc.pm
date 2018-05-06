@@ -5,8 +5,6 @@ use strict;
 use Scalar::Util qw(blessed);
 
 
-
-
 sub timestring{
    my $s_time = shift;          # time in seconds (e.g. from time() )
    my @months = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
@@ -28,7 +26,7 @@ sub store_gg_info {	 #xx    # read in gene-genome association file
    # store in hash (keys: seqids, values: species). e.g. ('ATxxxx' => Arabidopsis_thaliana');
    my $gg_filename   = shift;
    my %seqid_species = ();
-my %species_count = ();
+   my %species_count = ();
    if ( defined $gg_filename ) {
       if ( -f $gg_filename ) {
          open my $fh_gg, "<", "$gg_filename" or die "Couldn't open $gg_filename for reading.\n";
@@ -39,7 +37,7 @@ my %species_count = ();
             for (@cols) {
                if ( exists $seqid_species{$_} ) {
                   warn "key $_ already stored with species: ",
-                    $seqid_species{$_}, "\n";
+                    $seqid_species{$_}, ", new species would be $species.\n";
                } else {
                   $seqid_species{$_} = $species;
                   $species_count{$species}++;
@@ -47,7 +45,7 @@ my %species_count = ();
             }
          }
          close $fh_gg; # done storing gg_file info in hash %seqid_species
-      } else { # 
+      } else {         # 
          die "$gg_filename: no such file.\n";
       }
    } else {
@@ -691,23 +689,45 @@ sub newick_idgensp2genspid{ # change format of species and id in newick expressi
 }
 
 
+sub taxonify_newick { # add species info from %seqid_species hash
+# to newick in [species=...] format (i.e. format 1)
+
+   my $newick        = shift;
+   my %seqid_species = %{ shift @_ };
+   $newick =~ s/\s+$//;         # remove final whitespace
+   my $new_newick = $newick;
+   $new_newick =~ s/ ([\(,]) \s* ([^,\):]+) \s* ([,\):])/$1$2\n$3/xg; # add newline after each leaf
+   my @leaf_lines = split( "\n", $new_newick );
+   my $last_bit = pop @leaf_lines;
+   for (@leaf_lines) {
+
+      if (/\[species=.*\]/) { # species info already there for this leaf - leave it alone
+      } else {
+         / [\(,] \s* ([^\(,\):]+) \s* $/x;
+         my $seq_id = $1;
+         if ( exists $seqid_species{$seq_id} ) {
+            my $species = $seqid_species{$seq_id};
+            $seq_id .= '[species=' . $species . ']';
+         } else {
+            warn "sequence $seq_id; no corresponding species found.\n";
+         }
+         s/ ([\(,]) \s* ([^\(,\):]+) \s* $/$1$seq_id/x;
+      }
+   }
+   $new_newick = join( '', @leaf_lines ) . $last_bit;
+   return $new_newick;
+}
+
 
 ################################
 
 sub median{
-   my @numbers = sort @_;
-   return undef if(scalar @numbers == 0);
+   my @numbers = sort {$a <=> $b} @_; # numerical sort!
    my $size = scalar @numbers // 0;
+   return undef if($size == 0);
    return ($size % 2 == 0)?
-      0.5*($numbers[$size/2] + $numbers[$size/2 - 1]) :
-        $numbers[int($size/2)];
-   my $result;
-   if ($size % 2 == 0) {
-      $result = 0.5*($numbers[$size/2] + $numbers[$size/2 - 1]);
-   } else {
-      $result = $numbers[int(0.1 + $size/2)];
-   }
-   return $result;
+      0.5*($numbers[$size/2] + $numbers[$size/2 - 1]) :  # even number of elements
+        $numbers[int($size/2)]; # odd number of elements
 }
 
 
