@@ -3,7 +3,7 @@ use Scalar::Util qw (blessed);
 use Hash::Ordered;
 use List::Util qw (min max sum);
 use TomfyMisc qw (median);
-use 5.012;                      # so can use each with arrays
+use 5.012;    # so can use each with arrays
 
 =pod
 each sequence belongs to a 'species', each species belongs to a group
@@ -49,7 +49,7 @@ sub new{
             $line =~ s/#.*$//;
             $line =~ s/,/ /g;
             for (split(" ", $line)) {
-               $groupname_species->get($groupname)->set($_ => '');
+               $groupname_species->get($groupname)->set($_ => ''); # keys: species, values: '' 
             }
          }
       }
@@ -74,7 +74,9 @@ sub initialize{
       for my $grp_name ($self->{groupname_species}->keys()) {
          $self->{grpname_spcount}->set($grp_name => Hash::Ordered->new());
          for my $sp ($self->{groupname_species}->get($grp_name)->keys()) {
-            $self->{species_groupname}->{$sp} = $grp_name;
+            my $spgroups = $self->{species_groupname}->{$sp} //  [];
+            push @$spgroups, $grp_name;
+            $self->{species_groupname}->{$sp} = $spgroups;
             $self->{grpname_spcount}->get($grp_name)->set($sp => 0);
          }
       }
@@ -96,40 +98,29 @@ sub get_group_species_string{
 sub group_species_counts{
    my $self = shift;
    my $arg1 = shift;
-   my $id_species = shift;
+ #  my $id_species = shift;
    my $species_count = {};      # plain (not ordered) hash.
-   if (ref $arg1 eq 'HASH') {
-      my @keys = keys %$arg1;
-      
-      if (defined $id_species and exists $id_species->{$keys[0]}) { # this looks like a hash whose keys are ids
-         my $id_presence = $arg1;
-         for my $leaf_id (keys %$id_presence) {
-            $species_count->{$id_species->{$leaf_id} // 'unknown'}++;
-         }
-      } else {                # $arg1 is a hash of species:count pairs
-         $species_count = $arg1;
+   if(ref $arg1 eq 'ARRAY'){ # array ref of species 
+      for my $sp (@$arg1){
+         $species_count->{$sp}++;
       }
-   } elsif (blessed($arg1) and $arg1->isa('CXGN::Phylo::BasicNode')) { # $arg1 should be a node object
-      my $node = $arg1;
-      for my $leaf_id (@{$node->get_implicit_names()}) {
-         #    print "$leaf_id  ";
-         $species_count->{$id_species->{$leaf_id}}++;
-      }                         # print "\n";
-   } else {
-      die "arg1 should be hashref, or BasicNode, but is ", ref($arg1), "\n";
+   }elsif (ref $arg1 eq 'HASH') { # $arg1 is hashref of  species:count pairs
+         $species_count = $arg1;
+   }else {
+      die "arg1 should be hashref, or array ref of species names, but is ", ref($arg1), "\n";
    }
    # all values of %species_count will be integers > 0
 
    my $grp_sp_count = Hash::Ordered->new();
-   for my $grp_name ($self->{groupname_species}->keys()) {
+   for my $grp_name ($self->{groupname_species}->keys()) { # looks like should still work if sp belongs to multiple groups.
       my $this_grp_n_sp_present = 0; # counts number of species in this group which are present.
       my $this_grp_sp_count = Hash::Ordered->new(); # counts number of sequences of each species in this group.
       for my $sp ($self->{groupname_species}->get($grp_name)->keys()) {
          $this_grp_sp_count->set($sp => $species_count->{$sp} // 0);
          #      print "sp: $sp ", $species_count{$sp}, "\n";
-         $this_grp_n_sp_present++ if(defined $species_count->{$sp});
+         $this_grp_n_sp_present++ if(($species_count->{$sp} // 0) > 0);
       }
-      #print "BBB:  ",  join(",", $this_grp_sp_count->as_list()), "\n";
+  #    print "BBB:  $grp_name    ",  join(",", $this_grp_sp_count->as_list()), "\n";
       $self->{grpname_spcount}->set($grp_name => $this_grp_sp_count);
       my @sp_seq_counts_in_group = $self->{grpname_spcount}->get($grp_name)->values();
       #print "CCC:   $grp_name   ", join(",", @sp_seq_counts_in_group), "\n";
@@ -139,7 +130,7 @@ sub group_species_counts{
                                                 sum(@sp_seq_counts_in_group),
                                                );
 
-      #print "DDD:  $grp_name   ", join("; ", ($this_grp_n_sp_present, $med_nseq, $max_nseq, $total_nseq)), "\n";
+  #   print "DDD:  $grp_name   ", join("; ", ($this_grp_n_sp_present, $med_nseq, $max_nseq, $total_nseq)), "\n";
       $self->{grp_summary_info}->{$grp_name} = [ $this_grp_n_sp_present, $med_nseq, $max_nseq, $total_nseq ];
    }
 }
@@ -188,8 +179,9 @@ sub get_group_sequences_string{
    my @grpids = ();
    for my $id (@$ids) {
       my $sp = $id_species->{$id};
-      my $grp_name = $self->{species_groups}->{$sp};
-      push @grpids, $id if($grp_name eq $group_name);
+      if ($self->get_groupname_species()->get($group_name)->exists($sp)) {
+         push @grpids, $id;
+      }
    }
    return join(",", @grpids);
 }
@@ -230,7 +222,7 @@ sub get_group{ # for the group with name $groupname, return the value, a Hash::O
    #   print STDERR "Group name: $groupname \n";
    if (defined $groupname) {
       if (defined $self->{groupname_species}->get($groupname)) {
-         $group = $self->{groupname_species}->get($groupname); 
+         $group = $self->{groupname_species}->get($groupname);
       } else {
          die "No group for groupname $groupname.\n";
       }
@@ -242,12 +234,12 @@ sub get_group{ # for the group with name $groupname, return the value, a Hash::O
 }
 
 sub species_and_group_counts{
-   # for the subtree below a node, find:
+   # for the sequence ids specified in the array ref argument $sequenceids:
    # number of leaves of each species ($species_leafcount)
    # number of species present of each group ($groupname_speciescount)
-   # hash of ids present (%subtree_id_presence). keys are ids in subtree, values are all 1.
+   # hash of ids present ($subtree_id_presence). keys are ids in subtree, values are all 1.
    my $self = shift;
-   my $node = shift;
+   my $sequenceids = shift; # array ref
    my $id_species = shift;
    my $species_groupname = $self->get_species_groupname(); # hashref; keys: species names (e.g. 'Coffea_arabica'), values: groupnames (e.g. 'asterids')
    my $species_leafcount = {}; # keys: species names, values: number of leaves of that species in subtree.
@@ -255,13 +247,14 @@ sub species_and_group_counts{
    my $groupname_leafcount = {};
    my $subtree_id_presence = {}; # keys: ids in subtree, values: 1
 
-   for my $an_id (@{$node->get_implicit_names()}) {
-
+   for my $an_id (@$sequenceids){ # @{$node->get_implicit_names()}) {
       $subtree_id_presence->{$an_id} = 1;
       my $species = (exists $id_species->{$an_id})? $id_species->{$an_id} : die "id: [$an_id]; species is unknown.\n";
-      my $groupname = $self->get_species_groupname()->{$species} // 'other';
-      $groupname_leafcount->{$groupname}++;
-      $groupname_speciescount->{$groupname}++ if(! exists $species_leafcount->{$species});
+      my $groupnames = $species_groupname->{$species} // ['other'];
+      for my $groupname (@$groupnames){
+         $groupname_leafcount->{$groupname}++;
+         $groupname_speciescount->{$groupname}++ if(! exists $species_leafcount->{$species});
+      }
       $species_leafcount->{$species}++;
    }
    return ($species_leafcount, $groupname_speciescount, $groupname_leafcount, $subtree_id_presence);
@@ -278,8 +271,7 @@ sub ids_present_string{
    my @sorted_ids = sort keys %$seqid_present;
    for my $an_id (@sorted_ids) {
       my $sp = $seqid_species->{$an_id};
-   #   print STDERR "gname:  $group_name   $sp\n";
-      if ($self->get_species_groupname()->{$sp} eq $group_name) {
+      if ($self->get_groupname_species()->get($group_name)->exists($sp)) {
          $species_idsstring->concat($sp, "$an_id,");
       }
    }
@@ -301,9 +293,9 @@ sub three_subtrees_species_counts{
    my $nchild = scalar @children;
    if ($nchild == 2) {
       my ($Lchild, $Rchild) = @children[0,1];
-      my ($Lspecies_count, $Lcat_spcount, $Lcat_leafcount, $Lid_presence) = $self->species_and_group_counts($Lchild, $sequenceid_species);
-      my ($Rspecies_count, $Rcat_spcount, $Rcat_leafcount, $Rid_presence) = $self->species_and_group_counts($Rchild, $sequenceid_species);
-      my ($Aspecies_count, $Acat_spcount, $Acat_leafcount, $Aid_presence) = $self->species_and_group_counts($node->get_tree()->get_root(), $sequenceid_species);
+      my ($Lspecies_count, $Lcat_spcount, $Lcat_leafcount, $Lid_presence) = $self->species_and_group_counts($Lchild->get_implicit_names(), $sequenceid_species);
+      my ($Rspecies_count, $Rcat_spcount, $Rcat_leafcount, $Rid_presence) = $self->species_and_group_counts($Rchild->get_implicit_names(), $sequenceid_species);
+      my ($Aspecies_count, $Acat_spcount, $Acat_leafcount, $Aid_presence) = $self->species_and_group_counts($node->get_tree()->get_root()->get_implicit_names(), $sequenceid_species);
 
       while (my($sp,$c) = each %$Lspecies_count) {
          #  if(exists $Aspecies_count->{$sp}){
@@ -321,11 +313,15 @@ sub three_subtrees_species_counts{
       for my $sp (keys %$Aspecies_count){
      #    print STDERR "Species: $sp \n";
          my $count = $Aspecies_count->{$sp} // 0;
-         my $groupname = $self->get_species_groupname()->{$sp} // 'unknown';
+         my $groupnames = $self->get_species_groupname()->{$sp} // ['other'];
+
+
+         for my $groupname (@$groupnames){
     #     print "Species, group: $sp  $groupname  $count \n";
           $Acat_spcount->{$groupname}++ if($count > 0);
+       }
       }
-      return ($Lspecies_count, $Lcat_spcount, $Rspecies_count, $Rcat_spcount, $Aspecies_count, $Acat_spcount);
+      return ($Lspecies_count, $Lcat_spcount, $Lid_presence, $Rspecies_count, $Rcat_spcount, $Rid_presence, $Aspecies_count, $Acat_spcount, $Aid_presence);
 
    } elsif ($nchild == 0) {
       # node is leaf
