@@ -55,12 +55,12 @@ my $Ogroupname = 'to_output';
    # Defaults:
    my $input_pattern = undef;
    my $gg_filename   = undef;
-   my $groups = 'groups'; # this is a default filename specifying the positive species.
+   my $groups = 'groups'; # this is a default filename specifying the groups of  species.
    my $min_sgroup_sequences = 1;
    my $min_max_sgroup_expansion = 1;
    my $max_to_median_factor = 1;
    my $n_disallowed_limit = 0;
-   my $analysis_type = 2;
+   my $analysis_type = 1;
    my $S1group = 'dicots,6,2';
    my $S2group = 'monocots,4,1';
    my $D1group = 'basals,1';    # disallowed groupname, max allowed
