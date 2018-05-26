@@ -42,10 +42,11 @@ sub new{
       $groupname_species = Hash::Ordered->new();
       my $groupname = undef;
       while (my $line = <$fh_gsp>) {
-         if ($line =~ /^\s*groupname\s+(\S+)/) {
+         next if($line =~ /^\s*#/); # skip lines which have only a comment
+         if ($line =~ /^\s*groupname\s+(\S+)/) { # start of a new group
             $groupname = $1;
             $groupname_species->set($groupname => Hash::Ordered->new());
-         } elsif (defined $groupname) {
+         } elsif (defined $groupname) { # add a species to the group
             $line =~ s/#.*$//;
             $line =~ s/,/ /g;
             for (split(" ", $line)) {
