@@ -2,6 +2,8 @@
 use strict;
 
 
+my $the_col = shift // 10;
+
 my $max_eval_so_far = -1;
 my %id_eval = ();
 while (<>) {
@@ -23,10 +25,10 @@ while (<>) {
   $id_eval{$id1} = $eval;
   if ($eval > $max_eval_so_far) {
     $max_eval_so_far = $eval;
-   print "Max eval so far: $max_eval_so_far \n";
+   print "Max eval so far: $max_eval_so_far   $id1 $id2\n";
   }
 }
-
+exit;
 my $log10 = log(10);
 for (keys %id_eval) {
   my $ev = $id_eval{$_};
