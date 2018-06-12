@@ -48,7 +48,6 @@ starting leaf, and no disallowed species.
 
 Usage example:
 uta.pl -in '*.newick' -gr pgroup  -min_max 6  -max_to_med 4  >  all_6_4.out
-
 =cut
 
 {
@@ -129,7 +128,7 @@ uta.pl -in '*.newick' -gr pgroup  -min_max 6  -max_to_med 4  >  all_6_4.out
                }
             }
          }elsif($analysis_type eq 3){
-            analyze_tree_3($the_tree, $grouper, $seqid_species, $S1group, $D1group);
+            analyze_tree_3($the_tree, $grouper, $seqid_species, $S1group, $D1group, $input_filename);
          } else {               # whole tree
             my $sgroup_name = $grouper->get_ith_groupname(0);
             $grouper->group_species_counts($the_tree->get_root()->get_implicit_species()); #, $seqid_species);
@@ -587,10 +586,12 @@ sub analyze_tree_3{
    my $sequenceid_species = shift;
    my $S1group = shift;
    my $D1group = shift;
+   my $tree_filename = shift; 
 
  #  print "D1 group: $D1group \n";
    my $leaves_to_analyze = get_species_group_leaves( $tree, $grouper->get_group($D1group) );
    my $n_disallowed_leaves = scalar @$leaves_to_analyze;
+my $allowed_only_tree = $n_disallowed_leaves == 0;
    if($n_disallowed_leaves > 0){
       my $new_outnode = $leaves_to_analyze->[0];
       $tree->reset_root_to_point_on_branch($new_outnode, 0.5*$new_outnode->get_branch_length());
@@ -599,7 +600,7 @@ sub analyze_tree_3{
    }
 
    my $node = $tree->get_root();
-   recursive_is_node_all_one_group($node, $grouper, $sequenceid_species, $S1group, $D1group); #, $Fgroupname);
+   recursive_is_node_all_one_group($node, $grouper, $sequenceid_species, $S1group, $D1group, $tree_filename, $allowed_only_tree); #, $Fgroupname);
    $tree->impose_branch_length_minimum(1);
    $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
 }
@@ -628,16 +629,18 @@ sub recursive_is_node_all_one_group{
    my $sequenceid_species = shift;
    my $S1group = shift;
    my $D1group = shift;
+my $tree_filename = shift;
+   my $allowed_only_tree = shift;
 
    my $OK = is_node_all_one_group($node, $grouper, $sequenceid_species, $S1group, $D1group);
    if ($OK) {
       my $n_leaves = scalar @{$node->get_implicit_names()};
-      print "n_leaves: $n_leaves    ", $node->recursive_subtree_newick(), "\n";
+      print "$tree_filename   ", $allowed_only_tree? '1' : '0', "  $n_leaves    ", $node->recursive_subtree_newick(), "\n";
    } else {
       #    if (1 or (! ($is_spec and ($which eq 'LR')))) { # if child subtrees (i.e. LR) look like speciation don't descend to child nodes.
       my @children = $node->get_children();
       for (@children) {
-         recursive_is_node_all_one_group($_, $grouper, $sequenceid_species, $S1group, $D1group);
+         recursive_is_node_all_one_group($_, $grouper, $sequenceid_species, $S1group, $D1group, $tree_filename, $allowed_only_tree);
       }
    }
 }
