@@ -24,7 +24,7 @@ use CXGN::Phylo::Overlap;
 #use CXGN::Phylo::File;
 #use CXGN::Phylo::Species_name_map;
 
-my $nongap_fraction = shift || 0.8;
+my $nongap_fraction = shift // 0.8;
 
 my $alignment_id = 'anonymous';
 my $fasta_string = '';

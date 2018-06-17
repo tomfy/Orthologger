@@ -80,6 +80,7 @@ my $min_overlap_length = 24;
 my $max_overlap_length = 1000000000; # 1 billion - effectively infinite.
 my $support = 1;		     # default is to do support
 my $additional_ft_options = '';
+my $bs_overlap_length = undef;
 
 # At present:
 # protein alignment only as input
@@ -104,6 +105,7 @@ GetOptions(
 	   'input_alignment_file=s' => \$input_alignment_file,
 	   'output_newick_file=s' => \$output_newick_file,
 	   'ft_options=s' => \$additional_ft_options,
+           'bs_length=i' => \$bs_overlap_length,
 	  );
 if (!defined $gg_filename  or  ! -f $gg_filename) {
    die "No gene-genome association file specified. Exiting. \n";
@@ -202,7 +204,7 @@ while (1) {                     #  (<$fh_in>) {
       my $n_bs = max($n_nj_bs, $n_ft_bs, $n_phyml_bs);
       for ( my $i = 1 ; $i <= $n_bs ; $i++ ) {
          my $bs_overlap_fasta_string =
-           $overlap_obj->bootstrap_overlap_fasta_string('');
+           $overlap_obj->bootstrap_overlap_fasta_string('', $bs_overlap_length);
 
          ###### NJ ########
          if ($do_nj and ($i <= $n_nj_bs)) {
@@ -216,7 +218,7 @@ while (1) {                     #  (<$fh_in>) {
             print $fh_out "NJ_BS  $rr_nj_newick \n\n";
          }
          ######### FastTree ########
-         if ($do_ft and ($i <= $n_ft_bs)) {
+         if (1 and ($i <= $n_ft_bs)) { # can do bs even if not doing actual data.
             my $fasttree_command = "FastTree -wag -gamma -bionj $support_string $additional_ft_options ";
             my ($FT_newick, $ft_lnL, $ft_cpu_time) = run_fasttree($bs_overlap_fasta_string, $fasttree_command);
             my $taxonified_FT_newick =
