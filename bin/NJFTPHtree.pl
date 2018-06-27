@@ -69,7 +69,7 @@ GetOptions(
 	   #	   'ft!'      => \$do_ft, # whether to do FastTree for actual data
 	   'phyml!' => \$do_phyml, # whether to do Phyml tree construction for actual data
 	   'phyml_opt=s' => \$phyml_opt,
-	   #	   'support!'          => \$support, # -nosupport to turn off outputting of local branch support numbers.
+	   	   'support!'          => \$support, # -nosupport to turn off outputting of local branch support numbers.
 	   'n_bs=i' => \$n_bs,	# number of NJ bootstraps to do
 	   #	   'n_ft_bs=i' => \$n_ft_bs, # number of FastTree bootstraps to do
 	   #	   'n_phyml_bs=i' => \$n_phyml_bs, # number of Phyml bootstraps to do
@@ -142,7 +142,7 @@ while (<$fh_in>) {
 
                ################## run FastTree  ######################################## 
                # standard way:
-               my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport $additional_ft_options ";
+               my $fasttree_command = "FastTree -wag -gamma -bionj $support_string  $additional_ft_options ";
                my ($ft_newick, $ft_lnL, $ft_cputime) = run_fasttree($alignment_overlap, $fasttree_command);
                my $type = "FT";
                my $description = "$type  $ft_cputime  $ft_newick";
@@ -254,7 +254,7 @@ sub nj_to_ft{  # get a tree using NJ and use as init tree for FastTree
    } else { # can use FastTree (just min. evolution, no ML) for bs trees ...
       ($nj_newick, $bs_lnL, $bs_cputime) = run_fasttree($nj_input_alignment,"FastTree -wag -gamma -bionj -noml" );
    }
-   my $fasttree_command = "FastTree -wag -gamma -bionj ";
+   my $fasttree_command = "FastTree -wag -gamma -bionj -nosupport ";
    my ($ft_newick, $ft_lnL, $ft_cpu_time) = 
      run_fasttree($ft_input_alignment, $fasttree_command, $nj_newick);
    return ($ft_newick, $ft_lnL, $ft_cpu_time);
