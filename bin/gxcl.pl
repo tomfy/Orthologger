@@ -588,12 +588,16 @@ sub analyze_tree_3{
    my $D1group = shift;
    my $tree_filename = shift; 
 
- #  print "D1 group: $D1group \n";
-   my $leaves_to_analyze = get_species_group_leaves( $tree, $grouper->get_group($D1group) );
-   my $n_disallowed_leaves = scalar @$leaves_to_analyze;
-my $allowed_only_tree = $n_disallowed_leaves == 0;
+
+ #print "D1 group: $D1group \n";
+   my $disallowed_leaves_to_analyze = get_species_group_leaves( $tree, $grouper->get_group($D1group) );
+#my @leafnames = map($_->get_name(), @$leaves_to_analyze);
+ #  print "LTA: ", join("; ", @leafnames), "\n";
+   my $n_disallowed_leaves = scalar @$disallowed_leaves_to_analyze;
+   print "$n_disallowed_leaves \n";
+my $allowed_only_tree = ($n_disallowed_leaves == 0);
    if($n_disallowed_leaves > 0){
-      my $new_outnode = $leaves_to_analyze->[0];
+      my $new_outnode = $disallowed_leaves_to_analyze->[0];
       $tree->reset_root_to_point_on_branch($new_outnode, 0.5*$new_outnode->get_branch_length());
       $tree->get_root()->recursive_implicit_names(); #
     #  print $tree->get_root()->recursive_subtree_newick(), "\n";
