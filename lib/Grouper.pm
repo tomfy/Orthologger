@@ -96,15 +96,62 @@ sub get_group_species_string{
    return $gss;
 }
 
+#
+sub group_species_venn{
+   my $self = shift;
+   my $group_name = shift;
+   my $species1 = shift;
+   my $species2 = shift;
+   my $sp_vennregion = {};      # keys: species, values A,B,AB
+
+# print join(", ", @$species1), "\n";
+# print join(", ", @$species2), "\n";
+   my %AorBspecies_count = ();
+   my %Aspecies_count = ();
+   for my $sp (@$species1) {
+      if ($self->get_groupname_species()->get($group_name)->exists($sp)) {
+         $AorBspecies_count{$sp}++;
+         $sp_vennregion->{$sp} = 'A';
+         $Aspecies_count{$sp}++;
+      }
+   }
+   my %AandBspecies_count = ();
+ my %Bspecies_count = ();
+   for my $sp (@$species2) {
+      if ($self->get_groupname_species()->get($group_name)->exists($sp)) {
+         $AorBspecies_count{$sp}++;
+         $Bspecies_count{$sp}++;
+         if (exists $sp_vennregion->{$sp} and $sp_vennregion->{$sp} eq 'A') {
+            $sp_vennregion->{$sp} = 'AB';
+            $AandBspecies_count{$sp}++;
+         } else {
+            $sp_vennregion->{$sp} = 'B';
+         }
+      }
+   }
+   while (my($k,$v) = each %$sp_vennregion) {
+      #print "$k  $v \n";
+   }
+   my $AandB_count = scalar keys %AandBspecies_count;
+   my $AxorB_count = (scalar keys %AorBspecies_count) - $AandB_count;
+   return (scalar keys %Aspecies_count, scalar keys %Bspecies_count, $AandB_count, $AxorB_count, $sp_vennregion);
+}
+
+
+
 sub group_species_counts{
    my $self = shift;
    my $arg1 = shift;
  #  my $id_species = shift;
    my $species_count = {};      # plain (not ordered) hash.
-   if(ref $arg1 eq 'ARRAY'){ # array ref of species 
+   if(ref $arg1 eq 'ARRAY'){ # array ref of species (e.g. from get_implicit_species
+  #    print join(" ", @$arg1), "\n";
       for my $sp (@$arg1){
          $species_count->{$sp}++;
       }
+      # while(my ($k, $v) = each %$species_count){
+      #    print "$k  $v \n";
+      # }
    }elsif (ref $arg1 eq 'HASH') { # $arg1 is hashref of  species:count pairs
          $species_count = $arg1;
    }else {
@@ -152,7 +199,7 @@ sub group_speciescount_strings{
    my $self = shift;
    my $group_name = shift;
 
-   my $sp_count = $self->{grpname_spcount}->get($group_name);
+   my $sp_count = $self->{grpname_spcount}->get($group_name); # Hash::Ordered
 
    my $string = '';
    for ($sp_count->values()) {
@@ -220,7 +267,7 @@ sub get_group{ # for the group with name $groupname, return the value, a Hash::O
    my $self = shift;
    my $groupname = shift;
    my $group = undef;
-   #   print STDERR "Group name: $groupname \n";
+  #   print STDERR "Group name: $groupname \n";
    if (defined $groupname) {
       if (defined $self->{groupname_species}->get($groupname)) {
          $group = $self->{groupname_species}->get($groupname);
@@ -238,6 +285,7 @@ sub species_and_group_counts{
    # for the sequence ids specified in the array ref argument $sequenceids:
    # number of leaves of each species ($species_leafcount)
    # number of species present of each group ($groupname_speciescount)
+   # number of leaves present from each group ($groupname_leafcount)
    # hash of ids present ($subtree_id_presence). keys are ids in subtree, values are all 1.
    my $self = shift;
    my $sequenceids = shift; # array ref
@@ -266,6 +314,7 @@ sub ids_present_string{
    my $seqid_species = shift;
    my $seqid_present = shift;   # href, keys: sequence ids, values: 1
    my $group_name = shift;      # only do this group
+   print "group name: $group_name \n";
    my @species_str = $self->{groupname_species}->get($group_name)->as_list();
    my $species_idsstring = Hash::Ordered->new(@species_str);
    # my %groupname_idsstring = ();
@@ -286,43 +335,42 @@ sub ids_present_string{
    return $outstring;
 }
 
-sub three_subtrees_species_counts{
+sub three_subtrees_species_counts{ # doesn't belong in Grouper
    my $self = shift;
    my $node = shift;
    my $sequenceid_species = shift;
    my @children = $node->get_children();
    my $nchild = scalar @children;
    if ($nchild == 2) {
-      my ($Lchild, $Rchild) = @children[0,1];
-      my ($Lspecies_count, $Lcat_spcount, $Lcat_leafcount, $Lid_presence) = $self->species_and_group_counts($Lchild->get_implicit_names(), $sequenceid_species);
-      my ($Rspecies_count, $Rcat_spcount, $Rcat_leafcount, $Rid_presence) = $self->species_and_group_counts($Rchild->get_implicit_names(), $sequenceid_species);
-      my ($Aspecies_count, $Acat_spcount, $Acat_leafcount, $Aid_presence) = $self->species_and_group_counts($node->get_tree()->get_root()->get_implicit_names(), $sequenceid_species);
+      my ($Lchild, $Rchild) = @children[0,1]; #  L subtree root, is $children[0], R is $children[1]
+      my ($species_countL, $cat_spcountL, $cat_leafcountL, $id_presenceL) = $self->species_and_group_counts($Lchild->get_implicit_names(), $sequenceid_species);
+      my ($species_countR, $cat_spcountR, $cat_leafcountR, $id_presenceR) = $self->species_and_group_counts($Rchild->get_implicit_names(), $sequenceid_species);
+      my ($species_countA, $cat_spcountA, $cat_leafcountA, $id_presenceA) = $self->species_and_group_counts($node->get_tree()->get_root()->get_implicit_names(), $sequenceid_species);
 
-      while (my($sp,$c) = each %$Lspecies_count) {
-         #  if(exists $Aspecies_count->{$sp}){
-         $Aspecies_count->{$sp} -= $c;
-         #  }
+      while (my($sp,$c) = each %$species_countL) {
+         $species_countA->{$sp} -= $c;
       }
-      while (my($sp,$c) = each %$Rspecies_count) {
-         $Aspecies_count->{$sp} -= $c;
-      }while (my($sp,$c) = each %$Aspecies_count) {
+      while (my($sp,$c) = each %$species_countR) {
+         $species_countA->{$sp} -= $c;
+      }
+
+while (my($sp,$c) = each %$species_countA) {
          if ($c < 0) {
             warn "$sp has count of $c in parent subtree.\n";
          }
       }
-      $Acat_spcount = {};
-      for my $sp (keys %$Aspecies_count){
-     #    print STDERR "Species: $sp \n";
-         my $count = $Aspecies_count->{$sp} // 0;
+      $cat_spcountA = {};
+      for my $sp (keys %$species_countA){
+         my $count = $species_countA->{$sp} // 0;
          my $groupnames = $self->get_species_groupname()->{$sp} // ['other'];
-
-
          for my $groupname (@$groupnames){
     #     print "Species, group: $sp  $groupname  $count \n";
-          $Acat_spcount->{$groupname}++ if($count > 0);
+          $cat_spcountA->{$groupname}++ if($count > 0);
        }
       }
-      return ($Lspecies_count, $Lcat_spcount, $Lid_presence, $Rspecies_count, $Rcat_spcount, $Rid_presence, $Aspecies_count, $Acat_spcount, $Aid_presence);
+      return ($species_countL, $cat_spcountL, $cat_leafcountL, $id_presenceL, 
+              $species_countR, $cat_spcountR, $cat_leafcountR, $id_presenceR, 
+              $species_countA, $cat_spcountA, $cat_leafcountA, $id_presenceA);
 
    } elsif ($nchild == 0) {
       # node is leaf

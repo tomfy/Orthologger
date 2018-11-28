@@ -4,6 +4,7 @@ use Exporter qw 'import';
 use strict;
 use Scalar::Util qw(blessed);
 
+#my $include_species_name_in_seqid = 0;
 
 sub timestring{
    my $s_time = shift;          # time in seconds (e.g. from time() )
@@ -551,20 +552,21 @@ sub read_in_group_color{
 
 sub format_newick_species_info{
    my $newick = shift;
-   my $target_format = shift || 1; # 1, 2, or 3.
+   my $target_format = shift // 1; # 1, 2, or 3.
+   my $include_species_name_in_seqid = shift // 0; # prepend genus and species (e.g. Arabidopsis_thaliana_ATxxxx to seq ids if needed to ensure seq ids are unique.
    my $input_format = undef;
 
    #  print STDERR "\n\n", $newick_expression, "\n\n";
    if ($newick =~ /\[species=([^]]+)\]/) { # [species=Genus_species] format;
       $input_format = 1;
-   } elsif ($newick =~ /[(,]([A-Z][a-z]*_[a-z0-9]+)_[^:,)]+[:,)]/) { # Genus_species_seqid format
+   } elsif ($newick =~ /[(,]([A-Z][A-Za-z0-9]*_[A-Za-z0-9]+)_[^:,)]+[:,)]/) { # Genus_species_seqid format
       $input_format = 2;
    } elsif ($newick =~ /[(,](\S+)__([^:,)]+)/) { # seqid__Genus_species format.
       $input_format = 3;
    } else {
       warn "Unknown format for species info in newick. newick string: [$newick]\n";
    }
-#   print STDERR "input format: $input_format , target format: $target_format \n";
+ #  print STDERR "input format: $input_format , target format: $target_format \n";
    my ($intermediate_newick, $id_sp);
    if ($input_format eq $target_format) { # it is already what we want.
       if($input_format == 1){ 
@@ -580,14 +582,14 @@ sub format_newick_species_info{
       if($input_format == 1){
          ($intermediate_newick, $id_sp) = ($newick, newick_1to1($newick));
       }elsif ($input_format == 2){
-         ($intermediate_newick, $id_sp) = newick_2to1($newick);
+         ($intermediate_newick, $id_sp) = newick_2to1($newick, $include_species_name_in_seqid);
       } elsif ($input_format == 3){
          ($intermediate_newick, $id_sp) = newick_3to1($newick);
       } else {
          die "Input format: [$input_format] is unknown. Bye.\n";
       }
    }
-
+# print STDERR "Intermediate newick: ", $intermediate_newick, "\n";
    # now 1 -> target format
    if($target_format == 1){
       return ($intermediate_newick, $id_sp);
@@ -607,23 +609,31 @@ sub format_newick_species_info{
 # formatted one of the other ways, while adding the sequence_id and species 
 # as key/value pair of a hash, and counting the number of leaves.
 
+# the possible formats:
+# 1:  AT1g123456.1[species=Arabidopsis_thaliana]
+# 2:  Arabidopsis_thaliana_AT1g123456.1
+# 3:  AT1g123456.3__Arabidopsis_thaliana
 # alias for newick_genspid2idgensp
 sub newick_2to1{
    my $newick = shift;
-   return newick_genspid2idgensp($newick);
+   my $include_species_name_in_seqid = shift // 0;
+   return newick_genspid2idgensp($newick, $include_species_name_in_seqid);
 }
 sub newick_genspid2idgensp{ # change format of species and id in newick expression, e.g.:
-   # Arabidopsis_thaliana_AT1g123456.3  ->  AT1g123456.1[species=Arabidopsis_thaliana]
+   # Arabidopsis_thaliana_AT1g123456.1  ->  AT1g123456.1[species=Arabidopsis_thaliana]
    my $newick = shift;
+   my $include_species_name_in_seqid = shift // 0;
    my $id_genusspecies = {};
-   while ( $newick =~ /([(,])([A-Z][a-zA-Z]*_[a-zA-Z0-9]+)_([^\s:]+)/ ) {
+   while ( $newick =~ /([(,])([A-Z][a-zA-Z0-9]*_[a-zA-Z0-9]+)_([^\s:]+)/ ) {
       my ($lparenorcomma, $genus_species, $id) = ($1, $2, $3);
+      $id = $genus_species . "_" . $id if($include_species_name_in_seqid); 
       $id_genusspecies->{$id} = $genus_species;
       $id =~ s/_/X___X/g;
-      $newick =~ s/[(,][A-Z][a-zA-Z]*_[a-zA-Z0-9]+_[^\s:]+/$lparenorcomma$id [species= $genus_species ]/;
+      $newick =~ s/[(,][A-Z][a-zA-Z0-9]*_[a-zA-Z0-9]+_[^\s:]+/$lparenorcomma  $id [species= $genus_species ]/;
    }
    $newick =~ s/X___X/_/g;      # put the underscores back in the ids
    $newick =~ s/\s+//g;
+ #  print STDERR "format 1 tree: $newick \n";
    return ($newick, $id_genusspecies);
 }
 
@@ -666,6 +676,7 @@ sub newick_idgensp2id__gensp{ # change format of species and id in newick expres
    while ( $newick =~ s/([(,])([^[:,(\s]+)\[species=([^]]+)\]/$1 $2 __ $3/) {
       my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3); 
       $id_genusspecies->{$id} = $genus_species;
+    #  print STDERR "id genusspecies:    $id $genus_species \n";
    }
    $newick =~ s/\s+//g;
    return ($newick, $id_genusspecies);

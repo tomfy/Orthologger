@@ -14,7 +14,7 @@ BEGIN {	    # this has to go in Begin block so happens at compile time
 }
 
 use lib $libdir;
-use TomfyMisc qw 'store_gg_info   newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species read_in_group_color';
+use TomfyMisc qw 'store_gg_info   newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species read_in_group_color format_newick_species_info';
 
 # read in trees (newick format),
 # from a set of newick files matching the pattern
@@ -29,7 +29,8 @@ my $gg_filename = undef;
 my $newick_filename_pattern = undef;
 my $group_species_file = undef;
 my $group_color_file = undef;
-my $default_color = '#444444';
+my $default_color = '#117711'; # '#444444';
+my $prepend_spname_to_seqid = 0; # can prepend the species name to seq id to ensure uniqueness, if necessary.
 
 my $keep_branch_supports = 1; # default: keep branch supports in newick expression
 GetOptions(
@@ -37,6 +38,8 @@ GetOptions(
 	   'input_pattern=s' => \$newick_filename_pattern,
            'groups=s' => \$group_species_file,
            'colors=s' => \$group_color_file,
+		'default_color=s' => \$default_color,
+           'prepend_sp=i' => \$prepend_spname_to_seqid,
 	  );
 
 my $newick_filenames_str = `ls $newick_filename_pattern`;
@@ -133,9 +136,14 @@ my %species_color = ();
 
 my $species_group = read_in_group_species($group_species_file);
 my $group_color = read_in_group_color($group_color_file);
+# while(my ($g, $c) = each %$group_color){
+#    print STDERR "group $g  color $c \n";
+# }
+#exit;
 while (my($sp, $grp) = each %$species_group) {
    my $color = $group_color->{$grp} // $default_color;
    $species_color{$sp} = $color;
+ #  print STDERR "species $sp  color $color \n";
 }
 
 for my $newickfile (@newick_filenames) {
@@ -151,12 +159,18 @@ for my $newickfile (@newick_filenames) {
 #print STDERR "AAA: $newick_expression \n";
    my @x = ($newick_expression =~ /\[species/g);
    my $n_leaves = scalar @x;
-   if ($n_leaves == 0) { # not [species= ]format, convert to id__gensp format.
-      ($newick_expression, $id_species) = newick_genspid2id__gensp($newick_expression); #, $id_species, \@ids);
-   #   print STDERR "BBB: $newick_expression \n";
-   } else { # format is [species= ], convert to id__gensp format.
-      ($newick_expression, $id_species) = newick_idgensp2id__gensp($newick_expression); #, $id_species, \@ids);
-   }
+($newick_expression, $id_species) = format_newick_species_info($newick_expression, 3, $prepend_spname_to_seqid);
+# while(my($k,$v) = each %$id_species){
+#    print "$k  $v \n";
+# }
+
+#print STDERR "ZZZ: $newick_expression \n";
+   # if ($n_leaves == 0) { # not [species= ]format, convert to id__gensp format.
+   #    ($newick_expression, $id_species) = newick_genspid2id__gensp($newick_expression); #, $id_species, \@ids);
+   #    print STDERR "BBB: $newick_expression \n";
+   # } else { # format is [species= ], convert to id__gensp format.
+   #    ($newick_expression, $id_species) = newick_idgensp2id__gensp($newick_expression); #, $id_species, \@ids);
+   # }
    $n_leaves = scalar keys %$id_species;
 #
    my ($v, $path, $output_filename) = File::Spec->splitpath($newickfile);
@@ -173,6 +187,8 @@ for my $newickfile (@newick_filenames) {
    
    for my $id (keys %$id_species) {
       my $species = $id_species->{$id};
+
+    #  print STDERR "AAA::: $id  $species    ", $species_color{$id_species->{$id}} // 'xxx', "\n";
       my $xid = $id .  "__" . $species; # . "[species=$species]";
       $nexus_string .=  $space . "'" . $xid . "'[" . '&!color=' 
         . ($species_color{$id_species->{$id}} // $default_color)

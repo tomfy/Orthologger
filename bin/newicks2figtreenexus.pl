@@ -288,18 +288,18 @@ my %species_color = (
                      Coffea_eugenioides => '&!color=' . $red
                     );
 
-# #while (my ($grp, $species) = each %$groups) {
-#    for my $grp (@sorted_groups){
-#       my $species = $groups->{$grp};
-# #  print "$grp ", join(";", %$species), "\n";
-# my $color = $group_color{$grp};
-# #  print "color $color. \n";
-#   for my $sp (keys %$species) {
-#     #  print "XXXX: $sp   $color \n";
-#     $species_color{$sp} = "&!color=$color";
-#     #   print "$sp       $grp \n";
-#   }
-# }
+# # #while (my ($grp, $species) = each %$groups) {
+for my $grp (@sorted_groups) {
+   my $species = $groups->{$grp};
+   #  print "$grp ", join(";", %$species), "\n";
+   my $color = $group_color{$grp};
+   #  print "color $color. \n";
+   for my $sp (keys %$species) {
+      #  print "XXXX: $sp   $color \n";
+      $species_color{$sp} = "&!color=$color";
+      #   print "$sp       $grp \n";
+   }
+}
 #exit;
 # if (defined $gg_filename and -f $gg_filename) {
 #   my $id_species = store_gg_info($gg_filename)

@@ -3,7 +3,8 @@ use strict;
 
 #my $input_file = shift;
 
-my %rnacodon_aa = (             # X: STOP
+my %rnacodon_aa = ( # just standard 20 aa's and 3 STOP's 
+                   # X: STOP
                    UUU => 'F', UUC => 'F',
                    UUA => 'L', UUG => 'L', CUU => 'L', CUC => 'L', CUA => 'L', CUG => 'L',
                    AUU =>'I', AUC => 'I', AUA => 'I',
@@ -32,7 +33,7 @@ my %rnacodon_aa = (             # X: STOP
 
 my %nt_c = (A => 'T', T => 'A', G => 'C', C => 'G');
 
-my %codon_aa = ();
+my %codon_aa = (); # dna version with T's instead of U's
 
 while (my($rc, $aa) = each %rnacodon_aa) {
    my $dc = $rc;
@@ -74,9 +75,9 @@ while (<>) {
             }
          }
       }
-   #   print "orf lengths: ", join(" ", @orflengths[0..5]), "   ";
+  #   print "orf lengths: ", join(" ", @orflengths[0..5]), "   ";
   #    @orflengths = sort {$b <=> $a} @orflengths;
-   #   print "sorted orf lengths: ", join(" ", @orflengths[0..5]), "\n";
+  #   print "sorted orf lengths: ", join(" ", @orflengths[0..5]), "\n";
   #    print "$Lmax  $maxorfl  $longest_orfseq \n";
       if (!exists $id_longtransorf{$trunc_id}) {
          $id_longtransorf{$trunc_id} = $longest_orfseq;
@@ -96,7 +97,7 @@ sub translate_dna{
    my $strand = shift // 'forward';
 
    my $pep_seq = '';
-
+   my $cds_seq = '';
    $dna_seq = reverse_complement($dna_seq) if($strand eq 'reverse');
    substr($dna_seq, 0, $offset, '');
    while (length $dna_seq >= 3) {
