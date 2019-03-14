@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use List::Util qw( min max sum );
+use Devel::Cycle; 
 
 use File::Basename 'dirname';
 use Cwd 'abs_path';
@@ -69,7 +70,7 @@ my $bigger_than_any_tree = 1e100;
    my $S12sum_range = '13,10000';
    my $D1group = 'basals,1';    # disallowed groupname, max allowed
    my $D2group = 'brassicaceae,30';
-my $Dgroups = undef; # e.g. 'basals;non_ams'  - groups which are strictly not disallowed.
+my $outgroups = undef; # e.g. 'basals'  - if one of these present, reroot near it.
    my $D12sum_range = '0,2';
 
    my $include_spname_in_seqid = 0;
@@ -96,7 +97,7 @@ my $Dgroups = undef; # e.g. 'basals;non_ams'  - groups which are strictly not di
               'd1=s' => \$D1group,
               'd2=s' => \$D2group,
               'd12sum_range=s' => \$D12sum_range,
-              'disallowed_groups=s' => \$Dgroups, # e.g. 'basals,non_ams'
+              'outgroups=s' => \$outgroups, # e.g. 'basals,non_ams'
 
               'speciescount_ranges=s' => \$speciescount_ranges_str, 
               'leafcount_ranges=s' => \$leafcount_ranges_str,
@@ -104,19 +105,20 @@ my $Dgroups = undef; # e.g. 'basals;non_ams'  - groups which are strictly not di
               'prepend_sp=i' => \$include_spname_in_seqid,
              );
 
-   print "xxx D1group $D1group   D2group $D2group \n";
-   print "S12sum_range: $S12sum_range.\n";
-
    ($Sp_grp1, $Sp_grp2) = split(";", $split);
-   print "Sp_grp1: $Sp_grp1, Sp_grp2: $Sp_grp2 \n";
+   print STDERR "Sp_grp1: $Sp_grp1, Sp_grp2: $Sp_grp2 \n";
 
-   my $group_speciescount_ranges = group_ranges($speciescount_ranges_str);
-   my $group_leafcount_ranges = group_ranges($leafcount_ranges_str);
+   my ($group_speciescount_ranges, $spgrstr) = group_ranges($speciescount_ranges_str);
+   print STDERR "species count ranges: $spgrstr\n";
+   my ($group_leafcount_ranges, $leafgrstr) = group_ranges($leafcount_ranges_str);
+   print STDERR "leaf count ranges: $leafgrstr\n";
+
+ ($group_speciescount_ranges, $group_leafcount_ranges) = group_species_and_leafcount_ranges($group_speciescount_ranges, $group_leafcount_ranges);
 
    print STDERR 'D1group: ', $D1group, "\n";
 
-$Dgroups =~ s/ //g;
-my @disallowed_groups = split(/[,;]/, $Dgroups);
+   $outgroups =~ s/ //g;
+   my @outgroups = split(/[,;]/, $outgroups);
 
    ######   get the input filenames (should be newick format)  ######
    die "input pattern is undefined.\n" if(!defined $input_pattern);
@@ -130,6 +132,8 @@ my @disallowed_groups = split(/[,;]/, $Dgroups);
 
    my $grouper = Grouper->new($groups_file);
    print $grouper->get_group_species_string();
+
+   print STDERR "Group names: ", join(", ", $grouper->get_groupnames()), "\n";
 
    print STDERR "# Will analyze ", scalar @input_filenames, " files.\n";
    for my $input_filename (@input_filenames) {
@@ -176,7 +180,7 @@ my @disallowed_groups = split(/[,;]/, $Dgroups);
             analyze_tree_4($the_tree, $grouper, $seqid_species,
                            $group_speciescount_ranges,
                            $group_leafcount_ranges,
-                           \@disallowed_groups,
+                           \@outgroups,
                            $input_filename);
  #        } elsif ($analysis_type eq 5) {
  #           analyze_tree_5($the_tree, $grouper, $seqid_species, $Sp_grp1, $Sp_grp2, $D1group, $input_filename);
@@ -255,7 +259,7 @@ print "In an.._2.\n";
    print "D12 sum range: $D12sum_range \n";
 print STDERR "BBBB D1group: $D1group \n"; # exit;
    my @return_array = recursive_is_node_speciation($node, $grouper, $sequenceid_species, $Sp_grp1, $Sp_grp2, $D1group, $D2group, 
-                                                   $S12sum_range, $D12sum_range); #, $Fgroupname);
+                                                   $S12sum_range, $D12sum_range);
    $tree->impose_branch_length_minimum(1);
    $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
    return @return_array;
@@ -271,7 +275,7 @@ sub recursive_is_node_speciation{
    my $D2group = shift;
    my $S12sum_range = shift;
    my $D12sum_range = shift;
-   print "In rec...node_specieation. before is_node_spec..\n";
+   print "In rec...node_speciation. before is_node_spec..\n";
    my $which_outstring =  is_node_speciation($node, $grouper, $sequenceid_species, 
                             $Sp_grp1, $Sp_grp2, $D1group, $D2group,
                                              $S12sum_range, $D12sum_range);
@@ -279,15 +283,13 @@ sub recursive_is_node_speciation{
    my $LROK = exists $which_outstring->{'LR'};
    my @whichoutstrings = (keys %$which_outstring)? ($which_outstring) : ();
 
-   if ($LROK_descend_into_children  or  !$LROK) {
-      #    if (1 or (! ($is_spec and ($which eq 'LR')))) { # if child subtrees (i.e. LR) look like speciation don't descend to child nodes.
+   if ($LROK_descend_into_children  or  !$LROK) { # if child subtrees (i.e. LR) look like speciation don't descend to child nodes.
       my @children = $node->get_children();
-      for (@children) {
-         push @whichoutstrings, recursive_is_node_speciation($_, $grouper, $sequenceid_species, 
-                                                             $Sp_grp1, $Sp_grp2, $D1group, $D2group, 
-                                                             $S12sum_range, $D12sum_range); #, $Fgroupname);
+      for my $child_node (@children) {
+         push @whichoutstrings, recursive_is_node_speciation($child_node, $grouper, $sequenceid_species,
+                                                             $Sp_grp1, $Sp_grp2, $D1group, $D2group,
+                                                             $S12sum_range, $D12sum_range);
       }
-      #    }
    }
    return @whichoutstrings;
 }
@@ -308,7 +310,7 @@ sub two_subtrees_speciation{
    my $which2 = shift;
 
    #print STDERR "groups: ", join(" ", keys %$G1_spcount), "\n";
-print "Sp_grp1: $Sp_grp1   Sp_grp2: $Sp_grp2 \n";
+   print "Sp_grp1: $Sp_grp1   Sp_grp2: $Sp_grp2 \n";
    print "D1group: $D1group   D2group: $D2group \n";
 
    #   print "L,R groups:  $Lgroup  $Rgroup \n";
@@ -375,9 +377,6 @@ print "Sp_grp1: $Sp_grp1   Sp_grp2: $Sp_grp2 \n";
    }
 }
 
-
-
-
 sub is_node_speciation{
    my $node = shift;
    my $grouper = shift;         # Grouper object
@@ -403,14 +402,8 @@ print "s1s2d1d2:  $Sp_grp1  $Sp_grp2 $D1group $D2group \n";
    my $D1groupname = ($D1group =~ /\s*([^,\s]+)/)? $1 : '';
    my $D2groupname = ($D2group =~ /\s*([^,\s]+)/)? $1 : '';
    my $species_count;
-   #  my $outstring = '';
    my $seqid_presence;
-   my %which_outstring = ();
-   #   print "Top of is_node_speciation. ", scalar @{$node->get_implicit_names()}, "\n";
-
-   #   my $Lgroupname = $Sp_grp1name;
-   #   my $Rgroupname = $Sp_grp2name;
-   #   my $Bgroupname = $D1groupname;
+   my %which_outstring = (); # key: 'LR', 'RB' or 'BL', values: output string
 
    my $L_S12sum_spcount = ($Lcat_spcount->{$Sp_grp1name} // 0)  +  ($Lcat_spcount->{$Sp_grp2name} // 0);
    my $R_S12sum_spcount = ($Rcat_spcount->{$Sp_grp1name} // 0)  +  ($Rcat_spcount->{$Sp_grp2name} // 0);
@@ -500,7 +493,7 @@ print STDERR "D12 min max this subtree:  $D12min_sp  $D12max_sp  $LR_D12sum_spco
          my $new_subtree_root = $chs[1]; # $the_tree->get_root()->get_children()[1];
 
          $outstring .= 
-           # " RB  " . 
+           # " RB  " .
            $new_subtree_root->recursive_subtree_newick() . "\n";
          $which_outstring{'RB'} = $outstring;
       }
@@ -563,66 +556,6 @@ print STDERR "D12 min max this subtree:  $D12min_sp  $D12max_sp  $LR_D12sum_spco
    return (\%which_outstring);
 }
 
-
-sub LR_ids{   # get one id from L child subtree, and one for R subtree
-   # and return string "[$Lid $Rid]"
-   # or (if node is leaf): "[leaf:  Leafid]"
-   my $node = shift;
-   my $subtree_str = '[';
-   if ($node->is_leaf()) {
-      $subtree_str = "[leaf " . $node->get_name() . "]";
-   } else {
-      my @children = $node->get_children();
-      for my $i (0..1) {   # loop over children 0 and 1 (i.e. L and R)
-         my @implicit_names = @{$children[$i]->get_implicit_names()};
-         $subtree_str .= $implicit_names[0] . " ";
-      }
-      $subtree_str =~ s/\s+$/]/;
-      #$subtree_str .= "]";
-   }
-   return $subtree_str;
-}
-
-
-sub max_species_leafcount_of_category{
-   my $species_leafcount = shift;
-   my $species_category = shift;
-   my $category = shift;        # e.g. 'disallowed'
-   my $max_species_leafcount = 0;
-   while (my($sp, $count) = each %$species_leafcount) {
-      if ($species_category->{$sp} eq $category
-          and
-          $count > $max_species_leafcount) {
-         $max_species_leafcount = $count;
-      }
-   }
-   return $max_species_leafcount;
-}
-
-sub species_category_id_info_string{
-   my $ids_in_subtree = shift ;
-   my $seqid_sp = shift;
-   my $group = shift;         # Hash::Ordered; keys are species names.
-   my $output_the_seqids = shift || 0;
-   my $output_string = '';
-   my %groupspecies_counts = ();
-   my @group_ids = ();
-   for my $an_id (@$ids_in_subtree) {
-      my $sp = $seqid_sp->{$an_id};
-      if (defined $group->get($sp)) {
-         $groupspecies_counts{$sp}++;
-         push @group_ids, $an_id
-      }
-   }
-   $output_string .= sprintf("%1i %1i  ", scalar keys %groupspecies_counts, scalar @group_ids); # number of species in group present in subtree
-   my @sorted_psp_counts = map($groupspecies_counts{$_} // 0, $group->keys());
-   for my $count (@sorted_psp_counts) {
-      $output_string .= sprintf("%1i ", $count);
-   }
-   my $seqid_string = sprintf(" [%s]", join(";", sort @group_ids)) if($output_the_seqids);
-   return ($output_string, $seqid_string);
-}
-
 sub species_counts{
    my $node = shift;
 
@@ -633,7 +566,6 @@ sub species_counts{
    }
    return $sp_count;
 }
-
 
 sub is_node_all_one_group{
    my $node = shift;
@@ -675,123 +607,109 @@ sub recursive_is_node_all_one_group{
    }
 }
 
-
 sub analyze_tree_4{
-# reroot near disallowed leaf (if any present), then
-# just look for maximal subtrees with none from D1group.
-   # output number of species and sequences in S groups 
+# reroot near outgroup leaf if any present, otherwise midpoint reroot.
+# then work from root down, checking for:
+# 1) whether number of species of each group is in range,
+# 2) whether number of leaves of each group is in range.
    my $tree = shift;
    my $grouper = shift;         # Grouper object
    my $sequenceid_species = shift; # keys: sequence ids, values: species
-   my $group_spcount_ranges = shift;  # e.g. [ [erysimum,14,1000], [brassicaceae7,0,5] ]
-   my $group_leafcount_ranges = shift; # e.g. [ [erysimum,30,10000], [brassicaceae7,0,9] ]
-   my $Dgroups = shift; # e.g. ['basals', non_ams]
+   my $group_spcount_ranges = shift;  # e.g. [ ['erysimum',14,1000], ['brassicaceae7',0,5] ]
+   my $group_leafcount_ranges = shift; # e.g. [ ['erysimum',30,10000], ['brassicaceae7',0,9] ]
+   my $outgroups = shift; # e.g. ['basals', 'non_ams']
    my $tree_filename = shift;
-   print STDERR "xx Dgroups ", join(", ", @$Dgroups), "\n"; # exit;
-#   print "Tree in original form:  ", $tree->get_root()->recursive_subtree_newick(), "\n";
+   my $outstrings = [];
 
-
-# get list of disallowed leaves:
-   my $disallowed_leaves = get_species_group_leaves( $tree, $grouper, $Dgroups); # $grouper->get_group($D1group) );
-   my $n_disallowed_leaves = scalar @$disallowed_leaves;
-   print STDERR "N disallowed leaves: $n_disallowed_leaves \n";
-   my $allowed_only_tree = ($n_disallowed_leaves == 0);
-   if ($n_disallowed_leaves > 0) { # reroot with a disallowed-species leaf as outgroup:
-      my $new_outnode = $disallowed_leaves->[0];
-      print STDERR "# rerooting with ", $new_outnode->get_name(), " as outgroup.\n";
+#  get list of outgroup leaves:
+ 
+   my $outgroup_node = get_outgroup_node($tree, $grouper, $outgroups);
+ # my $outgroup_leaves = get_species_group_leaves( $tree, $grouper, $outgroups); # get outgroup leaves (array ref)
+ #  print STDERR "outgroup species present: ", join(", ", map($_->get_species(), @$outgroup_leaves)), "\n";
+   if (defined $outgroup_node) {        # reroot with a disallowed-species leaf as outgroup:
+      my $new_outnode = $outgroup_node;
+  #    $new_outnode = $outgroup_leaves->[0];
+      print STDERR "rerooting outgroup.  ", $new_outnode->get_species(), "  ", $new_outnode->get_name(), "\n";
       $tree->reset_root_to_point_on_branch($new_outnode, 0.5*$new_outnode->get_branch_length());
-   } else {                     # midpoint reroot
-      print STDERR "# rerooting midpoint.\n";
+   } else {                               # midpoint reroot
+      print STDERR "rerooting midpoint.\n";
       $tree->reset_root_to_point_on_branch($tree->find_midpoint());
    }
    $tree->get_root()->recursive_implicit_names(); #
    $tree->get_root()->recursive_implicit_species(); #
-#   print "possibly rerooted tree to analyze:  ", $tree->get_root()->recursive_subtree_newick(), "\n";
-
    my $node = $tree->get_root();
-   recursive_is_node_all_allowed($node, $grouper, $sequenceid_species, 
-                                 $group_spcount_ranges, $group_leafcount_ranges, $Dgroups, 
-                                 $tree_filename, $allowed_only_tree); #, $Fgroupname);
+   recursive_is_subtree_content_OK($node, $grouper, $sequenceid_species, 
+                                 $group_spcount_ranges, $group_leafcount_ranges, $outgroups, 
+                                 $outstrings, $tree_filename);
    $tree->impose_branch_length_minimum(1);
    $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
+
+   while(my ($i, $s) = each @$outstrings){
+      print "$tree_filename" . "_" . "$i   $s\n";
+   }
+  # find_cycle($tree);
 }
 
-sub is_node_all_allowed{
+sub is_subtree_content_OK{
    my $node = shift;
    my $grouper = shift;         # Grouper object
    my $sequenceid_species = shift;
    my $group_spcount_ranges = shift;
    my $group_leafcount_ranges = shift;
-   my $Dgroups = shift;
-   my ($all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = 
-     (1, 0, 0, 0, 0);
+   my $outgroups = shift;
+   my ($all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = (1, 0, 0, 0, 0);
    my ($species_count, $cat_spcount, $cat_leafcount, $id_presence) =
      $grouper->species_and_group_counts($node->get_implicit_names(), $sequenceid_species);
-   print STDERR "N species in subtree: ", scalar keys %$species_count, "\n";
-   print STDERR "     ", join(" ", keys %$species_count), "\n";
    my $n_leaves = scalar  @{$node->get_implicit_names()};
 
-   print STDERR "yy Dgroups ", join(", ", @$Dgroups), "\n"; # exit;
-   for my $dgrp (@$Dgroups) {
-      my $Dspcount = $cat_spcount->{$dgrp} // 0; # number of sp present of $dgrp
-      print STDERR "asdf: $dgrp $Dspcount \n";
-      if ($Dspcount > 0) {
-         $all_allowed = 0;
-       #  print STDERR "has disallowed:  $has_disallowed \n";
-         last;
-      }
-   }
+   # for my $dgrp (@$disallowed_groups) {
+   #    if ( ($cat_spcount->{$dgrp} // 0) > 0) {  # number of $dgrp species present
+   #       $all_allowed = 0;
+   #       last;
+   #    }
+   # }
    if ($all_allowed) {
-    #  ($too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = (undef, undef, undef, undef);
-#   } else {
-   #   ($too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = (0, 0, 0, 0);
-      #    my $s_leafcount = 0;
       for my $g_lcr (@$group_leafcount_ranges) {
          my ($g, $min, $max) = @$g_lcr;
-         print STDERR "grp, min max leaf counts: $g $min $max \n";
          my $g_leafcount = $cat_leafcount->{$g} // 0;
-         #   $s_leafcount += $g_leafcount;
          $too_few_leaves = 1 if($g_leafcount < $min);
          $too_many_leaves = 1 if($g_leafcount > $max);
       }
       for my $grp_scr (@$group_spcount_ranges) {
          my ($g, $min, $max) = @$grp_scr;
          my $g_spcount = $cat_spcount->{$g} // 0;
-
-         print STDERR "grp, min max sp counts: $g $min $max   $g_spcount \n";
-         #   $s_leafcount += $g_leafcount;
          $too_few_sp = 1 if($g_spcount < $min);
          $too_many_sp = 1 if($g_spcount > $max);
       }
    }
-      print STDERR "In is_node_all_allowed: $all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves \n";
       return ($all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves);
 }
 
-sub recursive_is_node_all_allowed{
+sub recursive_is_subtree_content_OK{
    my $node = shift;
    my $grouper = shift;         # Grouper object
    my $sequenceid_species = shift;
    my $group_spcount_ranges = shift;
    my $group_leafcount_ranges = shift;
-   my $Dgroups = shift;
+   my $outgroups = shift;
+   my $which_outstring = shift;
    my $tree_filename = shift;
-   my ($all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = is_node_all_allowed($node, $grouper, $sequenceid_species, 
-                                                                       $group_spcount_ranges, $group_leafcount_ranges, $Dgroups);
+   my ($all_allowed, $too_few_sp, $too_many_sp, $too_few_leaves, $too_many_leaves) = is_subtree_content_OK($node, $grouper, $sequenceid_species, 
+                                                                       $group_spcount_ranges, $group_leafcount_ranges, $outgroups);
 
    if ($too_few_sp or $too_few_leaves) { # subtree has nothing of interest. no output. do not descend further.
       return;
    } elsif ((! $all_allowed) or $too_many_sp or $too_many_leaves) { # no output, but do descend into child subtrees.
       my @children = $node->get_children();
-      for (@children) {
-         recursive_is_node_all_allowed($_, $grouper, $sequenceid_species, 
-                                       $group_spcount_ranges, $group_leafcount_ranges, $Dgroups, $tree_filename);
+      for my $child_node (@children) {
+         recursive_is_subtree_content_OK($child_node, $grouper, $sequenceid_species, 
+                                       $group_spcount_ranges, $group_leafcount_ranges, $outgroups, $which_outstring, $tree_filename);
       }
    } else {                     # (1, 0, 0, 0, 0) => OK
       my $n_leaves = scalar @{$node->get_implicit_names()};
       $grouper->group_species_counts($node->get_implicit_species());
       my $outstring = '';
-      $outstring .= sprintf( "%s   %i   %i",$tree_filename, $n_leaves, scalar @$group_leafcount_ranges);
+      $outstring .= sprintf( "%i   %i   ", $n_leaves, scalar @$group_leafcount_ranges);
       my $s_species_present = 0;
       for my $ansgrp (@$group_leafcount_ranges) {
          my $sgrp = $ansgrp->[0];
@@ -799,13 +717,31 @@ sub recursive_is_node_all_allowed{
          my ($s_summary_str, $s_spcount_str) =  $grouper->group_speciescount_strings($sgrp);
          my @summary_numbers = split(" ", $s_summary_str);
          $s_species_present += $summary_numbers[0];
-         $outstring .= sprintf("    %i   %s",$n_sp_in_group, $s_spcount_str); # if($summary_numbers[0] >= $min_s_species_present);
+         $outstring .= sprintf("%i  %s   ", $n_sp_in_group, $s_spcount_str);
       }
-      $outstring .= "   " . sprintf("%s", $node->recursive_subtree_newick());
-      print "$outstring \n"; # if($s_species_present >= $min_s_species_present);
+      $outstring .= sprintf("%s", $node->recursive_subtree_newick());
+      push @$which_outstring, "$outstring";
    }
 }
 
+sub get_outgroup_node{
+   my $tree = shift;
+   my $grouper = shift;
+   my $outgroups = shift;
+   my %species_leafnode = ();
+   my @leaf_nodes = $tree->get_leaves();
+   for (@leaf_nodes) {
+      $species_leafnode{$_->get_species()} = $_;
+   }
+   for my $og (@$outgroups) {   # go through the outgroups in order
+      my $species = $grouper->get_groupname_species()->get($og); # Hash::Ordered of species in $og
+      for my $sp ($species->keys()) { # then through the species in each outgroup, in order.
+         my $node_of_species = $species_leafnode{$sp} // undef;
+         return $node_of_species if(defined $node_of_species);
+      }
+   }
+   return undef;
+}
 
 sub A_both_B_counts{
    my $key_region = shift;
@@ -877,7 +813,7 @@ sub is_node_dl{ # looks like duplication followed by loss of one group at this n
    if ($LROK_descend_into_children or !defined $which) { # if $LROK_descend_into_children is false, and we found a LR speciation for this node, then don't do the following.
 
       if (two_subtrees_speciation($Rcat_spcount, $Acat_spcount, $Sp_grp1, $Sp_grp2, $D1group, $D2group, "RB")) {
-         print STDERR  "RB  ", 
+         print STDERR  "RB  ",
            $Rcat_spcount->{$Lgroupname} // 0, "  ", $Rcat_spcount->{$Rgroupname} // 0, "  ", $Rcat_spcount->{$Bgroupname} // 0, "      ",
              $Acat_spcount->{$Lgroupname} // 0, "  ", $Acat_spcount->{$Rgroupname} // 0, "  ", $Acat_spcount->{$Bgroupname} // 0, "\n";
          $which = 'RB';
@@ -955,7 +891,6 @@ sub old_is_node_speciation{
    my $R_S12sum_spcount = ($Rcat_spcount->{$Sp_grp1name} // 0)  +  ($Rcat_spcount->{$Sp_grp2name} // 0);
    my $B_S12sum_spcount = ($Bcat_spcount->{$Sp_grp1name} // 0)  +  ($Bcat_spcount->{$Sp_grp2name} // 0);
 
-   
    my ($S12min_sp, $S12max_sp) = ($S12sum_range =~ /^\s*(\S+)\s*,\s*(\S+)\s*/)? ($1, $2) : (-1, 10000);
    my ($D12min_sp, $D12max_sp) = ($D12sum_range =~ /^\s*(\S+)\s*,\s*(\S+)\s*/)? ($1, $2) : (-1, 10000);
 
@@ -1056,8 +991,8 @@ sub old_is_node_speciation{
          # @chs =  $the_tree->get_root()->get_children();
          # my $new_outgroup_root = $chs[0]; # $the_tree->get_root()->get_children()[0];
          # my $new_subtree_root = $chs[1]; # $the_tree->get_root()->get_children()[1];
-         $outstring .= 
-           # " BL  " . 
+         $outstring .=
+           # " BL  " .
            $new_subtree_root->recursive_subtree_newick() . "\n";
 
          # $outstring .= "  BL  " . $node->recursive_subtree_newick() . "\n";
@@ -1073,21 +1008,21 @@ sub old_is_node_speciation{
 
 sub group_ranges{
    my $group_ranges_str = shift;
-  my $group_ranges = [];
-
-   print "group ranges string: [$group_ranges_str]\n";
-  $group_ranges_str =~ s/\s+//g;    # remove whitespace
+   my $group_ranges = [];
+   my $group_ranges_string_out = '';
+   $group_ranges_str =~ s/\s+//g; # remove whitespace
    my @group_count_ranges = split(";", $group_ranges_str);
    for my $group_countrange (@group_count_ranges) {
       my @cols = split(',', $group_countrange);
       my ($grp, $min, $max);
       if (scalar @cols >= 3) {
          ($grp, $min, $max) = @cols[0..2];
-         $min = 0 if($min eq '-');
-         $max = $bigger_than_any_tree if($max eq '-');
+         $min = 0 if($min eq '-'  or  $min eq '');
+         $max = $bigger_than_any_tree if($max eq '-'  or  $max eq '');
          warn "group_ranges_str: $group_ranges_str has unexpected format.\n" if(scalar @cols > 3);
       } elsif (scalar @cols == 2) {
          ($grp, $min) = @cols;
+         $min = 0 if($min eq '-'  or  $min eq '');
          $max = $bigger_than_any_tree;
       } elsif (scalar @cols == 1) {
          $grp = $cols[0];
@@ -1095,11 +1030,42 @@ sub group_ranges{
       } else {
          die "group_ranges_str: $group_ranges_str has unexpected format.\n";
       }
-    #  $sgrps->{$grp} = [$min, $max];
-      print STDERR "#  group min max:  $grp $min $max \n";
       push @$group_ranges, [$grp, $min, $max];
+      $group_ranges_string_out .= "$grp $min $max   ";
    }
-   return $group_ranges;
+   return ($group_ranges, $group_ranges_string_out);
+}
+
+sub group_species_and_leafcount_ranges{
+# make it so groups which have either species count ranges, or leaf count ranges defined,
+# appear in both the group speciescount ranges array, and the group leafcount ranges array,
+# putting in reasonable defaults (i.e. min of 0, max of $bigger_than_any_tree)
+   my $grp_spcount_ranges = shift;
+   my $grp_leafcount_ranges = shift;
+   my @gscrs_out = ();
+   my @glcrs_out = ();
+   my @grps = ();
+   my %scgroups = ();
+   my %lcgroups = ();
+   while (my ($i, $gscr) = each @$grp_spcount_ranges) {
+      my ($g, $min, $max) = @$gscr;
+      push @grps, $g;
+      $scgroups{$g} = [$min, $max];
+   }
+   while (my ($i, $glcr) = each @$grp_leafcount_ranges) {
+      my ($g, $min, $max) = @$glcr;
+      $lcgroups{$g} = [$min, $max];
+      push @grps, $g if(! exists $scgroups{$g});
+   }
+   while (my ($i, $grp) = each @grps) {
+      my $minmax = $scgroups{$grp} // [0, $bigger_than_any_tree];
+      my $x = [$grp, @$minmax];
+      push @gscrs_out, [$grp, @$minmax];
+      $minmax = $lcgroups{$grp} // [0, $bigger_than_any_tree];
+      $x = [$grp, @$minmax];
+      push @glcrs_out, [$grp, @$minmax];
+   }
+   return (\@gscrs_out, \@glcrs_out);
 }
 
 
@@ -1353,4 +1319,63 @@ sub is_node_X{
 #    recursive_is_node_all_one_group($node, $grouper, $sequenceid_species, $Sp_grp1, $D1group, $tree_filename, $allowed_only_tree); #, $Fgroupname);
 #    $tree->impose_branch_length_minimum(1);
 #    $tree->decircularize(); # done with tree - decircularize so can be garbage collected.
+# }
+
+# sub LR_ids{   # get one id from L child subtree, and one for R subtree
+#    # and return string "[$Lid $Rid]"
+#    # or (if node is leaf): "[leaf:  Leafid]"
+#    my $node = shift;
+#    my $subtree_str = '[';
+#    if ($node->is_leaf()) {
+#       $subtree_str = "[leaf " . $node->get_name() . "]";
+#    } else {
+#       my @children = $node->get_children();
+#       for my $i (0..1) {   # loop over children 0 and 1 (i.e. L and R)
+#          my @implicit_names = @{$children[$i]->get_implicit_names()};
+#          $subtree_str .= $implicit_names[0] . " ";
+#       }
+#       $subtree_str =~ s/\s+$/]/;
+#       #$subtree_str .= "]";
+#    }
+#    return $subtree_str;
+# }
+
+
+# sub max_species_leafcount_of_category{
+#    my $species_leafcount = shift;
+#    my $species_category = shift;
+#    my $category = shift;        # e.g. 'disallowed'
+#    my $max_species_leafcount = 0;
+#    while (my($sp, $count) = each %$species_leafcount) {
+#       if ($species_category->{$sp} eq $category
+#           and
+#           $count > $max_species_leafcount) {
+#          $max_species_leafcount = $count;
+#       }
+#    }
+#    return $max_species_leafcount;
+# }
+
+# sub species_category_id_info_string{
+#    my $ids_in_subtree = shift ;
+#    my $seqid_sp = shift;
+#    my $group = shift;         # Hash::Ordered; keys are species names.
+#    my $output_the_seqids = shift || 0;
+#    my $output_string = '';
+#    my %groupspecies_counts = ();
+#    my @group_ids = ();
+#    for my $an_id (@$ids_in_subtree) {
+#       my $sp = $seqid_sp->{$an_id};
+#       if (defined $group->get($sp)) {
+#          $groupspecies_counts{$sp}++;
+#          push @group_ids, $an_id
+#       }
+#    }
+#    $output_string .= sprintf("%1i %1i  ", scalar keys %groupspecies_counts, scalar @group_ids); # number of species in group present in subtree
+#    my @sorted_psp_counts = map($groupspecies_counts{$_} // 0, $group->keys());
+#    for my $count (@sorted_psp_counts) {
+#       $output_string .= sprintf("%1i ", $count);
+#    }
+#    my $seqid_string = sprintf(" [%s]", join(";", sort @group_ids)) if($output_the_seqids);
+#    return ($output_string, $seqid_string);
 # }
