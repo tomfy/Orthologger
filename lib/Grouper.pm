@@ -34,7 +34,7 @@ sub new{
    my $args = {};
    my $self  = bless $args, $class;
 
-   my $groupname_species;
+   my $groupname_species; # a Hash::Ordered of Hash::Ordered
    ######  get the groups of species  ######
    if (-f $arg1) {             # get the groups of species from a file
       my $groups_filename = $arg1;

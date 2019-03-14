@@ -1,6 +1,6 @@
 package TomfyMisc;
 use Exporter qw 'import';
-@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify  newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species  read_in_group_color newick_1to2 newick_1to3 newick_2to1 newick_3to1 newick_1to1 newick_2to2 newick_3to3 increment_hash add_hashes  format_newick_species_info  median ';
+@EXPORT_OK = qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring date_time file_format_is_abc_iie split_fasta_file split_fasta_string fix_fasta_files short_species_name read_block clean _stringify _destringify  newick_genspid2idgensp  newick_genspid2id__gensp  newick_idgensp2id__gensp  newick_idgensp2genspid  read_in_group_species  read_in_group_color newick_1to2 newick_1to3 newick_2to1 newick_3to1 newick_1to1 newick_2to2 newick_3to3 increment_hash add_hashes  format_newick_species_info  median  fasta2seqon1line store_fasta  prot_w_gaps_2_cds_w_gaps ';
 use strict;
 use Scalar::Util qw(blessed);
 
@@ -393,13 +393,13 @@ sub _destringify{
    my $string = shift;
    my $obj = shift || undef;
    my $result;
-#   print STDERR "TOP of _destringify. string: [|$string|} \n"; #
+   #   print STDERR "TOP of _destringify. string: [|$string|} \n"; #
    if ($string =~ s/^\s*{//) {  # hash (Hash::Ordered)
       my $curly_count = 1;
       $result = (defined $obj)? $obj : Hash::Ordered->new();
       die "In {} block. obj should be a Hash::Ordered, but is ", ref $result, ".\n" if(! $result->isa('Hash::Ordered'));
       while ($curly_count > 0) {
-#         print STDERR "in _destringify; string: $string \n";
+         #         print STDERR "in _destringify; string: $string \n";
          if ($string =~ s/^\s*[}]//) {
             $string =~ s/^\s*,//;
             $curly_count--;
@@ -416,7 +416,7 @@ sub _destringify{
          } else {
             die "problem in _destringify {}: $string \n";
          }
-      }  # end while loop
+      }                               # end while loop
    } elsif ($string =~ s/^\s*[[]//) { # array ref.
       my $square_count = 1;
       die "In [] block. Object should be undefined or array ref, but is ", ref $obj, ".\n" if(defined $obj and (ref $obj ne 'ARRAY'));
@@ -440,7 +440,7 @@ sub _destringify{
          }
       }
    }
-#   print STDERR "In _destringify, [$string] \n"; #exit;
+   #   print STDERR "In _destringify, [$string] \n"; #exit;
    return ($result, $string);
 }
 
@@ -451,7 +451,7 @@ sub _stringify{
    my $spacer2 = shift || "\n"; # between key/value pairs of hash, or between elements of array
    my $str = '';
    if ((blessed $x) and $x->isa('Hash::Ordered')) {
-  #    print STDERR "hash::ordered branch.\n";
+      #    print STDERR "hash::ordered branch.\n";
       $str .= "{\n";
       for my $k ($x->keys()) {
          my $v = $x->get($k);
@@ -459,27 +459,27 @@ sub _stringify{
       }
       $str =~ s/$spacer2$/\n$indent}/;
    } elsif (ref $x eq 'HASH') {
-  #    print STDERR "hashref branch.\n";
+      #    print STDERR "hashref branch.\n";
       $str .= "{\n";
       for my $k (keys %$x) {
          my $v = $x->{$k};
          my $xxx = $indent . $k . $spacer1 . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2"; # \n";
          $str.= $xxx; # $indent . $k . $spacer1 . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2\n";
-     #    print STDERR "v: $v, xxx: $xxx";
+         #    print STDERR "v: $v, xxx: $xxx";
       }
       $str =~ s/$spacer2$/\n$indent}/;
    } elsif (ref $x eq 'ARRAY') {
-   #   print STDERR "arrayref branch.\n";
+      #   print STDERR "arrayref branch.\n";
       $str .= "[\n";
       for my $v (@$x) {
          $str .= $indent . _stringify($v, $indent . '  ', $spacer1, $spacer2) . "$spacer2";
       }
       $str =~ s/$spacer2$/\n$indent]/;
    } elsif ((ref $x) eq '') {   # not a ref
-   #   print STDERR "not a ref branch. x: ", $x // 'undef', "\n";
+      #   print STDERR "not a ref branch. x: ", $x // 'undef', "\n";
       $str .= (defined $x)? sprintf("%s", $x) : 'undef' . "\n";
    } else {
-   #   print STDERR "other ref branch\n";
+      #   print STDERR "other ref branch\n";
       $str .= ref $x . "\n";
    }
    return $str;
@@ -566,38 +566,38 @@ sub format_newick_species_info{
    } else {
       warn "Unknown format for species info in newick. newick string: [$newick]\n";
    }
- #  print STDERR "input format: $input_format , target format: $target_format \n";
+   #  print STDERR "input format: $input_format , target format: $target_format \n";
    my ($intermediate_newick, $id_sp);
    if ($input_format eq $target_format) { # it is already what we want.
-      if($input_format == 1){ 
+      if ($input_format == 1) { 
          return ($newick, newick_1to1($newick));
       } elsif ($input_format == 2) {
          return ($newick, newick_2to2($newick));
       } elsif ($input_format == 3) {
          return ($newick, newick_3to3($newick));
-      }else{
+      } else {
          die "newick species-info input format unknown: $input_format\n";
       }
    } else {                     # -> format 1
-      if($input_format == 1){
+      if ($input_format == 1) {
          ($intermediate_newick, $id_sp) = ($newick, newick_1to1($newick));
-      }elsif ($input_format == 2){
+      } elsif ($input_format == 2) {
          ($intermediate_newick, $id_sp) = newick_2to1($newick, $include_species_name_in_seqid);
-      } elsif ($input_format == 3){
+      } elsif ($input_format == 3) {
          ($intermediate_newick, $id_sp) = newick_3to1($newick);
       } else {
          die "Input format: [$input_format] is unknown. Bye.\n";
       }
    }
-# print STDERR "Intermediate newick: ", $intermediate_newick, "\n";
+   # print STDERR "Intermediate newick: ", $intermediate_newick, "\n";
    # now 1 -> target format
-   if($target_format == 1){
+   if ($target_format == 1) {
       return ($intermediate_newick, $id_sp);
-   }elsif($target_format == 2){
+   } elsif ($target_format == 2) {
       return newick_1to2($intermediate_newick);
-   }elsif($target_format == 3){
+   } elsif ($target_format == 3) {
       return newick_1to3($intermediate_newick);
-   }else{
+   } else {
       die "Target format unknown: $target_format \n";
    }
 }
@@ -633,7 +633,7 @@ sub newick_genspid2idgensp{ # change format of species and id in newick expressi
    }
    $newick =~ s/X___X/_/g;      # put the underscores back in the ids
    $newick =~ s/\s+//g;
- #  print STDERR "format 1 tree: $newick \n";
+   #  print STDERR "format 1 tree: $newick \n";
    return ($newick, $id_genusspecies);
 }
 
@@ -676,7 +676,7 @@ sub newick_idgensp2id__gensp{ # change format of species and id in newick expres
    while ( $newick =~ s/([(,])([^[:,(\s]+)\[species=([^]]+)\]/$1 $2 __ $3/) {
       my ($lparenorcomma, $id, $genus_species) = ($1, $2, $3); 
       $id_genusspecies->{$id} = $genus_species;
-    #  print STDERR "id genusspecies:    $id $genus_species \n";
+      #  print STDERR "id genusspecies:    $id $genus_species \n";
    }
    $newick =~ s/\s+//g;
    return ($newick, $id_genusspecies);
@@ -700,8 +700,8 @@ sub newick_idgensp2genspid{ # change format of species and id in newick expressi
 }
 
 
-sub taxonify_newick { # add species info from %seqid_species hash
-# to newick in [species=...] format (i.e. format 1)
+sub taxonify_newick {      # add species info from %seqid_species hash
+   # to newick in [species=...] format (i.e. format 1)
 
    my $newick        = shift;
    my %seqid_species = %{ shift @_ };
@@ -737,14 +737,14 @@ sub median{
    my $size = scalar @numbers // 0;
    return undef if($size == 0);
    return ($size % 2 == 0)?
-      0.5*($numbers[$size/2] + $numbers[$size/2 - 1]) :  # even number of elements
-        $numbers[int($size/2)]; # odd number of elements
+     0.5*($numbers[$size/2] + $numbers[$size/2 - 1]) : # even number of elements
+       $numbers[int($size/2)];  # odd number of elements
 }
 
 
 sub increment_hash{
-# increment each value of first hash by corresponding value
-# in other hash.
+   # increment each value of first hash by corresponding value
+   # in other hash.
    my $kv1 = shift;
    my $kv2 = shift;
    while ( my ($k, $v) = each %$kv2) {
@@ -754,8 +754,8 @@ sub increment_hash{
 }
 
 sub add_hashes{
-# add values of two hashes; values must be numerical, !exists -> 0
-# return ref to a new hash which is sum of the two input hashes.
+   # add values of two hashes; values must be numerical, !exists -> 0
+   # return ref to a new hash which is sum of the two input hashes.
    my $hr1 = shift;
    my $hr2 = shift;
    my %sumhash = ();
@@ -797,6 +797,95 @@ sub newick_3to3{
 }
 
 
+sub fasta2seqon1line{
+   my $fasta_string = shift; # string which may have sequences broken into multiple lines
+   my $fastaseqon1line_string = '';
+   my @lines = split("\n", $fasta_string);
+   my $top = 1;
+   for (@lines) {
+      if ($top and /^>/) {
+         $fastaseqon1line_string .=  $_ . "\n";
+         $top = 0;
+      } elsif (/^>/) {
+         $fastaseqon1line_string .=  "\n" . $_ . "\n";
+      } else {
+         chomp;
+         $fastaseqon1line_string .= $_;
+      }
+   }
+   $fastaseqon1line_string .= "\n";
+   return $fastaseqon1line_string;
+}
 
+
+sub prot_w_gaps_2_cds_w_gaps{ 
+   my $prot_seq = shift;        # may have gaps
+   my $cds_seq = shift;         # no gaps
+
+   my $cds_w_gaps = '';
+   my @aags = split('', $prot_seq);
+
+   if ($cds_seq eq '') {        # cds missing; use all gaps.
+      warn "No cds sequence available, using all gaps.\n";
+      for (@aags) {
+         $cds_w_gaps .= '---';
+      }
+      
+   } else {
+
+      my %codon2aa =  qw(
+                           TCA  S  TCC  S  TCG  S  TCT  S  TTC  F  TTT  F  TTA  L  TTG  L
+                           TAC  Y  TAT  Y  TAA  _  TAG  _  TGC  C  TGT  C  TGA  _  TGG  W
+                           CTA  L  CTC  L  CTG  L  CTT  L  CCA  P  CCC  P  CCG  P  CCT  P
+                           CAC  H  CAT  H  CAA  Q  CAG  Q  CGA  R  CGC  R  CGG  R  CGT  R
+                           ATA  I  ATC  I  ATT  I  ATG  M  ACA  T  ACC  T  ACG  T  ACT  T
+                           AAC  N  AAT  N  AAA  K  AAG  K  AGC  S  AGT  S  AGA  R  AGG  R
+                           GTA  V  GTC  V  GTG  V  GTT  V  GCA  A  GCC  A  GCG  A  GCT  A
+                           GAC  D  GAT  D  GAA  E  GAG  E  GGA  G  GGC  G  GGG  G  GGT  G
+                       );
+
+  
+      for my $aag (@aags) {
+         if ($aag eq '-') {     # gap
+            $cds_w_gaps .= '---';
+         } else {
+            my $next_codon = substr($cds_seq, 0, 3, ''); # remove and return next codon.
+            my $trans_next_codon = $codon2aa{$next_codon} // 'X'; # translate the codon and check against the next aa in sequence.
+            die "codon $next_codon translates to $trans_next_codon, should be $aag.\n" if($trans_next_codon ne $aag  and  $trans_next_codon ne 'X');
+            $cds_w_gaps .= $next_codon;
+         }
+      }
+   }
+   return $cds_w_gaps;
+}
+
+sub store_fasta{                # 
+   my $filename = shift;
+   my $id_seqs = {};
+   open my $fhin, "<", "$filename" or die "Couldn't open $filename for reading.\n";
+   my $fasta_as_read = '';
+   while (<$fhin>) {
+      $fasta_as_read .= $_;
+   }
+   my $fasta = TomfyMisc::fasta2seqon1line($fasta_as_read);
+   # print "fasta: \n" . "$fasta \n";
+   my @fasta_lines = split("\n", $fasta);
+   while (@fasta_lines) {
+      my $line = shift @fasta_lines;
+      if ($line =~ /^>([^\s|]+)/) { # everything from > up to (but not including) first whitespace or pipe
+         my $id = $1;
+         $id =~ s/\s*$//;        # remove final whitespace.
+    #     $id =~ s/[.]p\d+\s*$//; # remove .p1 , .p2 at end.
+         my $sequence = shift @fasta_lines;
+     #    print STDERR "XXX id: $id ,   seq: [$sequence] \n";
+         $sequence =~ s/[*\s]+$//;
+         # if (! exists $id_seqs->{$id}) {
+         #    $id_seqs->{$id} = [];
+         # }
+         $id_seqs->{$id} = $sequence;
+      }
+   }
+   return $id_seqs;
+}
 
 1;
