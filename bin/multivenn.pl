@@ -16,9 +16,12 @@ use lib $libdir;
 use TomfyMisc qw 'run_quicktree run_fasttree run_phyml store_gg_info timestring ';
 
 my $gg_filename = undef;
+my $column = 1;
 GetOptions(
 	   'gg_file=s'           => \$gg_filename, #
-	 );
+	   'column=i' => $column,
+	  );
+$column--;
 my $id_species = undef;
 if(defined $gg_filename  and  -f $gg_filename){
 $id_species = store_gg_info($gg_filename);
@@ -61,10 +64,10 @@ for my $the_file (@files){ # for each input file, store id:count key:value pairs
 	  next if(/^\s*#/);
           next if(/^\s*$/);
           my ($id, $idcount) = (0, 0);
-          if(/^\s*(\S+)\s+(\d+)/){
+          if(0 and /^\s*(\S+)\s+(\d+)/){
              ($id, $idcount) = ($1, $2);
-          }elsif(/^\s*(\S+)\s/){
-             ($id, $idcount) = ($1, 1);
+          }elsif(/^\s*(\S+\s+){$column}(\S+)/){
+             ($id, $idcount) = ($2, 1);
           }
       #    print STDERR "idcount: $idcount \n";
 			$file_id_hash->{$id} += $idcount; # stores ids in the file; one hash for each file
@@ -115,7 +118,7 @@ for (1..$n_sets) {
 
 print "union size: ", sum(@nregion_histogram), "\n";
 
-
+# exit;
 for my $i (0..$n_sets-1){
   for my $j ($i+1 .. $n_sets-1){
 my $x = $files[$i] . "  " . $files[$j];
